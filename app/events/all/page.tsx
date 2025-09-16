@@ -1,12 +1,12 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import { events } from "@/data/events";
+import { events, Event } from "@/data/events";
 import EventPreviewCard from "@/components/EventPreviewCard";
 
 // Group events by date
-function groupEventsByDate(events: any[]) {
-  return events.reduce((groups: any, event: any) => {
+function groupEventsByDate(events: Event[]) {
+  return events.reduce((groups: Record<string, Event[]>, event: Event) => {
     const date = new Date(event.date).toLocaleDateString("en-US", {
       day: "numeric",
       month: "short",
@@ -16,11 +16,11 @@ function groupEventsByDate(events: any[]) {
     if (!groups[date]) groups[date] = [];
     groups[date].push(event);
     return groups;
-  }, {} as Record<string, any[]>);
+  }, {});
 }
 
 export default function AllEventsPage() {
-  const [filter, setFilter] = useState<"upcoming" | "past">("upcoming"); // default upcoming
+  const [filter, setFilter] = useState<"upcoming" | "past">("upcoming");
 
   const now = new Date();
 
@@ -82,10 +82,10 @@ export default function AllEventsPage() {
 
                   {/* Event cards */}
                   <div className="flex-1 grid grid-cols-1 gap-6 ml-8">
-                    {groupedEvents[date].map((event: any) => (
+                    {groupedEvents[date].map((event: Event) => (
                       <Link key={event.id} href={`/events/${event.id}`}>
-                        <div className="bg-gray-800/50 rounded-2xl  hover:shadow-lg hover:shadow-purple-500/20 transition">
-                          <EventPreviewCard {...event} variant="allEvents"/>
+                        <div className="bg-gray-800/50 rounded-2xl hover:shadow-lg hover:shadow-purple-500/20 transition">
+                          <EventPreviewCard {...event} variant="allEvents" />
                         </div>
                       </Link>
                     ))}
@@ -131,11 +131,11 @@ export default function AllEventsPage() {
                     {/* Events */}
                     <div className="flex-1 ml-5 pb-16">
                       <div className="grid grid-cols-2 gap-6 pt-2">
-                        {groupedEvents[date].map((event: any) => (
+                        {groupedEvents[date].map((event: Event) => (
                           <div key={event.id} className="relative">
                             <Link href={`/events/${event.id}`}>
-                              <div className="bg-gray-800/50 rounded-2xl  hover:shadow-md hover:shadow-purple-500/20 hover:border-purple-500/30 transition-all duration-300">
-                                <EventPreviewCard {...event} variant="allEvents"/>
+                              <div className="bg-gray-800/50 rounded-2xl hover:shadow-md hover:shadow-purple-500/20 hover:border-purple-500/30 transition-all duration-300">
+                                <EventPreviewCard {...event} variant="allEvents" />
                               </div>
                             </Link>
                           </div>

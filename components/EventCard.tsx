@@ -35,6 +35,21 @@ function EventCard({
   attendees,
   category,
 }: EventCardProps) {
+  const [quantities, setQuantities] = useState<number[]>(
+    tickets.map(() => 0) // initialize all tickets to 0
+  );
+
+  const increase = (idx: number) => {
+    setQuantities((prev) =>
+      prev.map((q, i) => (i === idx ? Math.min(q + 1, 10) : q))
+    );
+  };
+
+  const decrease = (idx: number) => {
+    setQuantities((prev) =>
+      prev.map((q, i) => (i === idx ? Math.max(q - 1, 0) : q))
+    );
+  };
   return (
     <div className="w-full overflow-hidden gap-8 flex flex-col lg:flex-row mb-4">
       {/* Left Side - Desktop Layout */}
@@ -109,51 +124,44 @@ function EventCard({
         <div className="my-4">
           <h3 className="text-lg font-bold text-gray-300 mb-2">Tickets</h3>
           <ul className="space-y-4">
-            {tickets.map((ticket, idx) => {
-              const [quantity, setQuantity] = useState(0);
+            {tickets.map((ticket, idx) => (
+              <li
+                key={idx}
+                className="flex items-center justify-between bg-white/2 px-3 py-2 rounded-2xl border border-gray-400/50"
+              >
+                {/* Ticket type & price */}
+                <span className="text-md text-gray-300 font-semibold">
+                  {ticket.type} - {ticket.price}
+                </span>
 
-              const increase = () => setQuantity((q) => Math.min(q + 1, 10)); // max 10
-              const decrease = () => setQuantity((q) => Math.max(q - 1, 0)); // min 0
-
-              return (
-                <li
-                  key={idx}
-                  className="flex items-center justify-between bg-white/2 px-3 py-2 rounded-2xl border border-gray-400/50"
-                >
-                  {/* Ticket type & price */}
-                  <span className="text-md text-gray-300 font-semibold">
-                    {ticket.type} - {ticket.price}
-                  </span>
-
-                  {/* Quantity + Buy button */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={decrease}
-                        className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-700 text-white hover:bg-gray-600"
-                      >
-                        −
-                      </button>
-                      <span className="w-6 text-center text-md text-gray-300 font-medium">
-                        {quantity}
-                      </span>
-                      <button
-                        onClick={increase}
-                        className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-700 text-white hover:bg-gray-600"
-                      >
-                        +
-                      </button>
-                    </div>
-                    <a
-                      href={`${ticket.link}?quantity=${quantity}`}
-                      className="bg-purple-600/50 text-gray-300 px-3 py-1 rounded-lg text-sm hover:bg-blue-700 transition"
+                {/* Quantity + Buy button */}
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => decrease(idx)}
+                      className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-700 text-white hover:bg-gray-600"
                     >
-                      Buy
-                    </a>
+                      −
+                    </button>
+                    <span className="w-6 text-center text-md text-gray-300 font-medium">
+                      {quantities[idx]}
+                    </span>
+                    <button
+                      onClick={() => increase(idx)}
+                      className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-700 text-white hover:bg-gray-600"
+                    >
+                      +
+                    </button>
                   </div>
-                </li>
-              );
-            })}
+                  <a
+                    href={`${ticket.link}?quantity=${quantities[idx]}`}
+                    className="bg-purple-600/50 text-gray-300 px-3 py-1 rounded-lg text-sm hover:bg-blue-700 transition"
+                  >
+                    Buy
+                  </a>
+                </div>
+              </li>
+            ))}
           </ul>
         </div>
 
