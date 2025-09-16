@@ -7,7 +7,7 @@ import Link from "next/link";
 
 function LandingPage() {
   return (
-    <div className="w-full min-h-screen flex flex-col lg:flex-row items-center justify-center p-4 gap-8">
+    <div className="w-full min-h-screen flex flex-col lg:flex-row items-center justify-center p-4 gap-8 my-10">
       {/* Left side: text */}
       <div className="relative flex flex-col gap-4 lg:max-w-[30%] text-center lg:text-left">
         <h1 className="text-[4rem] font-bold bg-gradient-to-r from-green-600 via-purple-400 to-purple-600 bg-clip-text text-transparent">

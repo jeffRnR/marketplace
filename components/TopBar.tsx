@@ -63,10 +63,10 @@ function TopBar({ onViewEvents }: TopBarProps) {
 
         <div className="lg:ml-20">
           <SignedIn>
-            <div className="flex items-center gap-2 lg:gap-4">
+            <div className="flex items-center lg:gap-4">
               <Link href="/events/create">
                 <button className=" text-gray-300 font-bold lg:text-md text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition duration-300 flex gap-2 items-center justify-center">
-                  <CalendarPlus className="h-4 w-4" />
+                  <CalendarPlus className="h-4 w-4 hidden lg:block" />
                   <span>Create Event</span>
                 </button>
               </Link>
