@@ -1,6 +1,7 @@
 import { CalendarDays, Clock, MapPin, Tag, User, Users } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
+import { Category } from "@/data/categories";
 
 interface TicketOption {
   type: string;
@@ -19,7 +20,7 @@ interface EventCardProps {
   mapUrl: string;
   host: string;
   attendees: number;
-  category: string;
+  category: Category;
 }
 
 function EventCard({
@@ -80,9 +81,13 @@ function EventCard({
           </div>
           {/* Category */}
           <div className="text-gray-300 text-md border-b pb-4 border-gray-400/20 flex items-center gap-2">
-            <Tag className="h-4 w-4 text-green-500" />
-            <span className="font-medium">{category}</span>
+            <category.icon
+              className="h-4 w-4"
+              style={{ color: category.iconColor }}
+            />
+            <span className="font-medium">{category.name}</span>
           </div>
+
           {/* Contact / Report */}
           <div className="text-gray-400 flex flex-col gap-4 text-sm my-4">
             <Link href="">
@@ -194,9 +199,13 @@ function EventCard({
           </div>
           {/* Category */}
           <div className="text-gray-300 text-md border-b pb-4 border-gray-400/20 flex items-center gap-2">
-            <Tag className="h-4 w-4 text-green-500" />
-            <span className="font-medium">{category}</span>
+            <category.icon
+              className="h-4 w-4"
+              style={{ color: category.iconColor }}
+            />
+            <span className="font-medium">{category.name}</span>
           </div>
+
           {/* Contact / Report */}
           <div className="text-gray-400 flex flex-col gap-4 text-sm my-4">
             <Link href="">

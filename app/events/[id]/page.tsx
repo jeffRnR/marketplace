@@ -3,11 +3,14 @@
 import { useParams } from "next/navigation";
 import { events } from "@/data/events";
 import EventCard from "@/components/EventCard";
+import { categories } from "@/data/categories";
+
 
 export default function EventDetailPage() {
   const params = useParams();
   const eventId = Number(params.id);
   const event = events.find((e) => e.id === eventId);
+
 
   if (!event) {
     return (
@@ -19,6 +22,7 @@ export default function EventDetailPage() {
       </div>
     );
   }
+  const category = categories.find((c) => c.id === event.categoryId);
 
   return (
     <div className="p-4 lg:w-[70%] min-h-screen mt-14 w-full mx-auto">
@@ -37,6 +41,7 @@ export default function EventDetailPage() {
         mapUrl={event.mapUrl}
         host={event.host}
         attendees={event.attendees}
+        category={category!}
       />
     </div>
   );

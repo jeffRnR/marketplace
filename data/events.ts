@@ -16,6 +16,7 @@ export interface Event {
   host: string;
   attendees: number;
   tickets: TicketOption[];
+  categoryId: number;
 }
 
 export const events: Event[] = [
@@ -35,6 +36,7 @@ export const events: Event[] = [
       { type: "Regular", price: "KES 1200", link: "https://tickets.com/noizy-regular" },
       { type: "VIP", price: "KES 2000", link: "https://tickets.com/noizy-vip" },
     ],
+    categoryId: 1,
   },
   {
     id: 2,
@@ -50,6 +52,7 @@ export const events: Event[] = [
     tickets: [
       { type: "General", price: "KES 500", link: "https://tickets.com/cinegroove" },
     ],
+    categoryId: 1,
   },
   {
     id: 3,
@@ -65,6 +68,7 @@ export const events: Event[] = [
     tickets: [
       { type: "General", price: "KES 500", link: "https://tickets.com/cinegroove" },
     ],
+    categoryId: 1,
   },
   {
     id: 4,
@@ -82,6 +86,7 @@ export const events: Event[] = [
       { type: "Regular", price: "KES 1500", link: "https://tickets.com/noizy-regular" },
       { type: "VIP", price: "KES 3000", link: "https://tickets.com/noizy-vip" },
     ],
+    categoryId: 1,
   },
   {
     id: 5,
@@ -97,6 +102,7 @@ export const events: Event[] = [
     tickets: [
       { type: "General", price: "KES 500", link: "https://tickets.com/cinegroove" },
     ],
+    categoryId: 1,
   },
   {
     id: 6,
@@ -114,6 +120,7 @@ export const events: Event[] = [
       { type: "Regular", price: "KES 1200", link: "https://tickets.com/noizy-regular" },
       { type: "VIP", price: "KES 2000", link: "https://tickets.com/noizy-vip" },
     ],
+    categoryId: 1,
   },
   {
     id: 7,
@@ -129,6 +136,7 @@ export const events: Event[] = [
     tickets: [
       { type: "General", price: "KES 500", link: "https://tickets.com/cinegroove" },
     ],
+    categoryId: 1,
   },
   // more events...
 ];
