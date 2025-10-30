@@ -17,11 +17,9 @@ export async function POST(req: Request) {
     const newCategory = await Category.create(body);
     return NextResponse.json(newCategory, { status: 201 });
   } catch (error) {
-    // Use 'unknown' instead of 'any'
     if (error instanceof Error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
-    // Handle unexpected error types safely
     return NextResponse.json({ error: "An unknown error occurred" }, { status: 500 });
   }
 }

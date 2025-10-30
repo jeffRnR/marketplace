@@ -17,7 +17,6 @@ export async function POST(req: Request) {
     const newEvent = await Event.create(body);
     return NextResponse.json(newEvent, { status: 201 });
   } catch (error) {
-    // Use 'unknown' instead of 'any' to satisfy ESLint
     if (error instanceof Error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
