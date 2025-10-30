@@ -22,7 +22,7 @@ export interface Event {
 export const events: Event[] = [
   {
     id: 1,
-    image: "/screenshot.png",
+    image: "/gothparty.jpg",
     title: "Noizy Nightz: Gothic Party",
     date: "Sept 1, 2025",
     time: "8:00 PM",
@@ -72,7 +72,7 @@ export const events: Event[] = [
   },
   {
     id: 4,
-    image: "/screenshot.png",
+    image: "/purplefest.jpg",
     title: "Noizy Nightz: Purple Fest2",
     date: "Nov 10, 2025",
     time: "8:00 PM",
