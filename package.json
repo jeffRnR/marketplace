@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -p 4000",
-    "build": "next build --turbopack",
+    "build": "next build --turbopack --no-lint",
     "start": "next start",
     "lint": "eslint",
     "seed:categories": "node --loader ts-node/esm --loader ./node_modules/tsconfig-paths/register.js scripts/seedCategories.ts"
