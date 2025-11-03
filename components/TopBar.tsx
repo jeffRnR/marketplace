@@ -38,8 +38,8 @@ function TopBar({ onViewEvents }: TopBarProps) {
         className={`flex flex-row items-center gap-4 p-4 transition-all duration-300 
         ${
           scrolled
-            ? "shadow-md border-b border-gray-400/50"
-            : "border-b border-transparent"
+            ? "shadow-md border-b border-gray-400"
+            : "border-b border-gray-400/50"
         }`}
       >
         <div className="flex items-center lg:w-auto">
