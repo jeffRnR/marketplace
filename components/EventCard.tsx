@@ -1,5 +1,6 @@
-import { CalendarDays, Clock, MapPin, Tag, User, Users } from "lucide-react";
+import { CalendarDays, Clock, MapPin, User, Users } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { Category } from "@/data/categories";
 
@@ -36,26 +37,59 @@ function EventCard({
   attendees,
   category,
 }: EventCardProps) {
-  const [quantities, setQuantities] = useState<number[]>(
-    tickets.map(() => 0) // initialize all tickets to 0
-  );
+  const [quantities, setQuantities] = useState<number[]>(tickets.map(() => 0));
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const router = useRouter();
 
   const increase = (idx: number) => {
     setQuantities((prev) =>
       prev.map((q, i) => (i === idx ? Math.min(q + 1, 10) : q))
     );
+
+    setErrorMessage("");
   };
 
   const decrease = (idx: number) => {
     setQuantities((prev) =>
       prev.map((q, i) => (i === idx ? Math.max(q - 1, 0) : q))
     );
+    setErrorMessage("");
   };
+
+  const handleBuy = () => {
+    const selectedTickets = tickets
+      .map((ticket, idx) => ({
+        type: ticket.type,
+        price: ticket.price,
+        quantity: quantities[idx],
+      }))
+      .filter((t) => t.quantity > 0);
+
+    if (selectedTickets.length === 0) {
+      setErrorMessage(
+        "Please select at least one ticket before proceeding to checkout."
+      );
+      return;
+    }
+
+    setErrorMessage("");
+
+    // Create encoded checkout URL
+    const checkoutUrl = `/checkout?title=${encodeURIComponent(
+      title
+    )}&image=${encodeURIComponent(image)}&date=${encodeURIComponent(
+      date
+    )}&location=${encodeURIComponent(location)}&tickets=${encodeURIComponent(
+      JSON.stringify(selectedTickets)
+    )}`;
+
+    router.push(checkoutUrl);
+  };
+
   return (
     <div className="w-full overflow-hidden gap-8 flex flex-col lg:flex-row mb-4">
-      {/* Left Side - Desktop Layout */}
+      {/* Left Side */}
       <div className="lg:w-1/2 flex flex-col gap-4">
-        {/* Event Poster */}
         <div className="relative">
           <img
             src={image}
@@ -67,19 +101,16 @@ function EventCard({
           </span>
         </div>
 
-        {/* Info (host, attendees, category, links) - Hidden on mobile, shown on desktop */}
+        {/* Host/Info (Desktop) */}
         <div className="hidden lg:flex flex-col gap-4">
-          {/* Host */}
           <div className="text-gray-300 text-md flex gap-2 items-center">
             <User className="w-4 h-4 text-[#915f13]" />
             <span className="font-medium">Hosted by {host}</span>
           </div>
-          {/* Attendees */}
           <div className="text-gray-300 text-md flex gap-2 items-center">
             <Users className="w-4 h-4 text-[#915f13]" />
             <span className="font-medium">{attendees} attending</span>
           </div>
-          {/* Category */}
           <div className="text-gray-300 text-md border-b pb-4 border-gray-400/20 flex items-center gap-2">
             <category.icon
               className="h-4 w-4"
@@ -87,8 +118,6 @@ function EventCard({
             />
             <span className="font-medium">{category.name}</span>
           </div>
-
-          {/* Contact / Report */}
           <div className="text-gray-400 flex flex-col gap-4 text-sm my-4">
             <Link href="">
               <span className="font-medium">Contact Host</span>
@@ -100,18 +129,15 @@ function EventCard({
         </div>
       </div>
 
-      {/* Right Side - Main Content */}
+      {/* Right Side */}
       <div className="lg:w-1/2 w-full flex flex-col gap-4">
-        {/* Title */}
         <h2 className="text-[2.5rem] font-bold text-gray-100">{title}</h2>
 
-        {/* Location */}
         <div className="text-md text-gray-400 flex items-center gap-2">
           <MapPin className="h-4 w-4 text-red-300" />
           <span className="font-semibold">{location}</span>
         </div>
 
-        {/* Date time */}
         <div className="text-gray-400 flex flex-col gap-2">
           <div className="flex gap-2 text-md items-center">
             <CalendarDays className="h-4 w-4" />
@@ -126,7 +152,7 @@ function EventCard({
         </div>
 
         {/* Tickets */}
-        <div className="my-4">
+        <div className="my-4 transition-all duration-300">
           <h3 className="text-lg font-bold text-gray-300 mb-2">Tickets</h3>
           <ul className="space-y-4">
             {tickets.map((ticket, idx) => (
@@ -134,12 +160,9 @@ function EventCard({
                 key={idx}
                 className="flex items-center justify-between bg-white/2 px-3 py-2 rounded-2xl border border-gray-400/50"
               >
-                {/* Ticket type & price */}
                 <span className="text-md text-gray-300 font-semibold">
                   {ticket.type} - {ticket.price}
                 </span>
-
-                {/* Quantity + Buy button */}
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
                     <button
@@ -158,25 +181,31 @@ function EventCard({
                       +
                     </button>
                   </div>
-                  <a
-                    href={`${ticket.link}?quantity=${quantities[idx]}`}
-                    className="bg-purple-600/50 text-gray-300 px-3 py-1 rounded-lg text-sm hover:bg-blue-700 transition"
-                  >
-                    Buy
-                  </a>
                 </div>
               </li>
             ))}
           </ul>
+
+          {/* Buy button at bottom */}
+          <button
+            onClick={handleBuy}
+            className="mt-4 w-full bg-purple-600/50 text-gray-100 font-semibold px-3 py-2 rounded-lg hover:cursor-pointer hover:bg-purple-700 transition"
+          >
+            Proceed to Checkout
+          </button>
+
+          {errorMessage && (
+            <p className="text-red-400 text-sm mt-2 text-center font-medium">
+              {errorMessage}
+            </p>
+          )}
         </div>
 
-        {/* Description */}
         <div className="flex flex-col my-4">
           <span className="text-lg mb-2 text-gray-300 font-bold">About</span>
           <p className="text-gray-300 text-md">{description}</p>
         </div>
 
-        {/* Map */}
         <div>
           <iframe
             src={mapUrl}
@@ -185,19 +214,16 @@ function EventCard({
           ></iframe>
         </div>
 
-        {/* Info section for mobile - shown only on small screens at the bottom */}
+        {/* Info section for mobile */}
         <div className="flex lg:hidden flex-col gap-4 mt-4">
-          {/* Host */}
           <div className="text-gray-300 text-md flex gap-2 items-center">
             <User className="w-4 h-4 text-[#915f13]" />
             <span className="font-medium">Hosted by {host}</span>
           </div>
-          {/* Attendees */}
           <div className="text-gray-300 text-md flex gap-2 items-center">
             <Users className="w-4 h-4 text-[#915f13]" />
             <span className="font-medium">{attendees} attending</span>
           </div>
-          {/* Category */}
           <div className="text-gray-300 text-md border-b pb-4 border-gray-400/20 flex items-center gap-2">
             <category.icon
               className="h-4 w-4"
@@ -205,8 +231,6 @@ function EventCard({
             />
             <span className="font-medium">{category.name}</span>
           </div>
-
-          {/* Contact / Report */}
           <div className="text-gray-400 flex flex-col gap-4 text-sm my-4">
             <Link href="">
               <span className="font-medium">Contact Host</span>
