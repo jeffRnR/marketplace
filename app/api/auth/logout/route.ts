@@ -11,7 +11,7 @@ export async function POST() {
     if (sessionCookie) {
       // Delete the session from the database
       await prisma.session.deleteMany({
-        where: { token: sessionCookie.value },
+        where: { sessionToken: sessionCookie.value },
       });
 
       // Delete the cookie

@@ -184,7 +184,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                 <h2 className="text-xl font-bold text-gray-800">Menu</h2>
                 <button
                   onClick={closeMobileMenu}
-                  className="text-purple-800 font-bold text-lg hover:text-purple-600 hover:cursor-pointer transition"
+                  className="text-purple-800 font-bold text-xl hover:text-purple-600 hover:cursor-pointer transition"
                 >
                   ×
                 </button>
