@@ -33,7 +33,7 @@ export default function AllEventsPage() {
   const groupedEvents = groupEventsByDate(filteredEvents);
 
   return (
-    <div className="p-4 lg:w-[75%] mx-auto w-full min-h-screen my-10">
+    <div className="p-4 lg:w-[75%] mx-auto w-full min-h-screen mt-14 mb-10">
       {/* Header row */}
       <div className="flex flex-row justify-between items-center mb-6">
         <h1 className="text-gray-300 font-bold text-[2rem]">All Events</h1>

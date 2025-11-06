@@ -18,7 +18,7 @@ function EventsList() {
   const displayedEvents = sortedEvents.slice(0, 4);
 
   return (
-    <div className="p-4 lg:w-[70%] mx-auto w-full min-h-screen flex-col items-center mt-10 gap-4">
+    <div className="p-4 lg:w-[70%] mx-auto w-full min-h-screen flex-col items-center mt-14 gap-4">
       <div className="gap-4">
         <h1 className="text-gray-300 font-bold text-[2.5rem]">Discover Events</h1>
         <p className="text-gray-300 font-bold text-md">

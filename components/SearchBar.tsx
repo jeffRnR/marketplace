@@ -37,56 +37,66 @@ function SearchBar() {
   return (
     <div className="relative">
       {/* Only show search icon in top bar */}
-      <button onClick={() => setOpen(true)} className="p-2 rounded-full">
-        <Search className="transition-all duration-300 w-4 h-4 text-gray-300 hover:text-gray-100" />
+      <button 
+        onClick={() => setOpen(true)} 
+        className="p-2 rounded-full hover:bg-gray-200 hover:text-gray-800 transition duration-300"
+      >
+        <Search className="transition-all duration-300 w-4 h-4 text-gray-300 hover:text-gray-800" />
       </button>
 
       {/* Centered dropdown overlay */}
       {open && (
-        <div className="fixed left-1/2 top-16 -translate-x-1/2 lg:w-[60%] w-[90%] bg-gradient-to-b border border-gray-400/30 from-[#07000a] to-[#1d0229] rounded-lg shadow-lg z-50">
-          <div className="flex items-center bg-transparent p-4 rounded-t-lg border-b border-gray-400/30">
-            <Search className="w-4 h-4 text-gray-400 mr-2" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search events, categories..."
-              className="bg-transparent outline-none flex-1 text-gray-200 placeholder-gray-400"
-              autoFocus
-            />
-            <button
-              onClick={() => {
-                setOpen(false);
-                setQuery("");
-              }}
-            >
-              <X className="transition-all duration-300 w-5 h-5 text-gray-400 hover:text-gray-200 hover:cursor-pointer" />
-            </button>
-          </div>
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/50 min-h-screen">
+          <div className="lg:w-[60%] w-[90%] max-w-2xl rounded-2xl bg-gray-300 shadow-lg z-50">
+            <div className="flex items-center p-4 rounded-t-2xl border-b border-gray-400">
+              <Search className="w-5 h-5 text-gray-800 mr-3" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search events, categories..."
+                className="bg-transparent outline-none flex-1 text-gray-800 placeholder-gray-600 text-lg"
+                autoFocus
+              />
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  setQuery("");
+                }}
+                className="text-gray-800 hover:text-purple-800 transition duration-300"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
 
-          {/* Results */}
-          <div className="max-h-60 overflow-y-auto scrollbar-hide">
-            {results.length > 0 ? (
-              results.map((item, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => handleClick(item)}
-                  className="flex items-center gap-2 px-4 py-2 hover:border-l-5 hover:pl-6 transition-all duration-300
-                  hover:border-gray-400 hover:text-100 cursor-pointer text-sm text-gray-300"
-                >
-                  {item.type === "event" ? (
-                    <Ticket className="w-4 h-4 text-purple-400" />
-                  ) : (
-                    <Tag className="w-4 h-4 text-blue-400" />
-                  )}
-                  <span>{item.title}</span>
+            {/* Results */}
+            <div className="max-h-60 overflow-y-auto scrollbar-hide rounded-b-2xl">
+              {results.length > 0 ? (
+                results.map((item, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => handleClick(item)}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-purple-800 hover:text-gray-100 
+                    transition-all duration-300 cursor-pointer text-gray-800 hover:cursor-pointer border-b border-gray-400 last:border-b-0"
+                  >
+                    {item.type === "event" ? (
+                      <Ticket className="w-5 h-5 text-purple-800" />
+                    ) : (
+                      <Tag className="w-5 h-5 text-blue-600" />
+                    )}
+                    <span className="font-medium">{item.title}</span>
+                  </div>
+                ))
+              ) : query ? (
+                <div className="px-4 py-6 text-gray-600 text-center text-lg">
+                  No results found for "{query}"
                 </div>
-              ))
-            ) : (
-              <div className="px-4 py-2 text-gray-400 text-sm">
-                No results found
-              </div>
-            )}
+              ) : (
+                <div className="px-4 py-6 text-gray-600 text-center text-lg">
+                  Start typing to search events and categories...
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
