@@ -61,8 +61,8 @@ export async function POST(req: NextRequest) {
     await prisma.session.create({
       data: {
         userId: user.id,
-        token: sessionToken,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
+        sessionToken: sessionToken,
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
       },
     });
 
