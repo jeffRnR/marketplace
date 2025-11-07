@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
     // ✅ Find session and user
     const session = await prisma.session.findUnique({
-      where: { token: sessionToken },
+      where: { sessionToken: sessionToken },
       include: { user: true },
     });
 
