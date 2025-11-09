@@ -1,14 +1,14 @@
+// app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcrypt";
-import { cookies } from "next/headers";
-import crypto from "crypto";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { email, password } = body;
 
+    // Validation
     if (!email || !password) {
       return NextResponse.json(
         { message: "Email and password are required" },
@@ -31,7 +31,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    // Normalize email
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
     if (existingUser) {
       return NextResponse.json(
         { message: "User with this email already exists" },
@@ -39,11 +46,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Create user
     const user = await prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
         role: "USER",
       },
@@ -55,35 +64,17 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // --- Create a secure session token ---
-    const sessionToken = crypto.randomBytes(32).toString("hex");
-
-    await prisma.session.create({
-      data: {
-        userId: user.id,
-        sessionToken: sessionToken,
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
-      },
-    });
-
-    // --- Set cookie ---
-    const cookieStore = await cookies();
-    cookieStore.set("session", sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 24 * 60 * 60, // 24 hours
-      path: "/",
-      sameSite: "lax",
-    });
-
     return NextResponse.json(
-      { message: "User created and signed in successfully", user },
+      {
+        message: "User created successfully",
+        user,
+      },
       { status: 201 }
     );
   } catch (error: any) {
-    console.error("Signup error:", error);
+    console.error("Registration error:", error);
     return NextResponse.json(
-      { message: "An error occurred during signup" },
+      { message: "An error occurred during registration" },
       { status: 500 }
     );
   }

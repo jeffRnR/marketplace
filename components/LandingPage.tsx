@@ -4,23 +4,26 @@ import { useSession } from "next-auth/react";
 import React, { useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import SignInModal from "@/components/SignInModal";
 
 function LandingPage() {
   const { data: session, status } = useSession();
   const [showSignIn, setShowSignIn] = useState(false);
+  const router = useRouter();
 
   const handleCreateEvent = () => {
     if (status !== "authenticated") {
       // Show sign-in modal if not logged in
       setShowSignIn(true);
     } else {
-      // Redirect to event creation page
-      window.location.href = "/events/create";
+      // Use Next.js router instead of window.location
+      router.push("/events/create");
     }
   };
 
   const isAuthenticated = status === "authenticated";
+  const isLoading = status === "loading";
 
   return (
     <div className="w-full min-h-screen flex flex-col lg:flex-row items-center justify-center p-4 gap-8 my-10">
@@ -38,21 +41,24 @@ function LandingPage() {
 
         {/* Actions */}
         <div className="flex gap-4 justify-center lg:justify-start items-center mt-4">
-          {isAuthenticated ? (
+          {isLoading ? (
+            <div className="bg-gray-200 text-gray-800 rounded-lg px-4 py-2 text-md font-bold border border-gray-400 animate-pulse">
+              Loading...
+            </div>
+          ) : isAuthenticated ? (
+            <Link href="/events/create">
+              <button className="bg-purple-800 text-gray-100 rounded-lg px-4 py-2 text-md font-bold border border-purple-800 hover:bg-purple-600 hover:cursor-pointer transition duration-300 flex justify-center gap-2 items-center">
+                <span>Create Event</span>
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
+            </Link>
+          ) : (
             <Link href="/events">
               <button className="bg-gray-200 text-gray-800 rounded-lg px-4 py-2 text-md font-bold border border-gray-400 hover:bg-transparent hover:text-gray-300 hover:cursor-pointer transition duration-300 flex justify-center gap-2 items-center">
                 <span>View Events</span>
                 <ArrowUpRight className="w-4 h-4" />
               </button>
             </Link>
-          ) : (
-            <button
-              className="bg-gray-200 text-gray-800 rounded-lg px-4 py-2 text-md font-bold border border-gray-400 hover:bg-transparent hover:text-gray-300 hover:cursor-pointer transition duration-300 flex justify-center gap-2 items-center"
-              onClick={handleCreateEvent}
-            >
-              <span>Create Event</span>
-              <ArrowUpRight className="w-4 h-4" />
-            </button>
           )}
         </div>
       </div>
@@ -67,6 +73,7 @@ function LandingPage() {
           playsInline
         >
           <source src="/videos/vid1.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
         </video>
       </div>
 

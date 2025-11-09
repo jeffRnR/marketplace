@@ -11,7 +11,7 @@ export const authOptions: NextAuthOptions = {
 
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60,
+    maxAge: 24 * 60 * 60, // 24 hours
   },
 
   providers: [
@@ -27,7 +27,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email: credentials.email.toLowerCase() },
         });
 
         if (!user || !user.password) {
@@ -38,12 +38,16 @@ export const authOptions: NextAuthOptions = {
           credentials.password,
           user.password
         );
-        if (!isValid) throw new Error("Invalid password");
+        
+        if (!isValid) {
+          throw new Error("Invalid password");
+        }
 
         return {
           id: user.id,
           email: user.email,
           name: user.name,
+          role: user.role,
         };
       },
     }),
@@ -57,10 +61,12 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async jwt({ token, user, account }) {
+      // Initial sign in
       if (user) {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
+        token.role = user.role || "USER";
       }
       
       if (account) {
@@ -75,23 +81,23 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.email = token.email as string;
         session.user.name = token.name as string;
+        session.user.role = token.role as string;
       }
       return session;
     },
 
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       if (account?.provider === "google") {
         try {
-          // Check if user already exists
           const existingUser = await prisma.user.findUnique({
-            where: { email: user.email! },
+            where: { email: user.email!.toLowerCase() },
           });
 
           if (!existingUser) {
-            // Create new user with fields that exist in your schema
+            // Create new user for Google sign-in
             await prisma.user.create({
               data: {
-                email: user.email!,
+                email: user.email!.toLowerCase(),
                 name: user.name || null,
                 role: "USER",
                 // password is null for OAuth users
@@ -107,10 +113,25 @@ export const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
-      // Always go to dashboard after login
-      if (url.startsWith("/events")) return `${baseUrl}/events`;
-      else if (new URL(url).origin === baseUrl) return url;
-      return baseUrl;
+      // Handle relative URLs (starting with /)
+      if (url.startsWith("/")) {
+        return `${baseUrl}${url}`;
+      }
+      
+      // Handle absolute URLs
+      try {
+        const urlObj = new URL(url);
+        // If the URL is from the same origin, allow it
+        if (urlObj.origin === baseUrl) {
+          return url;
+        }
+      } catch (error) {
+        // If URL parsing fails, fall back to default
+        console.error("Invalid URL in redirect:", url);
+      }
+      
+      // Default redirect to events page
+      return `${baseUrl}/events`;
     },
   },
 

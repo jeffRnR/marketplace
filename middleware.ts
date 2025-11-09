@@ -1,10 +1,20 @@
-export { default } from "next-auth/middleware"
+// middleware.ts
+import { withAuth } from "next-auth/middleware";
+
+export default withAuth({
+  pages: {
+    signIn: "/",
+  },
+});
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
-    '/(api|trpc)(.*)',
+    // Protected routes only
+    "/dashboard/:path*",
+    "/events/create/:path*",
+    "/profile/:path*",
+    "/settings/:path*",
+    "/my-events/:path*",
+    // Add any other routes that require authentication
   ],
-}
+};3

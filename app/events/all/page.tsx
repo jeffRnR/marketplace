@@ -75,7 +75,7 @@ export default function AllEventsPage() {
               Object.keys(groupedEvents).map((date, idx) => (
                 <div key={idx} className="relative flex flex-col gap-6">
                   {/* Dot + Date */}
-                  <div className="flex items-center gap-3 sticky top-20 left-1.5 z-40 backdrop-blur-lg bg-transparent rounded-2xl">
+                  <div className="w-fit flex items-center gap-3 sticky top-20 left-1.5 z-40 backdrop-blur-lg bg-transparent rounded-2xl pr-1.5">
                     <div className="w-3 h-3 rounded-full bg-purple-500"></div>
                     <h2 className="text-gray-300 font-semibold">{date}</h2>
                   </div>

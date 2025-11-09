@@ -41,7 +41,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
     <>
       <div className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md">
         <div
-          className={`flex items-center gap-4 p-4 transition-all duration-300 ${
+          className={`flex items-center gap-3 p-4 transition-all duration-300 ${
             scrolled
               ? "shadow-md border-b border-gray-400"
               : "border-b border-gray-400/50"
@@ -67,62 +67,88 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
             </Link>
           </div>
 
-          {/* Left side actions - Desktop */}
-          <div className="lg:ml-20 hidden lg:block">
-            <div className="flex items-center lg:gap-4">
-              {isAuthenticated && (
-                <Link href="/events/create">
-                  <button className="text-gray-300 font-bold lg:text-md text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition duration-300 flex gap-2 items-center justify-center">
-                    <CalendarPlus className="h-4 w-4" />
-                    <span>Create Event</span>
-                  </button>
-                </Link>
-              )}
-              <SearchBar />
-            </div>
+          {/* Search bar + Create event always visible on mobile & desktop */}
+          <div className="flex items-center gap-3 ml-2 lg:ml-10 flex-1">
+            {isAuthenticated && (
+              <Link href="/events/create" className="hidden sm:flex">
+                <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition duration-300 flex gap-2 items-center justify-center">
+                  <CalendarPlus className="h-4 w-4" />
+                  <span>Create Event</span>
+                </button>
+              </Link>
+            )}
+            <SearchBar />
           </div>
 
-          {/* Right side actions - Desktop */}
-          <div className="ml-auto hidden lg:flex items-center gap-4">
+          {/* Right side actions */}
+          <div className="ml-auto flex items-center gap-3">
             {isLoading ? (
               <div className="text-gray-400 text-sm">Loading...</div>
             ) : isAuthenticated ? (
               <>
-                <Link href="/events">
-                  <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition flex gap-2 items-center">
-                    <Telescope className="h-4 w-4" />
-                    <span>Discover</span>
-                  </button>
-                </Link>
-
-                <Link href="/my-events">
-                  <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition flex gap-2 items-center">
-                    <Ticket className="h-4 w-4" />
-                    <span>My Events</span>
-                  </button>
-                </Link>
-
-                <Link href="/marketplace">
-                  <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition flex gap-2 items-center">
-                    <Store className="h-4 w-4" />
-                    <span>Marketplace</span>
-                  </button>
-                </Link>
-
+                {/* Notification Icon always visible when logged in */}
                 <NotificationBar />
 
+                {/* Desktop navigation links */}
+                <div className="hidden lg:flex items-center gap-4">
+                  <Link href="/events">
+                    <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition flex gap-2 items-center">
+                      <Telescope className="h-4 w-4" />
+                      <span>Discover</span>
+                    </button>
+                  </Link>
+
+                  <Link href="/my-events">
+                    <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition flex gap-2 items-center">
+                      <Ticket className="h-4 w-4" />
+                      <span>My Events</span>
+                    </button>
+                  </Link>
+
+                  <Link href="/marketplace">
+                    <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition flex gap-2 items-center">
+                      <Store className="h-4 w-4" />
+                      <span>Marketplace</span>
+                    </button>
+                  </Link>
+
+                  <button
+                    onClick={handleSignOut}
+                    className="text-gray-300 font-bold px-2 py-1 text-sm rounded-lg hover:bg-gray-200 hover:text-gray-800 hover:cursor-pointer transition duration-300 border border-gray-400"
+                  >
+                    Logout
+                  </button>
+                </div>
+
+                {/* Mobile hamburger menu */}
                 <button
-                  onClick={handleSignOut}
-                  className="text-gray-300 font-bold px-2 py-1 text-sm rounded-lg hover:bg-gray-200 hover:text-gray-800 hover:cursor-pointer transition duration-300 border border-gray-400"
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="lg:hidden text-gray-300 hover:text-gray-100 transition-all duration-300"
                 >
-                  Logout
+                  <div className="relative w-6 h-6">
+                    <Menu
+                      className={`h-6 w-6 absolute transition-all duration-300 ${
+                        mobileMenuOpen
+                          ? "rotate-180 opacity-0"
+                          : "rotate-0 opacity-100"
+                      }`}
+                    />
+                    <X
+                      className={`h-6 w-6 absolute transition-all duration-300 ${
+                        mobileMenuOpen
+                          ? "rotate-0 opacity-100"
+                          : "-rotate-180 opacity-0"
+                      }`}
+                    />
+                  </div>
                 </button>
               </>
             ) : (
-              <div className="flex items-center gap-4">
+              <>
+                {/* Not authenticated: View Events + Sign In */}
                 <Link href="/events">
                   <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition flex gap-2 items-center">
-                    <span>View events</span>
+                    <span>View Events</span>
                     <Telescope className="h-4 w-4" />
                   </button>
                 </Link>
@@ -132,55 +158,16 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                 >
                   Sign In
                 </button>
-              </div>
+              </>
             )}
-          </div>
-
-          {/* Mobile Menu Button */}
-          <div className="ml-4 lg:hidden">
-            <div className="flex items-center gap-4">
-              {isAuthenticated && (
-                <Link href="/events/create">
-                  <button className="text-gray-300 font-bold lg:text-md text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition duration-300 flex gap-2 items-center justify-center">
-                    <CalendarPlus className="h-4 w-4" />
-                    <span>Create Event</span>
-                  </button>
-                </Link>
-              )}
-              <SearchBar />
-            </div>
-          </div>
-          <div className="ml-auto lg:hidden flex items-center gap-2">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-gray-300 hover:text-gray-100 transition-all duration-300"
-            >
-              <div className="relative w-6 h-6">
-                <Menu
-                  className={`h-6 w-6 absolute transition-all duration-300 ${
-                    mobileMenuOpen
-                      ? "rotate-180 opacity-0"
-                      : "rotate-0 opacity-100"
-                  }`}
-                />
-                <X
-                  className={`h-6 w-6 absolute transition-all duration-300 ${
-                    mobileMenuOpen
-                      ? "rotate-0 opacity-100"
-                      : "-rotate-180 opacity-0"
-                  }`}
-                />
-              </div>
-            </button>
           </div>
         </div>
 
-        {/* Mobile Menu Dropdown - Centered from Top Bar */}
-        {mobileMenuOpen && (
+        {/* Mobile Menu Dropdown */}
+        {mobileMenuOpen && isAuthenticated && (
           <div className="lg:hidden fixed inset-0 z-40 flex items-start justify-center pt-24 min-h-screen bg-black/50 backdrop-blur-lg">
             <div className="w-[70%] max-w-sm rounded-2xl bg-gray-300 p-6 shadow-md transition duration-300 relative mx-4">
-              {/* Header */}
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex justify-between items-center mb-3">
                 <h2 className="text-xl font-bold text-gray-800">Menu</h2>
                 <button
                   onClick={closeMobileMenu}
@@ -189,74 +176,49 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                   ×
                 </button>
               </div>
+              <div className="border-t border-gray-400 my-2" />
 
               <div className="space-y-3">
-                {isLoading ? (
-                  <div className="text-gray-800 text-sm text-center py-4">Loading...</div>
-                ) : isAuthenticated ? (
-                  <>
-                    <Link href="/events/create" onClick={closeMobileMenu}>
-                      <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition duration-300 hover:cursor-pointer flex gap-3 items-center">
-                        <CalendarPlus className="h-5 w-5" />
-                        <span>Create Event</span>
-                      </button>
-                    </Link>
+                {/* Redundant Create Event + Search for convenience */}
+                <Link href="/events/create" onClick={closeMobileMenu}>
+                  <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition duration-300 flex gap-3 items-center">
+                    <CalendarPlus className="h-5 w-5" />
+                    <span>Create Event</span>
+                  </button>
+                </Link>
 
-                    <Link href="/events" onClick={closeMobileMenu}>
-                      <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition duration-300 hover:cursor-pointer flex gap-3 items-center">
-                        <Telescope className="h-5 w-5" />
-                        <span>Discover</span>
-                      </button>
-                    </Link>
+                <Link href="/events" onClick={closeMobileMenu}>
+                  <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition duration-300 flex gap-3 items-center">
+                    <Telescope className="h-5 w-5" />
+                    <span>Discover</span>
+                  </button>
+                </Link>
 
-                    <Link href="/my-events" onClick={closeMobileMenu}>
-                      <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition duration-300 hover:cursor-pointer flex gap-3 items-center">
-                        <Ticket className="h-5 w-5" />
-                        <span>My Events</span>
-                      </button>
-                    </Link>
+                <Link href="/my-events" onClick={closeMobileMenu}>
+                  <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition duration-300 flex gap-3 items-center">
+                    <Ticket className="h-5 w-5" />
+                    <span>My Events</span>
+                  </button>
+                </Link>
 
-                    <Link href="/marketplace" onClick={closeMobileMenu}>
-                      <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition duration-300 hover:cursor-pointer flex gap-3 items-center">
-                        <Store className="h-5 w-5" />
-                        <span>Marketplace</span>
-                      </button>
-                    </Link>
+                <Link href="/marketplace" onClick={closeMobileMenu}>
+                  <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition duration-300 flex gap-3 items-center">
+                    <Store className="h-5 w-5" />
+                    <span>Marketplace</span>
+                  </button>
+                </Link>
 
-                    <div className="border-t border-gray-400 my-3" />
-                    
-                    <button
-                      onClick={() => {
-                        handleSignOut();
-                        closeMobileMenu();
-                      }}
-                      className="w-full text-gray-800 font-bold px-4 py-3 text-sm rounded-lg hover:bg-red-600 hover:text-gray-100 transition duration-300 hover:cursor-pointer border-2 border-red-600"
-                    >
-                      Sign out
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link href="/events" onClick={closeMobileMenu}>
-                      <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition duration-300 hover:cursor-pointer flex gap-3 items-center">
-                        <Telescope className="h-5 w-5" />
-                        <span>View Events</span>
-                      </button>
-                    </Link>
+                <div className="border-t border-gray-400 my-3" />
 
-                    <div className="border-t border-gray-400 my-3" />
-                    
-                    <button
-                      onClick={() => {
-                        setShowSignInModal(true);
-                        closeMobileMenu();
-                      }}
-                      className="w-full text-gray-800 font-bold px-4 py-3 text-sm rounded-lg bg-purple-800 text-gray-100 hover:bg-purple-600 transition duration-300 hover:cursor-pointer"
-                    >
-                      Sign In
-                    </button>
-                  </>
-                )}
+                <button
+                  onClick={() => {
+                    handleSignOut();
+                    closeMobileMenu();
+                  }}
+                  className="w-full text-gray-800 font-bold px-4 py-3 text-sm rounded-lg hover:bg-red-700 hover:text-gray-100 transition duration-300 hover:cursor-pointer border-2 border-red-700/50"
+                >
+                  Sign out
+                </button>
               </div>
             </div>
           </div>
