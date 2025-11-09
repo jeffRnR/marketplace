@@ -68,12 +68,12 @@ export default function AllEventsPage() {
         {/* Mobile Layout */}
         <div className="lg:hidden">
           <div className="absolute top-1.5 left-1.5 w-[2px] h-full bg-gradient-to-b from-gray-600/80 to-gray-600/20"></div>
-          <div className="flex flex-col gap-12">
+          <div className="flex flex-col gap-4">
             {Object.keys(groupedEvents).length === 0 ? (
               <p className="text-gray-400 text-center">No {filter} events</p>
             ) : (
               Object.keys(groupedEvents).map((date, idx) => (
-                <div key={idx} className="relative flex flex-col gap-6">
+                <div key={idx} className="relative flex flex-col gap-2">
                   {/* Dot + Date */}
                   <div className="w-fit flex items-center gap-3 sticky top-20 left-1.5 z-40 backdrop-blur-lg bg-transparent rounded-2xl pr-1.5">
                     <div className="w-3 h-3 rounded-full bg-purple-500"></div>
@@ -81,7 +81,7 @@ export default function AllEventsPage() {
                   </div>
 
                   {/* Event cards */}
-                  <div className="flex-1 grid grid-cols-1 gap-6 ml-8">
+                  <div className="flex-1 grid grid-cols-1 gap-4 ml-8">
                     {groupedEvents[date].map((event: Event) => (
                       <Link key={event.id} href={`/events/${event.id}`}>
                         <div className="bg-gray-800/50 rounded-2xl hover:shadow-lg hover:shadow-purple-500/20 transition">

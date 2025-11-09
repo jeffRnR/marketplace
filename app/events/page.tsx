@@ -20,7 +20,9 @@ function EventsList() {
   return (
     <div className="p-4 lg:w-[70%] mx-auto w-full min-h-screen flex-col items-center mt-14 gap-4">
       <div className="gap-4">
-        <h1 className="text-gray-300 font-bold text-[2.5rem]">Discover Events</h1>
+        <h1 className="text-gray-300 font-bold text-[2.5rem]">
+          Discover Events
+        </h1>
         <p className="text-gray-300 font-bold text-md">
           Discover the hottest events near you. Explore by category and find
           events that match your vibe
@@ -45,9 +47,11 @@ function EventsList() {
         </div>
 
         {/* Grid of events */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 w-auto">
           {displayedEvents.map((event) => (
-            <EventPreviewCard key={event.id} {...event} />
+            <Link key={event.id} href={`/events/${event.id}`}>
+              <EventPreviewCard key={event.id} {...event} />
+            </Link>
           ))}
         </div>
       </div>
