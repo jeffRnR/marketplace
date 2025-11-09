@@ -168,7 +168,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
           <div className="lg:hidden fixed inset-0 z-40 flex items-start justify-center pt-24 min-h-screen bg-black/50 backdrop-blur-lg">
             <div className="w-[70%] max-w-2xl rounded-2xl bg-gray-300 p-6 shadow-md transition duration-300 relative mx-4">
               <div className="flex justify-between items-center mb-3">
-                <h2 className="text-xl font-bold text-gray-800">Menu</h2>
+                <h2 className="text-lg font-bold text-gray-800">Menu</h2>
                 <button
                   onClick={closeMobileMenu}
                   className="text-purple-800 font-bold text-xl hover:text-purple-600 hover:cursor-pointer transition"
