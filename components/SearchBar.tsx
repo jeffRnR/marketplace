@@ -47,15 +47,15 @@ function SearchBar() {
       {/* Centered dropdown overlay */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/50 min-h-screen">
-          <div className="lg:w-[60%] w-[90%] max-w-2xl rounded-2xl bg-gray-300 shadow-lg z-50">
+          <div className="lg:w-[60%] w-[70%] max-w-2xl rounded-2xl bg-gray-300 shadow-md z-50">
             <div className="flex items-center p-4 rounded-t-2xl border-b border-gray-400">
-              <Search className="w-5 h-5 text-gray-800 mr-3" />
+              <Search className="w-4 h-4 text-gray-800 mr-3" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search events, categories..."
-                className="bg-transparent outline-none flex-1 text-gray-800 placeholder-gray-600 text-lg"
+                className="bg-transparent outline-none flex-1 text-gray-800 placeholder-gray-600 font-bold text-sm"
                 autoFocus
               />
               <button
@@ -92,8 +92,8 @@ function SearchBar() {
                   No results found for "{query}"
                 </div>
               ) : (
-                <div className="px-4 py-6 text-gray-600 text-center text-lg">
-                  Start typing to search events and categories...
+                <div className="p-4 text-gray-600 text-center text-sm">
+                  Start typing to search events, categories...
                 </div>
               )}
             </div>

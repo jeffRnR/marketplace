@@ -43,7 +43,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
         <div
           className={`flex items-center gap-3 p-4 transition-all duration-300 ${
             scrolled
-              ? "shadow-md border-b border-gray-400"
+              ? "shadow-xs shadow-gray-400 border-b border-gray-400"
               : "border-b border-gray-400/50"
           }`}
         >
@@ -166,7 +166,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
         {/* Mobile Menu Dropdown */}
         {mobileMenuOpen && isAuthenticated && (
           <div className="lg:hidden fixed inset-0 z-40 flex items-start justify-center pt-24 min-h-screen bg-black/50 backdrop-blur-lg">
-            <div className="w-[70%] max-w-sm rounded-2xl bg-gray-300 p-6 shadow-md transition duration-300 relative mx-4">
+            <div className="w-[70%] max-w-2xl rounded-2xl bg-gray-300 p-6 shadow-md transition duration-300 relative mx-4">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-xl font-bold text-gray-800">Menu</h2>
                 <button
