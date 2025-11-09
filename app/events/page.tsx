@@ -28,7 +28,7 @@ function EventsList() {
       </div>
 
       {/* Popular Events */}
-      <div className="flex-col my-14">
+      <div className="flex-col my-8">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-gray-300 font-bold text-[1.5rem]">
             Popular Events

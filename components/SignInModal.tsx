@@ -35,8 +35,8 @@ export default function SignInModal({ onClose }: SignInModalProps) {
         setError(result.error);
       } else {
         onClose();
-        router.push("/events");
         router.refresh();
+        window.location.href = "/events";        
       }
     } catch (err) {
       setError("An error occurred during sign in");
@@ -253,7 +253,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="flex items-center justify-center space-x-2 rounded-lg border-2 border-gray-400 px-6 py-2 hover:bg-gray-100 hover:border-gray-500 hover:cursor-pointer transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            className="flex items-center justify-center space-x-2 rounded-lg border border-purple-800 px-6 py-2 hover:bg-gray-200 hover:border-purple-800 hover:cursor-pointer transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
             aria-label="Sign in with Google"
           >
             <FcGoogle size={24} />
