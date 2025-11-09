@@ -45,20 +45,13 @@ function LandingPage() {
             <div className="bg-gray-200 text-gray-800 rounded-lg px-4 py-2 text-md font-bold border border-gray-400 animate-pulse">
               Loading...
             </div>
-          ) : isAuthenticated ? (
-            <Link href="/events/create">
-              <button className="bg-purple-800 text-gray-100 rounded-lg px-4 py-2 text-md font-bold border border-purple-800 hover:bg-purple-600 hover:cursor-pointer transition duration-300 flex justify-center gap-2 items-center">
-                <span>Create Event</span>
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
-            </Link>
           ) : (
             <Link href="/events">
               <button className="bg-gray-200 text-gray-800 rounded-lg px-4 py-2 text-md font-bold border border-gray-400 hover:bg-transparent hover:text-gray-300 hover:cursor-pointer transition duration-300 flex justify-center gap-2 items-center">
                 <span>View Events</span>
                 <ArrowUpRight className="w-4 h-4" />
               </button>
-            </Link>
+            </Link>            
           )}
         </div>
       </div>

@@ -1,5 +1,6 @@
 // app/layout.tsx
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 import { Geist, Geist_Mono, Poppins } from "next/font/google";
 import TopBarClient from "@/components/TopBarClient";
 import FooterClient from "@/components/FooterClient";
