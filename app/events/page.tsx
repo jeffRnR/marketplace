@@ -25,7 +25,10 @@ function EventsList() {
   const [locationSearch, setLocationSearch] = useState("");
   const [filteredEvents, setFilteredEvents] = useState<EventWithDistance[]>([]);
   const [allEvents, setAllEvents] = useState<EventWithDistance[]>([]);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +53,12 @@ function EventsList() {
   }, []);
 
   // Calculate distance using Haversine formula
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const calculateDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ) => {
     const R = 6371;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -71,11 +79,18 @@ function EventsList() {
         event.lat && event.lng
           ? {
               ...event,
-              distance: calculateDistance(userLocation.lat, userLocation.lng, event.lat, event.lng),
+              distance: calculateDistance(
+                userLocation.lat,
+                userLocation.lng,
+                event.lat,
+                event.lng
+              ),
             }
           : event
       );
-      updated.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+      updated.sort(
+        (a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)
+      );
     }
 
     setAllEvents(updated);
@@ -104,7 +119,10 @@ function EventsList() {
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setShowDropdown(false);
       }
     };
@@ -118,7 +136,9 @@ function EventsList() {
     <div className="p-4 lg:w-[70%] mx-auto w-full min-h-screen flex flex-col items-center mt-14 gap-4">
       {/* Header */}
       <div className="gap-4">
-        <h1 className="text-gray-300 font-bold text-[2.5rem]">Discover Events</h1>
+        <h1 className="text-gray-300 font-bold text-[2.5rem]">
+          Discover Events
+        </h1>
         <p className="text-gray-300 font-bold text-md">
           Find upcoming events near you — sorted by distance and location.
         </p>
@@ -127,7 +147,9 @@ function EventsList() {
       {/* Upcoming Events */}
       <div className="flex-col my-8 w-full">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-gray-300 font-bold text-[1.5rem]">Upcoming Events</h1>
+          <h1 className="text-gray-300 font-bold text-[1.5rem]">
+            Upcoming Events
+          </h1>
           <Link
             href="/events/all"
             className="text-gray-300 font-bold px-2 py-1 lg:text-md text-sm rounded-lg 
@@ -139,18 +161,22 @@ function EventsList() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 w-full gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 w-full gap-4 ">
           {displayedEvents.map((event) => (
             <Link key={event.id} href={`/events/${event.id}`}>
-              <EventPreviewCard {...event} />
+              <div className="shadow-md shadow-black px-2 rounded-2xl">
+                <EventPreviewCard {...event} />
+              </div>
             </Link>
           ))}
         </div>
       </div>
 
       {/* Categories */}
-      <div className="mt-14 w-full">
-        <h1 className="text-gray-300 font-bold text-[1.5rem] mb-4">Browse by Category</h1>
+      <div className="mt-8 w-full">
+        <h1 className="text-gray-300 font-bold text-[1.5rem] mb-4">
+          Browse by Category
+        </h1>
         <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 lg:grid lg:grid-cols-3 lg:gap-6 lg:overflow-visible">
           {categories.map((category, idx) => (
             <CategoryPreviewCard
@@ -165,8 +191,10 @@ function EventsList() {
       </div>
 
       {/* Search + Map */}
-      <div className="mt-14 relative w-full" ref={dropdownRef}>
-        <h1 className="text-gray-300 font-bold text-[1.5rem] mb-4">Browse by Location</h1>
+      <div className="mt-8 relative w-full" ref={dropdownRef}>
+        <h1 className="text-gray-300 font-bold text-[1.5rem] mb-4">
+          Browse by Location
+        </h1>
 
         {/* Search Input */}
         <div className="relative mb-6">
@@ -196,7 +224,9 @@ function EventsList() {
                     className="w-10 h-10 rounded-md object-cover"
                   />
                   <div className="flex-1">
-                    <p className="text-gray-200 font-medium text-sm truncate">{event.title}</p>
+                    <p className="text-gray-200 font-medium text-sm truncate">
+                      {event.title}
+                    </p>
                     <p className="text-gray-400 text-xs flex items-center gap-1">
                       <MapPin className="h-3 w-3" />
                       {event.location}

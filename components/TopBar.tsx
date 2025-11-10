@@ -70,10 +70,10 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
           {/* Search bar + Create event always visible on mobile & desktop */}
           <div className="flex items-center gap-3 ml-2 lg:ml-10 flex-1">
             {isAuthenticated && (
-              <Link href="/events/create" className="flex items-center">
-                <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition duration-300 flex gap-2 items-center justify-center">
-                  <CalendarPlus className="h-4 w-4" />
-                  <span>Create Event</span>
+              <Link href="/events">
+                <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition flex gap-2 items-center">
+                  <Telescope className="h-4 w-4" />
+                  <span>View events</span>
                 </button>
               </Link>
             )}
