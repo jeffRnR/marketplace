@@ -59,7 +59,7 @@ function LandingPage() {
       {/* Right: Video */}
       <div className="flex items-center justify-center">
         <video
-          className="w-[450px] h-[450px] lg:w-[500px] lg:h-[500px] rounded-full object-cover shadow-lg"
+          className="w-[300px] h-[300px] lg:w-[450px] lg:h-[450px] rounded-full object-cover shadow-lg"
           autoPlay
           loop
           muted

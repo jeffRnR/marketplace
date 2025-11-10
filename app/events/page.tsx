@@ -135,7 +135,7 @@ function EventsList() {
   return (
     <div className="p-4 lg:w-[70%] mx-auto w-full min-h-screen flex flex-col items-center mt-14 gap-4">
       {/* Header */}
-      <div className="gap-4">
+      <div className="gap-4 mr-auto">
         <h1 className="text-gray-300 font-bold text-[2.5rem]">
           Discover Events
         </h1>

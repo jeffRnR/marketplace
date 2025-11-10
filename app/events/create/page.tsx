@@ -12,14 +12,22 @@ function CreateEvent() {
     startTime: "",
     endDate: "",
     endTime: "",
+    country: "",
     location: "",
     description: "",
     requireApproval: false,
-    isFree: true, // Free by default
-    capacity: 0, // used only if event is free
+    isFree: true,
+    capacity: 0,
     tickets: [] as { name: string; price: string; capacity: number }[],
     categoryId: 1,
+    lat: null as number | null,
+    lng: null as number | null,
   });
+
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const countries = ["Kenya", "Tanzania", "Uganda"];
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -27,13 +35,28 @@ function CreateEvent() {
     >
   ) => {
     const { name, value, type } = e.target;
-
     if (e.target instanceof HTMLInputElement && type === "checkbox") {
       setFormData({ ...formData, [name]: e.target.checked });
     } else if (name === "isFree") {
       setFormData({ ...formData, isFree: value === "true" });
     } else {
       setFormData({ ...formData, [name]: value });
+    }
+  };
+
+  // Fetch location suggestions via our Next.js API route
+  const fetchSuggestions = async (q: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error("Failed to fetch suggestions");
+      const data = await res.json();
+      setSuggestions(data);
+    } catch (err) {
+      console.error("Error fetching location suggestions:", err);
+      setSuggestions([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -60,43 +83,67 @@ function CreateEvent() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  try {
-    const res = await fetch("/api/events", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...formData,
-        categoryId: Number(formData.categoryId || 1), // default to 1
-      }),
-    });
+    if (!formData.lat || !formData.lng) {
+      alert("Please select a valid venue or fetch its coordinates first.");
+      return;
+    }
 
-    if (!res.ok) throw new Error("Failed to create event");
+    try {
+      const res = await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          categoryId: Number(formData.categoryId || 1),
+        }),
+      });
 
-    const data = await res.json();
-    alert("Event created successfully!");
-    console.log("Created event:", data.event);
-    // Optionally redirect to event page:
-    // router.push(`/events/${data.event.id}`);
-  } catch (err) {
-    console.error(err);
-    alert("Failed to create event. Try again.");
-  }
-};
+      if (!res.ok) throw new Error("Failed to create event");
 
+      const data = await res.json();
+      alert("✅ Event created successfully!");
+      console.log("Created event:", data.event);
+    } catch (err) {
+      console.error(err);
+      alert("❌ Failed to create event. Try again.");
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const previewURL = URL.createObjectURL(file);
       setFormData({ ...formData, image: previewURL });
-      // TODO: If you want to send file to backend, save `file` itself somewhere
     }
   };
+  const handleVenueChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const q = e.target.value.trim();
+    setQuery(q);
+    setFormData({ ...formData, location: q });
 
+    if (q.length > 2 && formData.country) {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+            `${q}, ${formData.country}`
+          )}&addressdetails=1&limit=5`
+        );
+        const data = await res.json();
+        setSuggestions(data);
+      } catch (error) {
+        console.error("Error fetching venue suggestions:", error);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setSuggestions([]);
+    }
+  };
   return (
-    <div className="min-h-screen  mt-10 text-gray-200 flex justify-center py-10 px-4">
+    <div className="min-h-screen mt-10 text-gray-200 flex justify-center py-10 px-4">
       <div className="flex flex-col lg:flex-row w-full max-w-5xl overflow-hidden">
         {/* Left side: image */}
         <div className="lg:w-1/2 flex flex-col items-center justify-start relative">
@@ -117,10 +164,8 @@ function CreateEvent() {
             accept="image/*"
             onChange={handleImageUpload}
             className="mt-4 text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 
-              file:rounded-lg file:border file:order-gray-400 file:text-sm file:font-semibold 
-              file:bg-gray-200 file:text-gray-800 hover:file:bg-purple-400     
-          hover:file:bg-transparent hover:file:text-gray-300 hover:file:cursor-pointer
-        file:transition file:duration-300"
+              file:rounded-lg file:border file:border-gray-400 file:text-sm file:font-semibold 
+              file:bg-gray-200 file:text-gray-800 hover:file:bg-purple-400 hover:file:text-gray-300 cursor-pointer transition duration-300"
           />
         </div>
 
@@ -191,14 +236,96 @@ function CreateEvent() {
           </div>
 
           {/* Location */}
-          <input
-            type="text"
-            name="location"
-            placeholder="Offline location or virtual link"
-            value={formData.location}
-            onChange={handleChange}
-            className="bg-gray-800 text-gray-300 rounded-lg p-3 w-full focus:ring-1 focus:ring-purple-500 outline-none"
-          />
+          {/* Location */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">
+              Event Venue
+            </label>
+            <div className="relative space-y-2">
+              {/* Country Dropdown */}
+              <select
+                name="country"
+                value={formData.country || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    country: e.target.value,
+                    location: "",
+                    lat: null,
+                    lng: null,
+                  })
+                }
+                className="bg-gray-800 text-gray-300 rounded-lg p-3 w-full focus:ring-1 focus:ring-purple-500 outline-none"
+              >
+                <option value="">Select Country</option>
+                {["Kenya", "Tanzania", "Uganda"].map((country) => (
+                  <option key={country} value={country}>
+                    {country}
+                  </option>
+                ))}
+              </select>
+
+              {/* Venue Search Input */}
+              <input
+                type="text"
+                name="location"
+                placeholder="Search for venue..."
+                value={formData.location}
+                onChange={async (e) => {
+                  handleChange(e);
+                  const q = e.target.value.trim();
+                  setQuery(q);
+                  if (q.length > 2 && formData.country) {
+                    await fetchSuggestions(`${q}, ${formData.country}`);
+                  } else {
+                    setSuggestions([]);
+                  }
+                }}
+                className="bg-gray-800 text-gray-300 rounded-lg p-3 w-full focus:ring-1 focus:ring-purple-500 outline-none"
+              />
+
+              {/* Suggestions Dropdown */}
+              {query.length > 2 && (
+                <ul className="absolute z-50 bg-gray-900 border border-gray-700 rounded-lg mt-1 w-full shadow-lg max-h-48 overflow-y-auto">
+                  {loading ? (
+                    <li className="p-2 text-sm text-gray-400 italic">
+                      Searching...
+                    </li>
+                  ) : suggestions.length > 0 ? (
+                    suggestions.map((place, idx) => (
+                      <li
+                        key={idx}
+                        onClick={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            location: place.display_name,
+                            lat: parseFloat(place.lat),
+                            lng: parseFloat(place.lon),
+                          }));
+                          setSuggestions([]);
+                        }}
+                        className="p-2 text-sm text-gray-300 hover:bg-gray-700 cursor-pointer transition-colors"
+                      >
+                        {place.display_name}
+                      </li>
+                    ))
+                  ) : (
+                    <li className="p-2 text-sm text-gray-400 italic">
+                      No results found. You can type your venue manually.
+                    </li>
+                  )}
+                </ul>
+              )}
+
+              {/* Coordinates Display */}
+              {formData.lat && formData.lng && (
+                <p className="text-xs text-gray-400 mt-1">
+                  📍 Coordinates: {formData.lat.toFixed(5)},{" "}
+                  {formData.lng.toFixed(5)}
+                </p>
+              )}
+            </div>
+          </div>
 
           {/* Description */}
           <textarea
@@ -335,9 +462,7 @@ function CreateEvent() {
           {/* Submit */}
           <button
             type="submit"
-            className="w-full bg-gray-200 text-gray-800 rounded-lg px-4 py-2 text-md 
-        font-bold border border-gray-400 hover:bg-transparent hover:text-gray-300 hover:cursor-pointer
-        transition duration-300"
+            className="w-full bg-gray-200 text-gray-800 rounded-lg px-4 py-2 text-md font-bold border border-gray-400 hover:bg-transparent hover:text-gray-300 cursor-pointer transition duration-300"
           >
             Create Event
           </button>

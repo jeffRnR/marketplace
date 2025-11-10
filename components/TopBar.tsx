@@ -90,7 +90,13 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                 <NotificationBar />
 
                 {/* Desktop navigation links */}
-                <div className="hidden lg:flex items-center gap-4">
+                <div className="hidden lg:flex items-center gap-4 px-4">
+                  <Link href="/events/create" onClick={closeMobileMenu}>
+                    <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition flex gap-2 items-center">
+                      <CalendarPlus className="h-4 w-4" />
+                      <span>Create Event</span>
+                    </button>
+                  </Link>
                   <Link href="/events">
                     <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition flex gap-2 items-center">
                       <Telescope className="h-4 w-4" />
@@ -111,7 +117,6 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                       <span>Marketplace</span>
                     </button>
                   </Link>
-
                   <button
                     onClick={handleSignOut}
                     className="text-gray-300 font-bold px-2 py-1 text-sm rounded-lg hover:bg-gray-200 hover:text-gray-800 hover:cursor-pointer transition duration-300 border border-gray-400"
@@ -119,6 +124,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                     Logout
                   </button>
                 </div>
+                
 
                 {/* Mobile hamburger menu */}
                 <button

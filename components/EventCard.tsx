@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { Category } from "@/data/categories";
+import EventsMap from "@/components/EventsMap";
 
 interface TicketOption {
   type: string;
@@ -32,7 +33,6 @@ function EventCard({
   location,
   tickets,
   description,
-  mapUrl,
   host,
   attendees,
   category,
@@ -207,11 +207,20 @@ function EventCard({
         </div>
 
         <div>
-          <iframe
-            src={mapUrl}
-            className="w-full h-48 rounded-lg border"
-            loading="lazy"
-          ></iframe>
+          {/* Interactive Map showing the specific event location */}
+          <div className="w-full h-[250px] rounded-lg overflow-hidden mt-4">
+            <EventsMap
+              events={[
+                {
+                  id: title, // unique identifier
+                  title,
+                  location,
+                  date,
+                  host,
+                },
+              ]}
+            />
+          </div>
         </div>
 
         {/* Info section for mobile */}

@@ -165,7 +165,7 @@ const EventsMap: React.FC<EventsMapProps> = ({ events, userLocation }) => {
 
   return (
     <div className="relative w-full h-[400px] rounded-lg overflow-hidden border border-gray-700">
-      {/* Search Bar */}
+      {/* Search Bar
       <form
         onSubmit={handleSearch}
         className="absolute z-10 top-3 left-1/2 transform -translate-x-1/2 flex shadow-md bg-white rounded overflow-hidden"
@@ -183,53 +183,56 @@ const EventsMap: React.FC<EventsMapProps> = ({ events, userLocation }) => {
         >
           Go
         </button>
-      </form>
-
-      <MapContainer
-  {...({
-    center: defaultCenter,
-    zoom: 12,
-    style: { width: "100%", height: "100%" },
-    whenCreated: (map: any) => (mapRef.current = map),
-    scrollWheelZoom: false,
-  } as any)}
->
-        <TileLayer
+      </form> */}
+      <div className="relative z-0 w-full h-[400px] rounded-lg overflow-hidden border border-gray-700">
+        <MapContainer
           {...({
-            url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-            attribution: '&copy; <a href="https://carto.com/">CartoDB</a>',
+            center: defaultCenter,
+            zoom: 12,
+            style: { width: "100%", height: "100%" },
+            whenCreated: (map: any) => (mapRef.current = map),
+            scrollWheelZoom: false,
           } as any)}
-        />
+        >
+          <TileLayer
+            {...({
+              url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+              attribution: '&copy; <a href="https://carto.com/">CartoDB</a>',
+            } as any)}
+          />
 
-        {mappedEvents.map((evt) =>
-          typeof evt.lat === "number" && typeof evt.lng === "number" ? (
-            <Marker
-              key={evt.id}
-              position={[evt.lat, evt.lng] as any}
-              {...({ icon: eventIcon } as any)}
-            >
-              <Popup>
-                <div className="text-gray-800">
-                  <h3 className="font-bold text-sm mb-1">{evt.title}</h3>
-                  <p className="text-xs text-gray-600 mb-1">📍 {evt.location}</p>
-                  <p className="text-xs text-gray-600 mb-1">
-                    📅 {new Date(evt.date).toLocaleDateString()}
-                  </p>
-                  <p className="text-xs text-gray-600 mb-1">👤 {evt.host}</p>
-                  <a
-                    href={`/events/${evt.id}`}
-                    className="inline-block mt-2 text-xs font-semibold bg-purple-600 text-white px-2 py-1 rounded"
-                  >
-                    View Details
-                  </a>
-                </div>
-              </Popup>
-            </Marker>
-          ) : null
-        )}
+          {mappedEvents.map((evt) =>
+            typeof evt.lat === "number" && typeof evt.lng === "number" ? (
+              <Marker
+                key={evt.id}
+                position={[evt.lat, evt.lng] as any}
+                {...({ icon: eventIcon } as any)}
+              >
+                <Popup>
+                  <div className="text-gray-800">
+                    <h3 className="font-bold text-sm mb-1">{evt.title}</h3>
+                    <p className="text-xs text-gray-600 mb-1">
+                      📍 {evt.location}
+                    </p>
+                    <p className="text-xs text-gray-600 mb-1">
+                      📅 {new Date(evt.date).toLocaleDateString()}
+                    </p>
+                    <p className="text-xs text-gray-600 mb-1">👤 {evt.host}</p>
+                    <a
+                      href={`/events/${evt.id}`}
+                      className="inline-block mt-2 text-xs font-semibold bg-purple-600 text-white px-2 py-1 rounded"
+                    >
+                      View Details
+                    </a>
+                  </div>
+                </Popup>
+              </Marker>
+            ) : null
+          )}
 
-        <FitBounds events={mappedEvents} />
-      </MapContainer>
+          <FitBounds events={mappedEvents} />
+        </MapContainer>
+      </div>
     </div>
   );
 };
