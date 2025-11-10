@@ -16,7 +16,8 @@ interface Event {
 }
 
 interface EventsMapProps {
-  events: Event[];
+  events: (Event & { distance?: number })[];
+  userLocation?: { lat: number; lng: number } | null;
 }
 
 /** Fit map to all marker bounds */
@@ -85,7 +86,7 @@ async function geocodeLocation(location: string) {
   }
 }
 
-const EventsMap: React.FC<EventsMapProps> = ({ events }) => {
+const EventsMap: React.FC<EventsMapProps> = ({ events, userLocation }) => {
   const [mappedEvents, setMappedEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchValue, setSearchValue] = useState("");

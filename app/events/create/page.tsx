@@ -18,6 +18,7 @@ function CreateEvent() {
     isFree: true, // Free by default
     capacity: 0, // used only if event is free
     tickets: [] as { name: string; price: string; capacity: number }[],
+    categoryId: 1,
   });
 
   const handleChange = (
@@ -58,11 +59,32 @@ function CreateEvent() {
     setFormData({ ...formData, tickets: updatedTickets });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Event created:", formData);
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  try {
+    const res = await fetch("/api/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...formData,
+        categoryId: Number(formData.categoryId || 1), // default to 1
+      }),
+    });
+
+    if (!res.ok) throw new Error("Failed to create event");
+
+    const data = await res.json();
     alert("Event created successfully!");
-  };
+    console.log("Created event:", data.event);
+    // Optionally redirect to event page:
+    // router.push(`/events/${data.event.id}`);
+  } catch (err) {
+    console.error(err);
+    alert("Failed to create event. Try again.");
+  }
+};
+
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

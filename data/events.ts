@@ -17,6 +17,9 @@ export interface Event {
   attendees: number;
   tickets: TicketOption[];
   categoryId: number;
+  lat?: number;
+  lng?: number;
+  distance?: number;
 }
 
 export const events: Event[] = [
@@ -37,6 +40,8 @@ export const events: Event[] = [
       { type: "VIP", price: "KES 2000", link: "https://tickets.com/noizy-vip" },
     ],
     categoryId: 1,
+    lat: -1.2921,
+    lng: 36.8219,
   },
   {
     id: 2,
@@ -53,6 +58,8 @@ export const events: Event[] = [
       { type: "General", price: "KES 500", link: "https://tickets.com/cinegroove" },
     ],
     categoryId: 1,
+    lat: -1.2864,
+    lng: 36.8172,
   },
   {
     id: 3,
@@ -69,6 +76,8 @@ export const events: Event[] = [
       { type: "General", price: "KES 500", link: "https://tickets.com/cinegroove" },
     ],
     categoryId: 1,
+    lat: -1.2864,
+    lng: 36.8172,
   },
   {
     id: 4,
@@ -87,6 +96,8 @@ export const events: Event[] = [
       { type: "VIP", price: "KES 3000", link: "https://tickets.com/noizy-vip" },
     ],
     categoryId: 1,
+    lat: -1.2921,
+    lng: 36.8219,
   },
   {
     id: 5,
@@ -103,6 +114,8 @@ export const events: Event[] = [
       { type: "General", price: "KES 500", link: "https://tickets.com/cinegroove" },
     ],
     categoryId: 1,
+    lat: -1.2864,
+    lng: 36.8172,
   },
   {
     id: 6,
@@ -121,6 +134,8 @@ export const events: Event[] = [
       { type: "VIP", price: "KES 2000", link: "https://tickets.com/noizy-vip" },
     ],
     categoryId: 1,
+    lat: -1.2921,
+    lng: 36.8219,
   },
   {
     id: 7,
@@ -137,6 +152,8 @@ export const events: Event[] = [
       { type: "General", price: "KES 500", link: "https://tickets.com/cinegroove" },
     ],
     categoryId: 1,
+    lat: -1.2864,
+    lng: 36.8172,
   },
   // more events...
 ];
