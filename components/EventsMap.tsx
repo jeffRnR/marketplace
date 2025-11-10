@@ -189,7 +189,7 @@ const EventsMap: React.FC<EventsMapProps> = ({ events }) => {
     center: defaultCenter,
     zoom: 12,
     style: { width: "100%", height: "100%" },
-    whenCreated: (map: L.Map) => (mapRef.current = map),
+    whenCreated: (map: any) => (mapRef.current = map),
     scrollWheelZoom: false,
   } as any)}
 >
