@@ -50,13 +50,11 @@ export default function SignInModal({ onClose }: SignInModalProps) {
     e.preventDefault();
     setError("");
 
-    // Validate passwords match
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
 
-    // Validate password length
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
@@ -65,7 +63,6 @@ export default function SignInModal({ onClose }: SignInModalProps) {
     setIsLoading(true);
 
     try {
-      // Register the user
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -82,8 +79,6 @@ export default function SignInModal({ onClose }: SignInModalProps) {
         setIsLoading(false);
         return;
       }
-
-      // After successful signup, automatically sign in with NextAuth
       const signInResult = await signIn("credentials", {
         redirect: false,
         email: email.toLowerCase().trim(),
@@ -95,7 +90,6 @@ export default function SignInModal({ onClose }: SignInModalProps) {
           "Account created but sign in failed. Please try signing in manually."
         );
       } else {
-        // Success! Close modal and redirect
         onClose();
         router.push("/events");
         router.refresh();
@@ -238,7 +232,6 @@ export default function SignInModal({ onClose }: SignInModalProps) {
           </button>
         </form>
 
-        {/* Or divider */}
         <div className="my-6 flex items-center">
           <div className="h-px flex-1 bg-gray-400"></div>
           <span className="px-3 text-gray-600 text-sm font-medium">
@@ -246,8 +239,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
           </span>
           <div className="h-px flex-1 bg-gray-400"></div>
         </div>
-
-        {/* Google Sign-in */}
+        
         <div className="flex justify-center mb-6">
           <button
             type="button"
@@ -260,8 +252,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
             <span className="text-gray-800 font-medium">Google</span>
           </button>
         </div>
-
-        {/* Toggle sign-in/sign-up */}
+        
         <div className="text-center text-sm text-gray-700">
           {isSignUp ? (
             <>

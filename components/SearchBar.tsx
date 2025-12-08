@@ -36,15 +36,13 @@ function SearchBar() {
 
   return (
     <div className="relative">
-      {/* Only show search icon in top bar */}
-      <button 
-        onClick={() => setOpen(true)} 
+      <button
+        onClick={() => setOpen(true)}
         className="p-2 rounded-full hover:bg-gray-200 hover:text-gray-800 transition duration-300"
       >
         <Search className="transition-all duration-300 w-4 h-4 text-gray-300 hover:text-gray-800" />
       </button>
 
-      {/* Centered dropdown overlay */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/50 min-h-screen">
           <div className="lg:w-[60%] w-[70%] max-w-2xl rounded-2xl bg-gray-300 shadow-md z-50">
@@ -80,9 +78,9 @@ function SearchBar() {
                     transition-all duration-300 cursor-pointer text-gray-800 hover:cursor-pointer border-b border-gray-400 last:border-b-0"
                   >
                     {item.type === "event" ? (
-                      <Ticket className="w-5 h-5 text-purple-800" />
+                      <Ticket className="w-5 h-5" />
                     ) : (
-                      <Tag className="w-5 h-5 text-blue-600" />
+                      <Tag className="w-5 h-5" />
                     )}
                     <span className="font-medium">{item.title}</span>
                   </div>
