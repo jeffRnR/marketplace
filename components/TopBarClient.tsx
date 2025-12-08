@@ -1,4 +1,4 @@
-"use client"; // ⚠ Must be at the top
+"use client";
 
 import { SessionProvider } from "next-auth/react";
 import TopBar from "./TopBar";

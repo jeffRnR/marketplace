@@ -20,7 +20,8 @@
 }
 
 body {
-  background: linear-gradient(to bottom,#141d25, #0d151e, #000000);
+  background: linear-gradient(to bottom,#203a4e, #121c28, #000000);
+  /* background: linear-gradient(to bottom,#141d25, #0d151e, #000000); */
   /* background: linear-gradient(to bottom,#1d0229,#07000a, #000000); */
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;

@@ -164,8 +164,8 @@ function CreateEvent() {
             accept="image/*"
             onChange={handleImageUpload}
             className="mt-4 text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 
-              file:rounded-lg file:border file:border-gray-400 file:text-sm file:font-semibold 
-              file:bg-gray-200 file:text-gray-800 hover:file:bg-purple-400 hover:file:text-gray-300 cursor-pointer transition duration-300"
+              file:rounded-lg  file:text-sm file:font-semibold 
+              file:bg-purple-800 file:text-gray-300 hover:file:bg-purple-600 hover:file:cursor-pointer file:transition file:duration-300"
           />
         </div>
 
@@ -182,7 +182,7 @@ function CreateEvent() {
             value={formData.title}
             onChange={handleChange}
             required
-            className="bg-gray-800 text-gray-300 rounded-lg p-3 w-full focus:ring-1 focus:ring-purple-500 outline-none"
+            className="bg-gray-300 w-full rounded-lg border border-purple-800 p-3 text-gray-800 outline-none focus:border-purple-800 focus:ring-2 focus:ring-purple-800/50 transition"
           />
 
           {/* Host */}
@@ -193,7 +193,7 @@ function CreateEvent() {
             value={formData.host}
             onChange={handleChange}
             required
-            className="bg-gray-800 text-gray-300 rounded-lg p-3 w-full focus:ring-1 focus:ring-purple-500 outline-none"
+            className="bg-gray-300 w-full rounded-lg border border-purple-800 p-3 text-gray-800 outline-none focus:border-purple-800 focus:ring-2 focus:ring-purple-800/50 transition"
           />
 
           {/* Date + Time */}
@@ -205,14 +205,14 @@ function CreateEvent() {
                 name="startDate"
                 value={formData.startDate}
                 onChange={handleChange}
-                className="bg-gray-800 text-gray-300 rounded-lg p-3 w-full focus:ring-1 focus:ring-purple-500 outline-none"
+                className="bg-gray-300 w-full rounded-lg border border-purple-800 p-3 text-gray-800 outline-none focus:border-purple-800 focus:ring-2 focus:ring-purple-800/50 transition"
               />
               <input
                 type="time"
                 name="startTime"
                 value={formData.startTime}
                 onChange={handleChange}
-                className="mt-2 bg-gray-800 text-gray-300 rounded-lg p-3 w-full focus:ring-1 focus:ring-purple-500 outline-none"
+                className="mt-2 bg-gray-300 w-full rounded-lg border border-purple-800 p-3 text-gray-800 outline-none focus:border-purple-800 focus:ring-2 focus:ring-purple-800/50 transition"
               />
             </div>
 
@@ -223,14 +223,14 @@ function CreateEvent() {
                 name="endDate"
                 value={formData.endDate}
                 onChange={handleChange}
-                className="bg-gray-800 text-gray-300 rounded-lg p-3 w-full focus:ring-1 focus:ring-purple-500 outline-none"
+                className="bg-gray-300 w-full rounded-lg border border-purple-800 p-3 text-gray-800 outline-none focus:border-purple-800 focus:ring-2 focus:ring-purple-800/50 transition"
               />
               <input
                 type="time"
                 name="endTime"
                 value={formData.endTime}
                 onChange={handleChange}
-                className="mt-2 bg-gray-800 text-gray-300 rounded-lg p-3 w-full focus:ring-1 focus:ring-purple-500 outline-none"
+                className="mt-2 bg-gray-300 w-full rounded-lg border border-purple-800 p-3 text-gray-800 outline-none focus:border-purple-800 focus:ring-2 focus:ring-purple-800/50 transition"
               />
             </div>
           </div>
@@ -255,7 +255,7 @@ function CreateEvent() {
                     lng: null,
                   })
                 }
-                className="bg-gray-800 text-gray-300 rounded-lg p-3 w-full focus:ring-1 focus:ring-purple-500 outline-none"
+                className="bg-gray-300 w-full rounded-lg border border-purple-800 p-3 text-gray-800 outline-none focus:border-purple-800 focus:ring-2 focus:ring-purple-800/50 transition"
               >
                 <option value="">Select Country</option>
                 {["Kenya", "Tanzania", "Uganda"].map((country) => (
@@ -281,7 +281,7 @@ function CreateEvent() {
                     setSuggestions([]);
                   }
                 }}
-                className="bg-gray-800 text-gray-300 rounded-lg p-3 w-full focus:ring-1 focus:ring-purple-500 outline-none"
+                className="bg-gray-300 w-full rounded-lg border border-purple-800 p-3 text-gray-800 outline-none focus:border-purple-800 focus:ring-2 focus:ring-purple-800/50 transition"
               />
 
               {/* Suggestions Dropdown */}
@@ -333,7 +333,7 @@ function CreateEvent() {
             placeholder="Add event description..."
             value={formData.description}
             onChange={handleChange}
-            className="bg-gray-800 text-gray-300 rounded-lg p-3 w-full h-24 focus:ring-1 focus:ring-purple-500 outline-none"
+            className="bg-gray-300 w-full rounded-lg border border-purple-800 p-3 text-gray-800 outline-none focus:border-purple-800 focus:ring-2 focus:ring-purple-800/50 transition"
           />
 
           {/* Free or Paid */}
@@ -345,7 +345,7 @@ function CreateEvent() {
               name="isFree"
               value={formData.isFree ? "true" : "false"}
               onChange={handleChange}
-              className="bg-gray-800 z-50 text-gray-300 rounded-lg p-3 w-full focus:ring-1 border border-gray-300/50 focus:ring-purple-500 outline-none"
+              className="bg-gray-300 w-full rounded-lg border border-purple-800 p-3 text-gray-800 outline-none focus:border-purple-800 focus:ring-2 focus:ring-purple-800/50 transition"
             >
               <option value="true">Free</option>
               <option value="false">Paid</option>
@@ -363,7 +363,7 @@ function CreateEvent() {
                 name="capacity"
                 value={formData.capacity}
                 onChange={handleChange}
-                className="bg-gray-800 text-gray-300 rounded-lg p-3 w-full focus:ring-1 focus:ring-purple-500 outline-none"
+                className="bg-gray-300 w-full rounded-lg border border-purple-800 p-3 text-gray-800 outline-none focus:border-purple-800 focus:ring-2 focus:ring-purple-800/50 transition"
               />
             </div>
           ) : (
@@ -396,7 +396,7 @@ function CreateEvent() {
                         onChange={(e) =>
                           handleTicketChange(index, "name", e.target.value)
                         }
-                        className="bg-gray-600 text-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-400 outline-none"
+                        className="bg-gray-300 text-gray-800 rounded-lg p-2 focus:ring-1 focus:ring-purple-400 outline-none"
                       />
                     </div>
 
@@ -411,7 +411,7 @@ function CreateEvent() {
                         onChange={(e) =>
                           handleTicketChange(index, "price", e.target.value)
                         }
-                        className="bg-gray-600 text-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-400 outline-none"
+                        className="bg-gray-300 text-gray-800 rounded-lg p-2 focus:ring-1 focus:ring-purple-400 outline-none"
                       />
                     </div>
 
@@ -430,7 +430,7 @@ function CreateEvent() {
                             Number(e.target.value)
                           )
                         }
-                        className="bg-gray-600 text-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-purple-400 outline-none"
+                        className="bg-gray-300 text-gray-800 rounded-lg p-2 focus:ring-1 focus:ring-purple-400 outline-none"
                       />
                     </div>
 
@@ -462,7 +462,7 @@ function CreateEvent() {
           {/* Submit */}
           <button
             type="submit"
-            className="w-full bg-gray-200 text-gray-800 rounded-lg px-4 py-2 text-md font-bold border border-gray-400 hover:bg-transparent hover:text-gray-300 cursor-pointer transition duration-300"
+            className="w-full bg-purple-800 text-gray-300 rounded-lg px-4 py-2 text-md font-bold  hover:bg-purple-600 cursor-pointer transition duration-300"
           >
             Create Event
           </button>

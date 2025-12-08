@@ -47,7 +47,6 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
               : "border-b border-gray-400/50"
           }`}
         >
-          {/* Logo */}
           <div className="flex items-center lg:w-auto">
             <Link href="/" className="font-bold shrink-0">
               <Image
@@ -67,7 +66,6 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
             </Link>
           </div>
 
-          {/* Search bar + Create event always visible on mobile & desktop */}
           <div className="flex items-center gap-3 ml-2 lg:ml-10 flex-1">
             {isAuthenticated && (
               <Link href="/events">
@@ -231,7 +229,6 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
         )}
       </div>
 
-      {/* Sign In Modal */}
       {showSignInModal && (
         <SignInModal onClose={() => setShowSignInModal(false)} />
       )}
