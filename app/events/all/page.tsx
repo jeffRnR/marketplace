@@ -1,7 +1,7 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { events, Event } from "@/data/events";
+import { formatDbEvent, Event } from "@/data/events";
 import EventPreviewCard from "@/components/EventPreviewCard";
 
 // Group events by date
@@ -20,7 +20,18 @@ function groupEventsByDate(events: Event[]) {
 }
 
 export default function AllEventsPage() {
+  const [events, setEvents] = useState<Event[]>([]);
   const [filter, setFilter] = useState<"upcoming" | "past">("upcoming");
+
+  useEffect(() => {
+    async function fetchEvents() {
+      const res = await fetch("/api/events");
+      const data = await res.json();
+      const formattedEvents = data.map(formatDbEvent);
+      setEvents(formattedEvents);
+    }
+    fetchEvents();
+  }, []);
 
   const now = new Date();
 
@@ -135,7 +146,10 @@ export default function AllEventsPage() {
                           <div key={event.id} className="relative">
                             <Link href={`/events/${event.id}`}>
                               <div className="bg-gray-800/50 rounded-2xl hover:shadow-md hover:shadow-purple-500/20 hover:border-purple-500/30 transition-all duration-300">
-                                <EventPreviewCard {...event} variant="allEvents" />
+                                <EventPreviewCard
+                                  {...event}
+                                  variant="allEvents"
+                                />
                               </div>
                             </Link>
                           </div>
