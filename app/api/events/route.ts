@@ -1,142 +1,148 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // adjust to your auth config path
 import prisma from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const currentUser = await getCurrentUser();
-    
-    if (!currentUser?.email) {
-      return NextResponse.json(
-        { error: "Unauthorized. Please sign in." },
-        { status: 401 }
-      );
+    // 1. Auth guard — only logged-in users can create events
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // 2. Fetch the user from DB so we have their ID
     const user = await prisma.user.findUnique({
-      where: { email: currentUser.email },
+      where: { email: session.user.email },
+      select: { id: true },
     });
-
     if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const body = await request.json();
+    // 3. Parse body
+    const body = await req.json();
     const {
       image,
       title,
       host,
       startDate,
       startTime,
+      endDate,   // stored in description suffix for now — schema has one date field
+      endTime,
+      country,
       location,
       description,
+      requireApproval,
+      isRsvp,        // true = RSVP (free), false = paid (has tickets)
+      capacity,
+      tickets,       // array of { name, price, capacity } — only when !isRsvp
       categoryId,
-      isFree,
-      tickets,
+      lat,
+      lng,
     } = body;
 
+    // 4. Validate required fields
     if (!title || !startDate || !startTime || !location || !categoryId) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing required fields: title, startDate, startTime, location, categoryId" },
         { status: 400 }
       );
     }
 
-    const eventDateTime = new Date(`${startDate}T${startTime}`);
+    if (!lat || !lng) {
+      return NextResponse.json(
+        { error: "Please select a valid venue with coordinates." },
+        { status: 400 }
+      );
+    }
 
+    // 5. Build date + time strings the schema expects
+    // Schema: date DateTime, time String
+    const eventDate = new Date(`${startDate}T${startTime}`);
+    const timeLabel = `${startTime}${endDate && endTime ? ` – ${endTime} (${endDate})` : ""}`;
+
+    // 6. Build mapUrl from coordinates
+    const mapUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`;
+
+    // 7. Build description with approval note if needed
+    const fullDescription = requireApproval
+      ? `${description}\n\n[Attendance requires host approval]`
+      : description;
+
+    // 8. Create event + tickets in a single transaction
     const event = await prisma.$transaction(async (tx) => {
       const newEvent = await tx.event.create({
         data: {
-          image: image || "",
+          image,
           title,
-          host: host || user.name || "Unknown Host",
-          date: eventDateTime,
-          time: startTime,
-          location,
-          description: description || "",
-          categoryId: parseInt(categoryId),
+          host,
+          date: eventDate,
+          time: timeLabel,
+          location: `${location}${country ? `, ${country}` : ""}`,
+          description: fullDescription,
+          mapUrl,
+          categoryId: Number(categoryId),
           createdById: user.id,
-          attendees: 0,
+          // tickets created below via nested writes
+          tickets: {
+            create: isRsvp
+              ? // RSVP: create a single free "RSVP" ticket with a capacity link placeholder
+                [
+                  {
+                    type: "RSVP",
+                    price: "Free",
+                    link: `capacity:${capacity ?? 0}`, // encode capacity in link field for now
+                  },
+                ]
+              : // Paid: create one ticket per entry
+                (tickets ?? []).map(
+                  (t: { name: string; price: string; capacity: number }) => ({
+                    type: t.name || "General",
+                    price: String(t.price),
+                    link: `capacity:${t.capacity ?? 0}`,
+                  })
+                ),
+          },
         },
-      });
-
-      if (!isFree && tickets && tickets.length > 0) {
-        await tx.ticket.createMany({
-          data: tickets.map((ticket: any) => ({
-            eventId: newEvent.id,
-            type: ticket.name,
-            price: ticket.price,
-            link: "",
-          })),
-        });
-      }
-
-      await tx.category.update({
-        where: { id: parseInt(categoryId) },
-        data: {
-          eventsCount: { increment: 1 },
-        },
+        include: { tickets: true, category: true },
       });
 
       return newEvent;
     });
 
+    return NextResponse.json({ event }, { status: 201 });
+  } catch (error: any) {
+    console.error("Event creation error:", error);
     return NextResponse.json(
-      {
-        success: true,
-        event,
-        message: "Event created successfully!",
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error("Error creating event:", error);
-    return NextResponse.json(
-      { error: "Failed to create event" },
+      { error: error?.message ?? "Internal server error" },
       { status: 500 }
     );
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const location = searchParams.get("location");
+    const { searchParams } = new URL(req.url);
+    const categoryId = searchParams.get("categoryId");
+    const userId = searchParams.get("userId");
 
     const events = await prisma.event.findMany({
-      where: location
-        ? {
-            location: {
-              contains: location,
-              mode: "insensitive",
-            },
-          }
-        : {},
-      include: {
-        category: true,
-        tickets: true,
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+      where: {
+        ...(categoryId ? { categoryId: Number(categoryId) } : {}),
+        ...(userId ? { createdById: userId } : {}),
       },
-      orderBy: {
-        date: "asc",
+      orderBy: { date: "asc" },
+      include: {
+        category: { select: { id: true, name: true, icon: true } },
+        tickets: true,
+        createdBy: { select: { id: true, name: true, email: true } },
       },
     });
 
     return NextResponse.json(events);
   } catch (error) {
-    console.error("Error fetching events:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch events" },
-      { status: 500 }
-    );
+    console.error("Fetch events error:", error);
+    return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
   }
 }

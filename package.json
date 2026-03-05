@@ -8,11 +8,11 @@
     "build": "next build --turbopack --no-lint",
     "start": "next start",
     "lint": "eslint",
-    "seed:categories": "node --loader ts-node/esm --loader ./node_modules/tsconfig-paths/register.js scripts/seedCategories.ts"
+    "seed:categories": "node --loader ts-node/esm --loader ./node_modules/tsconfig-paths/register.js scripts/seedCategories.ts",
+    "db:seed": "npx prisma db seed"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
-    "@clerk/nextjs": "^6.31.10",
     "@fortawesome/fontawesome-svg-core": "^7.0.1",
     "@fortawesome/free-brands-svg-icons": "^7.0.1",
     "@fortawesome/react-fontawesome": "^3.0.2",
@@ -20,6 +20,7 @@
     "@prisma/client": "^6.18.0",
     "abort-controller": "^3.0.0",
     "bcrypt": "^6.0.0",
+    "cloudinary": "^2.9.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.543.0",
     "mongoose": "^8.18.1",
@@ -46,6 +47,10 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.21.0",
     "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

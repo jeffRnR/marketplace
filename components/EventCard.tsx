@@ -1,9 +1,20 @@
+"use client";
+
 import { CalendarDays, Clock, MapPin, User, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { Category } from "@/data/categories";
-import EventsMap from "@/components/EventsMap";
+import dynamic from "next/dynamic";
+
+const EventsMap = dynamic(() => import("@/components/EventsMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full bg-gray-800 rounded-lg flex items-center justify-center">
+      <p className="text-gray-400 text-sm">Loading map...</p>
+    </div>
+  ),
+});
 
 interface TicketOption {
   type: string;
@@ -41,18 +52,15 @@ function EventCard({
   const [errorMessage, setErrorMessage] = useState<string>("");
   const router = useRouter();
 
-  const increase = (idx: number) => {
-    setQuantities((prev) =>
-      prev.map((q, i) => (i === idx ? Math.min(q + 1, 10) : q))
-    );
+  const CategoryIcon = category.iconComponent;
 
+  const increase = (idx: number) => {
+    setQuantities((prev) => prev.map((q, i) => (i === idx ? Math.min(q + 1, 10) : q)));
     setErrorMessage("");
   };
 
   const decrease = (idx: number) => {
-    setQuantities((prev) =>
-      prev.map((q, i) => (i === idx ? Math.max(q - 1, 0) : q))
-    );
+    setQuantities((prev) => prev.map((q, i) => (i === idx ? Math.max(q - 1, 0) : q)));
     setErrorMessage("");
   };
 
@@ -66,25 +74,40 @@ function EventCard({
       .filter((t) => t.quantity > 0);
 
     if (selectedTickets.length === 0) {
-      setErrorMessage(
-        "Please select at least one ticket before proceeding to checkout."
-      );
+      setErrorMessage("Please select at least one ticket before proceeding to checkout.");
       return;
     }
 
     setErrorMessage("");
 
-    // Create encoded checkout URL
-    const checkoutUrl = `/checkout?title=${encodeURIComponent(
-      title
-    )}&image=${encodeURIComponent(image)}&date=${encodeURIComponent(
-      date
-    )}&location=${encodeURIComponent(location)}&tickets=${encodeURIComponent(
-      JSON.stringify(selectedTickets)
-    )}`;
-
+    const checkoutUrl = `/checkout?title=${encodeURIComponent(title)}&image=${encodeURIComponent(image)}&date=${encodeURIComponent(date)}&location=${encodeURIComponent(location)}&tickets=${encodeURIComponent(JSON.stringify(selectedTickets))}`;
     router.push(checkoutUrl);
   };
+
+  const CategoryMeta = () => (
+    <>
+      <div className="text-gray-300 text-md flex gap-2 items-center">
+        <User className="w-4 h-4 text-[#915f13]" />
+        <span className="font-medium">Hosted by {host}</span>
+      </div>
+      <div className="text-gray-300 text-md flex gap-2 items-center">
+        <Users className="w-4 h-4 text-[#915f13]" />
+        <span className="font-medium">{attendees} attending</span>
+      </div>
+      <div className="text-gray-300 text-md border-b pb-4 border-gray-400/20 flex items-center gap-2">
+        <CategoryIcon className="h-4 w-4" style={{ color: category.iconColor }} />
+        <span className="font-medium">{category.name}</span>
+      </div>
+      <div className="text-gray-400 flex flex-col gap-4 text-sm my-4">
+        <Link href="" className="font-medium hover:text-gray-200 transition">
+          Contact Host
+        </Link>
+        <Link href="" className="font-medium hover:text-gray-200 transition">
+          Report Event
+        </Link>
+      </div>
+    </>
+  );
 
   return (
     <div className="w-full overflow-hidden gap-8 flex flex-col lg:flex-row mb-4">
@@ -103,29 +126,7 @@ function EventCard({
 
         {/* Host/Info (Desktop) */}
         <div className="hidden lg:flex flex-col gap-4">
-          <div className="text-gray-300 text-md flex gap-2 items-center">
-            <User className="w-4 h-4 text-[#915f13]" />
-            <span className="font-medium">Hosted by {host}</span>
-          </div>
-          <div className="text-gray-300 text-md flex gap-2 items-center">
-            <Users className="w-4 h-4 text-[#915f13]" />
-            <span className="font-medium">{attendees} attending</span>
-          </div>
-          <div className="text-gray-300 text-md border-b pb-4 border-gray-400/20 flex items-center gap-2">
-            <category.icon
-              className="h-4 w-4"
-              style={{ color: category.iconColor }}
-            />
-            <span className="font-medium">{category.name}</span>
-          </div>
-          <div className="text-gray-400 flex flex-col gap-4 text-sm my-4">
-            <Link href="">
-              <span className="font-medium">Contact Host</span>
-            </Link>
-            <Link href="">
-              <span className="font-medium">Report Event</span>
-            </Link>
-          </div>
+          <CategoryMeta />
         </div>
       </div>
 
@@ -186,7 +187,6 @@ function EventCard({
             ))}
           </ul>
 
-          {/* Buy button at bottom */}
           <button
             onClick={handleBuy}
             className="mt-4 w-full bg-purple-600/50 text-gray-100 font-semibold px-3 py-2 rounded-lg hover:cursor-pointer hover:bg-purple-700 transition"
@@ -206,48 +206,15 @@ function EventCard({
           <p className="text-gray-300 text-md">{description}</p>
         </div>
 
-        <div>
-          {/* Interactive Map showing the specific event location */}
-          <div className="w-full h-[250px] rounded-lg overflow-hidden mt-4">
-            <EventsMap
-              events={[
-                {
-                  id: title, // unique identifier
-                  title,
-                  location,
-                  date,
-                  host,
-                },
-              ]}
-            />
-          </div>
+        <div className="w-full h-[250px] rounded-lg overflow-hidden mt-4">
+          <EventsMap
+            events={[{ id: title, title, location, date, host }]}
+          />
         </div>
 
-        {/* Info section for mobile */}
+        {/* Host/Info (Mobile) */}
         <div className="flex lg:hidden flex-col gap-4 mt-4">
-          <div className="text-gray-300 text-md flex gap-2 items-center">
-            <User className="w-4 h-4 text-[#915f13]" />
-            <span className="font-medium">Hosted by {host}</span>
-          </div>
-          <div className="text-gray-300 text-md flex gap-2 items-center">
-            <Users className="w-4 h-4 text-[#915f13]" />
-            <span className="font-medium">{attendees} attending</span>
-          </div>
-          <div className="text-gray-300 text-md border-b pb-4 border-gray-400/20 flex items-center gap-2">
-            <category.icon
-              className="h-4 w-4"
-              style={{ color: category.iconColor }}
-            />
-            <span className="font-medium">{category.name}</span>
-          </div>
-          <div className="text-gray-400 flex flex-col gap-4 text-sm my-4">
-            <Link href="">
-              <span className="font-medium">Contact Host</span>
-            </Link>
-            <Link href="">
-              <span className="font-medium">Report Event</span>
-            </Link>
-          </div>
+          <CategoryMeta />
         </div>
       </div>
     </div>
