@@ -128,9 +128,9 @@ export function EventRow({
           )}
 
           {/* Actions */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 ">
             <Link href={`/events/${event.id}`}>
-              <ActionBtn icon={Eye} label="View Event" />
+              <ActionBtn icon={Eye} label="View" />
             </Link>
             <ActionBtn icon={Pencil} label="Edit" onClick={() => setShowEdit(true)} />
             <ActionBtn
