@@ -45,10 +45,10 @@ function LandingPage() {
               Loading...
             </div>
           ) : isAuthenticated ? (
-            <Link href="/events">
+            <Link href="/my-events">
               <button
                 className="bg-gray-200 text-gray-800 rounded-lg px-4 py-2 text-md font-bold border border-gray-400 hover:bg-transparent hover:text-gray-300 hover:cursor-pointer transition duration-300 flex justify-center gap-2 items-center"
-                onClick={() => setShowSignInModal(true)}
+                // onClick={() => setShowSignInModal(true)}
               >
                 <span>My Events</span>
                 <ArrowUpRight className="w-4 h-4" />

@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowRight, MapPin, Search, Map, MapPinOff, LocateFixed, X } from "lucide-react";
+// /app/events/page.tsx
+import { ArrowRight, MapPin, Search, Map, MapPinOff, LocateFixed, X, Loader2 } from "lucide-react";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import EventPreviewCard from "@/components/EventPreviewCard";
 import CategoryPreviewCard from "@/components/CategoryPreviewCard";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { events, Event } from "@/data/events";
+import { Event, formatDbEvent } from "@/data/events";
 import { categories } from "@/data/categories";
 
 const EventsMap = dynamic(() => import("@/components/EventsMap"), {
@@ -42,17 +43,51 @@ export default function EventsList() {
   const [locationSearch, setLocationSearch] = useState("");
   const [filteredEvents, setFilteredEvents] = useState<EventWithDistance[]>([]);
   const [allEvents, setAllEvents] = useState<EventWithDistance[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<EventWithDistance[]>([]);
   const [locationState, setLocationState] = useState<LocationState>({ status: "idle" });
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const upcomingEvents = events.filter(
-    (e) => new Date(e.date).getTime() >= new Date().setHours(0, 0, 0, 0)
-  );
-
-  // Build allEvents (with optional distances)
+  // Fetch events from API on mount
   useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch("/api/events");
+        if (!res.ok) throw new Error("Failed to fetch events");
+        const raw = await res.json();
+
+        // Format DB events to match the Event interface shape
+        const formatted: EventWithDistance[] = (Array.isArray(raw) ? raw : []).map(formatDbEvent);
+
+        // Filter to upcoming only (today or future)
+        const now = new Date().setHours(0, 0, 0, 0);
+        const upcoming = formatted.filter(
+          (e) => new Date(e.date).getTime() >= now
+        );
+
+        setUpcomingEvents(upcoming);
+        setAllEvents(upcoming);
+        setFilteredEvents(upcoming);
+      } catch (err: any) {
+        console.error("Failed to fetch events:", err);
+        setError("Could not load events. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  // Recalculate distances when location changes
+  useEffect(() => {
+    if (upcomingEvents.length === 0) return;
+
     let updated: EventWithDistance[] = [...upcomingEvents];
 
     if (locationState.status === "granted") {
@@ -74,7 +109,7 @@ export default function EventsList() {
 
     setAllEvents(updated);
     setFilteredEvents(updated);
-  }, [locationState]);
+  }, [locationState, upcomingEvents]);
 
   // Filter by search query
   useEffect(() => {
@@ -168,15 +203,48 @@ export default function EventsList() {
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 w-full gap-4">
-          {displayedEvents.map((event) => (
-            <Link key={event.id} href={`/events/${event.id}`}>
-              <div className="shadow-md shadow-black p-2 rounded-2xl">
-                <EventPreviewCard {...event} />
-              </div>
+
+        {/* Loading state */}
+        {loading && (
+          <div className="flex items-center justify-center py-16 gap-3 text-gray-400">
+            <Loader2 className="w-6 h-6 animate-spin" />
+            <span className="text-sm">Loading events...</span>
+          </div>
+        )}
+
+        {/* Error state */}
+        {!loading && error && (
+          <div className="flex items-center justify-center py-16 text-red-400 text-sm">
+            {error}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && !error && displayedEvents.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-gray-500 gap-2">
+            <MapPin className="w-8 h-8 opacity-40" />
+            <p className="text-sm">No upcoming events yet.</p>
+            <Link
+              href="/events/create"
+              className="mt-2 text-purple-400 hover:text-purple-300 text-sm font-medium transition"
+            >
+              Create the first one →
             </Link>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {/* Events grid */}
+        {!loading && !error && displayedEvents.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 w-full gap-4">
+            {displayedEvents.map((event) => (
+              <Link key={event.id} href={`/events/${event.id}`}>
+                <div className="shadow-md shadow-black p-2 rounded-2xl">
+                  <EventPreviewCard {...event} />
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Categories */}
@@ -199,8 +267,6 @@ export default function EventsList() {
       <div className="mt-8 w-full" ref={dropdownRef}>
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-gray-300 font-bold text-[1.5rem]">Browse by Location</h1>
-
-          {/* Map toggle */}
           <button
             onClick={() => setShowMap((v) => !v)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition duration-300
@@ -214,7 +280,7 @@ export default function EventsList() {
           </button>
         </div>
 
-        {/* Search bar row */}
+        {/* Search bar */}
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-20" />
           <input
@@ -263,9 +329,7 @@ export default function EventsList() {
         {locationState.status === "idle" && (
           <div className="flex items-center gap-3 bg-gray-800/60 border border-gray-700 rounded-lg px-4 py-3 mb-4">
             <LocateFixed className="h-5 w-5 text-purple-400 shrink-0" />
-            <p className="text-gray-400 text-sm flex-1">
-              Want to see events sorted by distance?
-            </p>
+            <p className="text-gray-400 text-sm flex-1">Want to see events sorted by distance?</p>
             <button
               onClick={requestLocation}
               className="text-sm font-semibold text-purple-400 hover:text-purple-300 transition whitespace-nowrap"
@@ -288,11 +352,7 @@ export default function EventsList() {
             <p className="text-purple-300 text-sm flex-1">
               Showing events sorted by distance from your location.
             </p>
-            <button
-              onClick={clearLocation}
-              className="text-gray-500 hover:text-gray-300 transition"
-              aria-label="Clear location"
-            >
+            <button onClick={clearLocation} className="text-gray-500 hover:text-gray-300 transition">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -301,20 +361,14 @@ export default function EventsList() {
         {locationState.status === "denied" && (
           <div className="flex items-start gap-3 bg-red-900/20 border border-red-700/40 rounded-lg px-4 py-3 mb-4">
             <MapPin className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-red-300 text-sm">{locationState.reason}</p>
-            </div>
-            <button
-              onClick={clearLocation}
-              className="text-gray-500 hover:text-gray-300 transition shrink-0"
-              aria-label="Dismiss"
-            >
+            <p className="text-red-300 text-sm flex-1">{locationState.reason}</p>
+            <button onClick={clearLocation} className="text-gray-500 hover:text-gray-300 transition shrink-0">
               <X className="h-4 w-4" />
             </button>
           </div>
         )}
 
-        {/* Map (collapsible) */}
+        {/* Map */}
         {showMap && (
           <div className="rounded-lg overflow-hidden border border-gray-700 z-10 mb-4">
             <EventsMap events={filteredEvents} userLocation={userCoords} />
@@ -322,13 +376,15 @@ export default function EventsList() {
         )}
 
         {/* Result count */}
-        <div className="flex items-center gap-2 text-gray-500 text-sm">
-          <MapPin className="h-4 w-4" />
-          <span>
-            {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""} found
-            {locationSearch && ` matching "${locationSearch}"`}
-          </span>
-        </div>
+        {!loading && (
+          <div className="flex items-center gap-2 text-gray-500 text-sm">
+            <MapPin className="h-4 w-4" />
+            <span>
+              {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""} found
+              {locationSearch && ` matching "${locationSearch}"`}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

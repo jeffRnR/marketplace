@@ -1,3 +1,8 @@
+// data/events.ts
+// This file is now a type definition only.
+// All event data comes from the database via /api/events.
+// Delete the dummy array — components should fetch directly.
+
 export interface TicketOption {
   type: string;
   price: string;
@@ -8,7 +13,7 @@ export interface Event {
   id: number;
   image: string;
   title: string;
-  date: string;
+  date: string;        // formatted string e.g. "Mar 21, 2026"
   time: string;
   location: string;
   description: string;
@@ -17,143 +22,35 @@ export interface Event {
   attendees: number;
   tickets: TicketOption[];
   categoryId: number;
+  category?: { id: number; name: string; icon?: string };
   lat?: number;
   lng?: number;
   distance?: number;
 }
 
-export const events: Event[] = [
-  {
-    id: 1,
-    image: "/gothparty.jpg",
-    title: "Noizy Nightz: Gothic Party",
-    date: "Sept 1, 2025",
-    time: "8:00 PM",
-    location: "The Garden Venue, Nairobi",
-    description: "Step into a gothic-inspired night of music, fashion, and unforgettable vibes.",
-    mapUrl: "https://www.google.com/maps/embed?pb=!1m18!...",
-    host: "Noizy Nightz",
-    attendees: 250,
-    tickets: [
-      { type: "Early Bird", price: "KES 800", link: "https://tickets.com/noizy-early" },
-      { type: "Regular", price: "KES 1200", link: "https://tickets.com/noizy-regular" },
-      { type: "VIP", price: "KES 2000", link: "https://tickets.com/noizy-vip" },
-    ],
-    categoryId: 1,
-    lat: -1.2921,
-    lng: 36.8219,
-  },
-  {
-    id: 2,
-    image: "/screenshot.png",
-    title: "CineGroove: Outdoor Movie Night",
-    date: "Oct 1, 2026",
-    time: "7:30 PM",
-    location: "Central Park Grounds",
-    description: "An outdoor movie night under the stars with drinks, food, and music.",
-    mapUrl: "https://www.google.com/maps/embed?pb=!1m18!...",
-    host: "CineGroove",
-    attendees: 500,
-    tickets: [
-      { type: "General", price: "KES 500", link: "https://tickets.com/cinegroove" },
-    ],
-    categoryId: 1,
-    lat: -1.2864,
-    lng: 36.8172,
-  },
-  {
-    id: 3,
-    image: "/screenshot.png",
-    title: "CineGroove: Outdoor Movie Night 2",
-    date: "Oct 1, 2025",
-    time: "7:30 PM",
-    location: "Central Park Grounds",
-    description: "An outdoor movie night under the stars with drinks, food, and music.",
-    mapUrl: "https://www.google.com/maps/embed?pb=!1m18!...",
-    host: "CineGroove",
-    attendees: 500,
-    tickets: [
-      { type: "General", price: "KES 500", link: "https://tickets.com/cinegroove" },
-    ],
-    categoryId: 1,
-    lat: -1.2864,
-    lng: 36.8172,
-  },
-  {
-    id: 4,
-    image: "/purplefest.jpg",
-    title: "Noizy Nightz: Purple Fest2",
-    date: "Dec 30, 2025",
-    time: "8:00 PM",
-    location: "The Garden Venue, Nairobi",
-    description: "Step into a gothic-inspired night of music, fashion, and unforgettable vibes.",
-    mapUrl: "https://www.google.com/maps/embed?pb=!1m18!...",
-    host: "Noizy Nightz",
-    attendees: 250,
-    tickets: [
-      { type: "Early Bird", price: "KES 1000", link: "https://tickets.com/noizy-early" },
-      { type: "Regular", price: "KES 1500", link: "https://tickets.com/noizy-regular" },
-      { type: "VIP", price: "KES 3000", link: "https://tickets.com/noizy-vip" },
-    ],
-    categoryId: 1,
-    lat: -1.2921,
-    lng: 36.8219,
-  },
-  {
-    id: 5,
-    image: "/screenshot.png",
-    title: "Komm: Hot Festival",
-    date: "Dec 25, 2025",
-    time: "7:30 PM",
-    location: "Central Park Grounds",
-    description: "An outdoor movie night under the stars with drinks, food, and music.",
-    mapUrl: "https://www.google.com/maps/embed?pb=!1m18!...",
-    host: "CineGroove",
-    attendees: 500,
-    tickets: [
-      { type: "General", price: "KES 500", link: "https://tickets.com/cinegroove" },
-    ],
-    categoryId: 1,
-    lat: -1.2864,
-    lng: 36.8172,
-  },
-  {
-    id: 6,
-    image: "/screenshot.png",
-    title: "Fire Ent: DJ Fire Live",
-    date: "Dec 15, 2026",
-    time: "8:00 PM",
-    location: "The Garden Venue, Nairobi",
-    description: "Step into a gothic-inspired night of music, fashion, and unforgettable vibes.",
-    mapUrl: "https://www.google.com/maps/embed?pb=!1m18!...",
-    host: "Noizy Nightz",
-    attendees: 250,
-    tickets: [
-      { type: "Early Bird", price: "KES 800", link: "https://tickets.com/noizy-early" },
-      { type: "Regular", price: "KES 1200", link: "https://tickets.com/noizy-regular" },
-      { type: "VIP", price: "KES 2000", link: "https://tickets.com/noizy-vip" },
-    ],
-    categoryId: 1,
-    lat: -1.2921,
-    lng: 36.8219,
-  },
-  {
-    id: 7,
-    image: "/screenshot.png",
-    title: "CineGroove: Outdoor Movie Night 3",
-    date: "Nov 1, 2025",
-    time: "7:30 PM",
-    location: "Central Park Grounds",
-    description: "An outdoor movie night under the stars with drinks, food, and music.",
-    mapUrl: "https://www.google.com/maps/embed?pb=!1m18!...",
-    host: "CineGroove",
-    attendees: 500,
-    tickets: [
-      { type: "General", price: "KES 500", link: "https://tickets.com/cinegroove" },
-    ],
-    categoryId: 1,
-    lat: -1.2864,
-    lng: 36.8172,
-  },
-  // more events...
-];
+// Helper — format a DB event (raw DateTime) into the Event interface shape
+export function formatDbEvent(raw: any): Event {
+  return {
+    id: raw.id,
+    image: raw.image,
+    title: raw.title,
+    date: new Date(raw.date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+    time: raw.time,
+    location: raw.location,
+    description: raw.description,
+    mapUrl: raw.mapUrl ?? "",
+    host: raw.host,
+    attendees: raw.attendees ?? 0,
+    tickets: (raw.tickets ?? []).map((t: any) => ({
+      type: t.type,
+      price: t.price,
+      link: t.link,
+    })),
+    categoryId: raw.categoryId,
+    category: raw.category,
+  };
+}

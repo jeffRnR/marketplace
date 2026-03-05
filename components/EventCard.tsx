@@ -1,10 +1,10 @@
 "use client";
 
-import { CalendarDays, Clock, MapPin, User, Users } from "lucide-react";
+import { CalendarDays, Clock, MapPin, User, Users, Music, Palette, Utensils, Dumbbell, Heart, Gift, Cpu, Sparkles, Group } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
-import { Category } from "@/data/categories";
+import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 
 const EventsMap = dynamic(() => import("@/components/EventsMap"), {
@@ -16,13 +16,35 @@ const EventsMap = dynamic(() => import("@/components/EventsMap"), {
   ),
 });
 
+const ICON_MAP: Record<string, React.ElementType> = {
+  Music,
+  Palette,
+  Users,
+  Group,
+  Utensils,
+  Dumbbell,
+  Heart,
+  Gift,
+  Cpu,
+  Sparkles,
+};
+
 interface TicketOption {
   type: string;
   price: string;
   link: string;
 }
 
+interface EventCategory {
+  id: number;
+  name: string;
+  iconName: string;
+  iconColor: string;
+}
+
 interface EventCardProps {
+  eventId: number;
+  createdById: string;
   image: string;
   title: string;
   date: string;
@@ -33,10 +55,12 @@ interface EventCardProps {
   mapUrl: string;
   host: string;
   attendees: number;
-  category: Category;
+  category: EventCategory;
 }
 
 function EventCard({
+  eventId,
+  createdById,
   image,
   title,
   date,
@@ -51,8 +75,12 @@ function EventCard({
   const [quantities, setQuantities] = useState<number[]>(tickets.map(() => 0));
   const [errorMessage, setErrorMessage] = useState<string>("");
   const router = useRouter();
+  const { data: session } = useSession();
 
-  const CategoryIcon = category.iconComponent;
+  const CategoryIcon = ICON_MAP[category.iconName] ?? Sparkles;
+
+  // Compare session user ID against the event creator's ID
+  const isOwner = !!session?.user && (session.user as any).id === createdById;
 
   const increase = (idx: number) => {
     setQuantities((prev) => prev.map((q, i) => (i === idx ? Math.min(q + 1, 10) : q)));
@@ -79,7 +107,6 @@ function EventCard({
     }
 
     setErrorMessage("");
-
     const checkoutUrl = `/checkout?title=${encodeURIComponent(title)}&image=${encodeURIComponent(image)}&date=${encodeURIComponent(date)}&location=${encodeURIComponent(location)}&tickets=${encodeURIComponent(JSON.stringify(selectedTickets))}`;
     router.push(checkoutUrl);
   };
@@ -146,58 +173,72 @@ function EventCard({
           </div>
           <div className="flex text-sm gap-2 items-center">
             <Clock className="h-4 w-4" />
-            <span className="font-medium">
-              {time} - {time}
-            </span>
+            <span className="font-medium">{time}</span>
           </div>
         </div>
 
         {/* Tickets */}
         <div className="my-4 transition-all duration-300">
           <h3 className="text-lg font-bold text-gray-300 mb-2">Tickets</h3>
-          <ul className="space-y-4">
-            {tickets.map((ticket, idx) => (
-              <li
-                key={idx}
-                className="flex items-center justify-between bg-white/2 px-3 py-2 rounded-2xl border border-gray-400/50"
+
+          {isOwner ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-8 border border-dashed border-gray-600 rounded-xl">
+              <span className="text-3xl">🎟</span>
+              <p className="text-gray-400 text-sm text-center px-4">
+                You created this event and cannot purchase tickets for it.
+              </p>
+              <Link
+                href={`/events/${eventId}/manage`}
+                className="mt-1 text-purple-400 hover:text-purple-300 text-sm font-semibold transition"
               >
-                <span className="text-md text-gray-300 font-semibold">
-                  {ticket.type} - {ticket.price}
-                </span>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => decrease(idx)}
-                      className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-700 text-white hover:bg-gray-600"
-                    >
-                      −
-                    </button>
-                    <span className="w-6 text-center text-md text-gray-300 font-medium">
-                      {quantities[idx]}
+                Manage Event →
+              </Link>
+            </div>
+          ) : (
+            <>
+              <ul className="space-y-4">
+                {tickets.map((ticket, idx) => (
+                  <li
+                    key={idx}
+                    className="flex items-center justify-between bg-white/2 px-3 py-2 rounded-2xl border border-gray-400/50"
+                  >
+                    <span className="text-md text-gray-300 font-semibold">
+                      {ticket.type} — {ticket.price}
                     </span>
-                    <button
-                      onClick={() => increase(idx)}
-                      className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-700 text-white hover:bg-gray-600"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => decrease(idx)}
+                        className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-700 text-white hover:bg-gray-600 transition"
+                      >
+                        −
+                      </button>
+                      <span className="w-6 text-center text-md text-gray-300 font-medium">
+                        {quantities[idx]}
+                      </span>
+                      <button
+                        onClick={() => increase(idx)}
+                        className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-700 text-white hover:bg-gray-600 transition"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
 
-          <button
-            onClick={handleBuy}
-            className="mt-4 w-full bg-purple-600/50 text-gray-100 font-semibold px-3 py-2 rounded-lg hover:cursor-pointer hover:bg-purple-700 transition"
-          >
-            Proceed to Checkout
-          </button>
+              <button
+                onClick={handleBuy}
+                className="mt-4 w-full bg-purple-600/50 text-gray-100 font-semibold px-3 py-2 rounded-lg hover:cursor-pointer hover:bg-purple-700 transition"
+              >
+                Proceed to Checkout
+              </button>
 
-          {errorMessage && (
-            <p className="text-red-400 text-sm mt-2 text-center font-medium">
-              {errorMessage}
-            </p>
+              {errorMessage && (
+                <p className="text-red-400 text-sm mt-2 text-center font-medium">
+                  {errorMessage}
+                </p>
+              )}
+            </>
           )}
         </div>
 

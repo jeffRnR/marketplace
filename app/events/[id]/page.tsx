@@ -1,47 +1,70 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import { events } from "@/data/events";
+// app/events/[id]/page.tsx
+import { notFound } from "next/navigation";
+import prisma from "@/lib/prisma";
 import EventCard from "@/components/EventCard";
 import { categories } from "@/data/categories";
 
+interface PageProps {
+  params: { id: string };
+}
 
-export default function EventDetailPage() {
-  const params = useParams();
-  const eventId = Number(params.id);
-  const event = events.find((e) => e.id === eventId);
-
-
-  if (!event) {
-    return (
-      <div className="p-10 text-center  text-gray-400">
-        <p>Event not found.</p>
-        {/* <Link href="/events" className="text-blue-500 underline">
-          Back to events
-        </Link> */}
-      </div>
-    );
+async function getEvent(id: number) {
+  try {
+    const event = await prisma.event.findUnique({
+      where: { id },
+      include: {
+        tickets: true,
+        category: true,
+        createdBy: { select: { id: true, name: true, email: true } },
+      },
+    });
+    return event;
+  } catch {
+    return null;
   }
-  const category = categories.find((c) => c.id === event.categoryId);
+}
+
+export default async function EventDetailPage({ params }: PageProps) {
+  const eventId = Number(params.id);
+  if (isNaN(eventId)) notFound();
+
+  const event = await getEvent(eventId);
+  if (!event) notFound();
+
+  const localCategory = categories.find((c) => c.id === event.categoryId);
+  if (!localCategory) notFound();
+
+  const formattedDate = new Date(event.date).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 
   return (
     <div className="p-4 lg:w-[70%] min-h-screen mt-14 w-full mx-auto">
-      {/* <Link href="/events" className="flex items-center gap-2 text-gray-400 mb-6 hover:text-gray-700">
-        <ArrowLeft size={20} /> Back to Events
-      </Link> */}
-
       <EventCard
+        eventId={event.id}
+        createdById={event.createdById}
         image={event.image}
         title={event.title}
-        date={event.date}
+        date={formattedDate}
         time={event.time}
         location={event.location}
-        tickets={event.tickets}
+        tickets={event.tickets.map((t) => ({
+          type: t.type,
+          price: t.price,
+          link: t.link,
+        }))}
         description={event.description}
-        mapUrl={event.mapUrl}
+        mapUrl={event.mapUrl ?? ""}
         host={event.host}
         attendees={event.attendees}
-        category={category!}
+        category={{
+          id: localCategory.id,
+          name: localCategory.name,
+          iconName: localCategory.iconName,
+          iconColor: localCategory.iconColor,
+        }}
       />
     </div>
   );
