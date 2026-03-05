@@ -6,15 +6,17 @@ import prisma from "@/lib/prisma";
 
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  // context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
+    const { id } = await context.params;
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const { params } = context;
-    const eventId = Number(params.id);
+    // const { params } = context;
+    const eventId = Number(id);
     if (isNaN(eventId)) {
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
     }
