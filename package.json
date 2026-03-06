@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed:categories": "node --loader ts-node/esm --loader ./node_modules/tsconfig-paths/register.js scripts/seedCategories.ts",
-    "db:seed": "npx prisma db seed"
+    "db:seed": "npx prisma db seed",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
