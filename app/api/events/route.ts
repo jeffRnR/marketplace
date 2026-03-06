@@ -1,24 +1,22 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // adjust to your auth config path
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import prisma from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
-    // 1. Auth guard — only logged-in users can create events
+    // 1. Auth guard
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    if (!session?.user?.email)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
-    // 2. Fetch the user from DB so we have their ID
+    // 2. Fetch user
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true },
     });
-    if (!user) {
+    if (!user)
       return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
 
     // 3. Parse body
     const body = await req.json();
@@ -28,87 +26,75 @@ export async function POST(req: Request) {
       host,
       startDate,
       startTime,
-      endDate,   // stored in description suffix for now — schema has one date field
+      endDate,
       endTime,
       country,
       location,
       description,
       requireApproval,
-      isRsvp,        // true = RSVP (free), false = paid (has tickets)
+      isRsvp,
       capacity,
-      tickets,       // array of { name, price, capacity } — only when !isRsvp
-      categoryId,
+      tickets,
+      categoryIds, // number[] — replaces categoryId
       lat,
       lng,
     } = body;
 
-    // 4. Validate required fields
-    if (!title || !startDate || !startTime || !location || !categoryId) {
+    // 4. Validate
+    if (!title || !startDate || !startTime || !location || !categoryIds?.length)
       return NextResponse.json(
-        { error: "Missing required fields: title, startDate, startTime, location, categoryId" },
+        { error: "Missing required fields: title, startDate, startTime, location, categoryIds" },
         { status: 400 }
       );
-    }
 
-    if (!lat || !lng) {
+    if (!lat || !lng)
       return NextResponse.json(
         { error: "Please select a valid venue with coordinates." },
         { status: 400 }
       );
-    }
 
-    // 5. Build date + time strings the schema expects
-    // Schema: date DateTime, time String
-    const eventDate = new Date(`${startDate}T${startTime}`);
-    const timeLabel = `${startTime}${endDate && endTime ? ` – ${endTime} (${endDate})` : ""}`;
-
-    // 6. Build mapUrl from coordinates
-    const mapUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`;
-
-    // 7. Build description with approval note if needed
+    // 5. Build fields
+    const eventDate      = new Date(`${startDate}T${startTime}`);
+    const timeLabel      = `${startTime}${endDate && endTime ? ` – ${endTime} (${endDate})` : ""}`;
+    const mapUrl         = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`;
     const fullDescription = requireApproval
       ? `${description}\n\n[Attendance requires host approval]`
       : description;
 
-    // 8. Create event + tickets in a single transaction
+    // 6. Create event + tickets + category join rows in one transaction
     const event = await prisma.$transaction(async (tx) => {
-      const newEvent = await tx.event.create({
+      return tx.event.create({
         data: {
           image,
           title,
           host,
-          date: eventDate,
-          time: timeLabel,
-          location: `${location}${country ? `, ${country}` : ""}`,
+          date:        eventDate,
+          time:        timeLabel,
+          location:    `${location}${country ? `, ${country}` : ""}`,
           description: fullDescription,
           mapUrl,
-          categoryId: Number(categoryId),
           createdById: user.id,
-          // tickets created below via nested writes
           tickets: {
             create: isRsvp
-              ? // RSVP: create a single free "RSVP" ticket with a capacity link placeholder
-                [
-                  {
-                    type: "RSVP",
-                    price: "Free",
-                    link: `capacity:${capacity ?? 0}`, // encode capacity in link field for now
-                  },
-                ]
-              : // Paid: create one ticket per entry
-                (tickets ?? []).map(
-                  (t: { name: string; price: string; capacity: number }) => ({
-                    type: t.name || "General",
-                    price: String(t.price),
-                    link: `capacity:${t.capacity ?? 0}`,
-                  })
-                ),
+              ? [{ type: "RSVP", price: "Free", link: `capacity:${capacity ?? 0}` }]
+              : (tickets ?? []).map((t: { name: string; price: string; capacity: number }) => ({
+                  type:  t.name || "General",
+                  price: String(t.price),
+                  link:  `capacity:${t.capacity ?? 0}`,
+                })),
+          },
+          // Create one EventCategory row per selected category
+          categories: {
+            create: (categoryIds as number[]).map((id) => ({
+              category: { connect: { id } },
+            })),
           },
         },
-        include: { tickets: true, category: true },
+        include: {
+          tickets:    true,
+          categories: { include: { category: true } },
+        },
       });
-
-      return newEvent;
     });
 
     return NextResponse.json({ event }, { status: 201 });
@@ -125,18 +111,21 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const categoryId = searchParams.get("categoryId");
-    const userId = searchParams.get("userId");
+    const userId     = searchParams.get("userId");
 
     const events = await prisma.event.findMany({
       where: {
-        ...(categoryId ? { categoryId: Number(categoryId) } : {}),
+        // Filter via join table instead of direct field
+        ...(categoryId ? {
+          categories: { some: { categoryId: Number(categoryId) } },
+        } : {}),
         ...(userId ? { createdById: userId } : {}),
       },
       orderBy: { date: "asc" },
       include: {
-        category: { select: { id: true, name: true, icon: true } },
-        tickets: true,
-        createdBy: { select: { id: true, name: true, email: true } },
+        categories: { include: { category: true } },
+        tickets:    true,
+        createdBy:  { select: { id: true, name: true, email: true } },
       },
     });
 

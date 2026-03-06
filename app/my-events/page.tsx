@@ -66,7 +66,7 @@ export default function MyEventsPage() {
   }
 
   return (
-    <div className="p-4 lg:w-[70%] mt-14 mx-auto w-full min-h-screen flex flex-col gap-4">
+    <div className="p-4 lg:w-[70%] mt-14 mx-auto w-full min-h-screen flex flex-col gap-4 overflow-y-auto scrollbar-hide">
 
       {/* Header */}
       <div className="w-full">

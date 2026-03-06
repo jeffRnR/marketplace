@@ -36,15 +36,15 @@ model User {
 model Category {
   id          Int      @id @default(autoincrement())
   name        String   @unique
-  eventsCount Int      @default(0)
-  icon        String? // e.g., lucide-react icon name
+  icon        String?
   iconColor   String?
   createdAt   DateTime @default(now())
 
-  // Relations
   createdById String?
-  createdBy   User?   @relation("UserCategories", fields: [createdById], references: [id], onDelete: SetNull)
-  events      Event[]
+  createdBy   User?    @relation("UserCategories", fields: [createdById], references: [id], onDelete: SetNull)
+
+  // Many-to-many via explicit join table
+  events      EventCategory[]
 }
 
 model Event {
@@ -60,14 +60,22 @@ model Event {
   attendees   Int      @default(0)
   createdAt   DateTime @default(now())
 
-  // Relations
+  createdById String
+  createdBy   User     @relation("UserEvents", fields: [createdById], references: [id], onDelete: Cascade)
+
+  // Many-to-many via explicit join table
+  categories  EventCategory[]
+  tickets     Ticket[]
+}
+
+model EventCategory {
+  eventId    Int
   categoryId Int
+
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
-  createdById String
-  createdBy   User   @relation("UserEvents", fields: [createdById], references: [id], onDelete: Cascade)
-
-  tickets Ticket[]
+  @@id([eventId, categoryId])
 }
 
 model Ticket {
@@ -78,6 +86,9 @@ model Ticket {
 
   eventId Int
   event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  isActive  Boolean   @default(true)
+  startsAt  DateTime?
+  endsAt    DateTime?
 }
 
 // NEXTAUTH MODELS

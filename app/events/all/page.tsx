@@ -46,7 +46,7 @@ export default function AllEventsPage() {
   return (
     <div className="p-4 lg:w-[75%] mx-auto w-full min-h-screen mt-14 mb-10">
       {/* Header row */}
-      <div className="flex flex-row justify-between items-center mb-6">
+      <div className="flex flex-row justify-between items-center mb-6 overflow-y-auto scrollbar-hide">
         <h1 className="text-gray-300 font-bold text-[2rem]">All Events</h1>
 
         {/* Toggle buttons */}

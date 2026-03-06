@@ -1,7 +1,4 @@
 // data/events.ts
-// This file is now a type definition only.
-// All event data comes from the database via /api/events.
-// Delete the dummy array — components should fetch directly.
 
 export interface TicketOption {
   type: string;
@@ -9,11 +6,18 @@ export interface TicketOption {
   link: string;
 }
 
+export interface EventCategory {
+  id: number;
+  name: string;
+  icon?: string;
+  iconColor?: string;
+}
+
 export interface Event {
   id: number;
   image: string;
   title: string;
-  date: string;        // formatted string e.g. "Mar 21, 2026"
+  date: string;
   time: string;
   location: string;
   description: string;
@@ -21,14 +25,13 @@ export interface Event {
   host: string;
   attendees: number;
   tickets: TicketOption[];
-  categoryId: number;
-  category?: { id: number; name: string; icon?: string };
+  // Many-to-many: array of categories
+  categories: EventCategory[];
   lat?: number;
   lng?: number;
   distance?: number;
 }
 
-// Helper — format a DB event (raw DateTime) into the Event interface shape
 export function formatDbEvent(raw: any): Event {
   return {
     id: raw.id,
@@ -50,7 +53,7 @@ export function formatDbEvent(raw: any): Event {
       price: t.price,
       link: t.link,
     })),
-    categoryId: raw.categoryId,
-    category: raw.category,
+    // Join table: raw.categories is [{ category: { id, name, icon, iconColor } }]
+    categories: (raw.categories ?? []).map((ec: any) => ec.category ?? ec),
   };
 }

@@ -8,21 +8,23 @@ import {
   Eye, BarChart2, Trash2, Loader2, Tag, Pencil, Zap,
   Activity, ChevronDown, Ticket,
 } from "lucide-react";
-import { ManagedEvent, DeleteState } from "../types";
+import { ManagedEvent, DeleteState, TicketStat } from "../types";
 import { FillBar } from "./FillBar";
 import { AttendeePanel } from "./AttendeePanel";
 import { RevenuePanel } from "./RevenuePanel";
 import { PromoPanel } from "./PromoPanel";
 import { AnalyticsPanel } from "./AnalyticsPanel";
 import { EditEventModal } from "./EditEventModal";
+import { TicketsPanel } from "./TicketsPanel";
 
-type DetailTab = "overview" | "analytics" | "attendees" | "revenue" | "promos";
+type DetailTab = "overview" | "analytics" | "attendees" | "revenue" | "tickets" | "promos";
 
 const TABS: { key: DetailTab; label: string; icon: React.ElementType }[] = [
   { key: "overview",  label: "Overview",  icon: BarChart2  },
   { key: "analytics", label: "Insights",  icon: Activity   },
   { key: "attendees", label: "Attendees", icon: Users      },
   { key: "revenue",   label: "Revenue",   icon: TrendingUp },
+  { key: "tickets",   label: "Tickets",   icon: Ticket     },
   { key: "promos",    label: "Promos",    icon: Tag        },
 ];
 
@@ -49,6 +51,34 @@ export function EventRow({
     }
   };
 
+  // Recalculate derived stats when tickets change
+  const handleTicketsChanged = (tickets: TicketStat[]) => {
+    const isRsvp = tickets.length === 1 && tickets[0].type === "RSVP";
+    const totalCapacity = tickets.reduce((s, t) => s + t.capacity, 0);
+    const ticketRevenue = isRsvp
+      ? 0
+      : tickets.reduce((s, t) => {
+          const price = parseFloat(t.price.replace(/[^0-9.]/g, "")) || 0;
+          return s + price;
+        }, 0);
+    const spotsRemaining = Math.max(0, totalCapacity - event.attendees);
+    const fillRate = totalCapacity > 0 ? Math.round((event.attendees / totalCapacity) * 100) : 0;
+
+    setEvent((prev) => ({
+      ...prev,
+      tickets,
+      stats: {
+        ...prev.stats,
+        isRsvp,
+        totalCapacity,
+        ticketRevenue,
+        ticketTypes: tickets.length,
+        spotsRemaining,
+        fillRate,
+      },
+    }));
+  };
+
   return (
     <>
       <div className={`shadow-md shadow-black rounded-2xl overflow-hidden border transition duration-300 ${
@@ -65,10 +95,8 @@ export function EventRow({
             className="w-full h-full object-cover"
             style={{ filter: isPast ? "grayscale(30%) brightness(0.65)" : "brightness(0.72)" }}
           />
-          {/* gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40 to-transparent" />
 
-          {/* Top badges */}
           <div className="absolute top-3 right-3 flex items-center gap-2 flex-wrap justify-end">
             {event.stats.isRsvp
               ? <Badge variant="blue">Free RSVP</Badge>
@@ -78,7 +106,6 @@ export function EventRow({
             {isPast && <Badge variant="gray">Past</Badge>}
           </div>
 
-          {/* Title overlay */}
           <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
             <h3 className="text-gray-300 font-bold text-[1.5rem] leading-tight drop-shadow">{event.title}</h3>
             <p className="text-gray-400 text-sm mt-0.5">
@@ -90,48 +117,78 @@ export function EventRow({
         {/* ── Body ── */}
         <div className="p-4 flex flex-col gap-4">
 
-          {/* Meta */}
           <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-gray-400">
-            <span className="flex items-center gap-1.5">
-              <CalendarDays className="w-3.5 h-3.5 text-gray-500" />{event.date}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-gray-500" />{event.time}
-            </span>
+            <span className="flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5 text-gray-500" />{event.date}</span>
+            <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-gray-500" />{event.time}</span>
             <span className="flex items-center gap-1.5 min-w-0">
               <MapPin className="w-3.5 h-3.5 text-gray-500 shrink-0" />
               <span className="truncate">{event.location}</span>
             </span>
           </div>
 
-          {/* Stat cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatCard icon={Users}     iconColor="text-purple-400" label="Attending"
-              value={String(event.attendees)} />
-            <StatCard icon={Package}   iconColor="text-green-400"   label="Capacity"
-              value={String(event.stats.totalCapacity)} />
-            <StatCard icon={Ticket}    iconColor="text-orange-400"   label="Spots left"
+            <StatCard icon={Users}    iconColor="text-purple-400" label="Attending"    value={String(event.attendees)} />
+            <StatCard icon={Package}  iconColor="text-gray-400"   label="Capacity"     value={String(event.stats.totalCapacity)} />
+            <StatCard icon={Ticket}   iconColor="text-gray-400"   label="Spots left"
               value={event.stats.spotsRemaining === 0 ? "Sold out" : String(event.stats.spotsRemaining)}
               valueColor={event.stats.spotsRemaining === 0 ? "text-red-400" : event.stats.spotsRemaining < 20 ? "text-orange-400" : "text-gray-300"} />
             {event.stats.isRsvp
               ? <StatCard icon={Zap}        iconColor="text-purple-400" label="Type"         value="Free RSVP" />
-              : <StatCard icon={TrendingUp} iconColor="text-green-400"  label="Est. revenue" value={`KES ${event.stats.ticketRevenue.toLocaleString()}`} valueColor="text-green-400" />
-            }
+              : <StatCard icon={TrendingUp} iconColor="text-green-400"  label="Est. revenue" value={`KES ${event.stats.ticketRevenue.toLocaleString()}`} valueColor="text-green-400" />}
           </div>
 
-          {/* Fill bar */}
-          <FillBar rate={event.stats.fillRate}/>
+          <FillBar rate={event.stats.fillRate} />
 
-          {/* Description */}
           {event.description && (
             <p className="text-sm text-gray-400 leading-relaxed line-clamp-2">{event.description}</p>
           )}
 
-          {/* Actions */}
-          <div className="flex items-center gap-2 ">
-            <Link href={`/events/${event.id}`}>
-              <ActionBtn icon={Eye} label="View" />
-            </Link>
+          {/* MOBILE actions */}
+          <div className="flex flex-col gap-2 sm:hidden">
+            <div className="grid grid-cols-2 gap-2">
+              <Link href={`/events/${event.id}`} className="contents">
+                <ActionBtn icon={Eye} label="View Event" fullWidth />
+              </Link>
+              <ActionBtn icon={Pencil} label="Edit" onClick={() => setShowEdit(true)} fullWidth />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setExpanded((v) => !v)}
+                className={`flex items-center justify-center gap-2 w-full text-sm font-semibold rounded-lg px-3 py-2.5 border transition duration-300 ${
+                  expanded
+                    ? "bg-purple-700 border-purple-600 text-white hover:bg-purple-800"
+                    : "bg-purple-600 border-purple-500 text-white hover:bg-purple-700"
+                }`}
+              >
+                <BarChart2 className="w-4 h-4 shrink-0" />
+                <span>{expanded ? "Close" : "Manage"}</span>
+                <ChevronDown className={`w-4 h-4 shrink-0 ml-auto transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+              </button>
+
+              {deleteState === "confirming" ? (
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button onClick={() => setDeleteState("idle")}
+                    className="flex items-center justify-center text-xs font-medium rounded-lg py-2.5 border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200 transition duration-300">
+                    Cancel
+                  </button>
+                  <button onClick={handleDelete}
+                    className="flex items-center justify-center gap-1 text-xs font-semibold rounded-lg py-2.5 bg-red-700 border border-red-600 text-white hover:bg-red-800 transition duration-300">
+                    <Trash2 className="w-3.5 h-3.5" /> Sure?
+                  </button>
+                </div>
+              ) : (
+                <button onClick={handleDelete} disabled={deleteState === "deleting"}
+                  className="flex items-center justify-center gap-2 w-full text-sm font-medium rounded-lg px-3 py-2.5 border border-gray-600 text-gray-400 hover:border-red-600 hover:text-red-400 transition duration-300 disabled:opacity-40">
+                  {deleteState === "deleting" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  Delete
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* DESKTOP actions */}
+          <div className="hidden sm:flex items-center gap-2 flex-wrap">
+            <Link href={`/events/${event.id}`}><ActionBtn icon={Eye} label="View Event" /></Link>
             <ActionBtn icon={Pencil} label="Edit" onClick={() => setShowEdit(true)} />
             <ActionBtn
               icon={ChevronDown}
@@ -140,28 +197,20 @@ export function EventRow({
               active={expanded}
               iconClass={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
             />
-
             <div className="ml-auto flex items-center gap-2">
               {deleteState === "confirming" && (
-                <button
-                  onClick={() => setDeleteState("idle")}
-                  className="text-sm text-gray-500 hover:text-gray-300 transition px-2 py-1"
-                >
+                <button onClick={() => setDeleteState("idle")}
+                  className="text-sm text-gray-500 hover:text-gray-300 transition px-2 py-1">
                   Cancel
                 </button>
               )}
-              <button
-                onClick={handleDelete}
-                disabled={deleteState === "deleting"}
+              <button onClick={handleDelete} disabled={deleteState === "deleting"}
                 className={`flex items-center gap-1.5 text-sm font-medium rounded-lg px-3 py-1.5 border transition duration-300 ${
                   deleteState === "confirming"
                     ? "bg-red-700 border-red-600 text-white"
                     : "border-gray-600 text-gray-400 hover:border-red-600 hover:text-red-400"
-                }`}
-              >
-                {deleteState === "deleting"
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  : <Trash2 className="w-3.5 h-3.5" />}
+                }`}>
+                {deleteState === "deleting" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 {deleteState === "confirming" ? "Confirm?" : "Delete"}
               </button>
             </div>
@@ -171,31 +220,26 @@ export function EventRow({
         {/* ── Manage drawer ── */}
         {expanded && (
           <div className="border-t border-gray-700">
-
-            {/* Tab bar */}
-            <div className="flex overflow-x-auto border-b border-gray-700 bg-gray-900/60">
+            <div className="flex overflow-x-auto no-scrollbar border-b border-gray-700 bg-gray-900/60">
               {TABS.map(({ key, label, icon: Icon }) => (
-                <button
-                  key={key}
-                  onClick={() => setTab(key)}
+                <button key={key} onClick={() => setTab(key)}
                   className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition duration-300 ${
                     tab === key
                       ? "border-purple-500 text-purple-400"
                       : "border-transparent text-gray-500 hover:text-gray-300 hover:bg-gray-800/40"
-                  }`}
-                >
+                  }`}>
                   <Icon className="w-4 h-4" />{label}
                 </button>
               ))}
             </div>
 
-            {/* Panel content */}
             <div className="p-4 lg:p-6">
               {tab === "overview"  && <OverviewPanel event={event} />}
-              {tab === "analytics" && <AnalyticsPanel event={event} />}
-              {tab === "attendees" && <AttendeePanel event={event} />}
               {tab === "revenue"   && <RevenuePanel event={event} />}
+              {tab === "tickets"   && <TicketsPanel event={event} onTicketsChanged={handleTicketsChanged} />}
               {tab === "promos"    && <PromoPanel eventId={event.id} />}
+              {tab === "analytics" && <AnalyticsPanel event={event} />}
+              {tab === "attendees" && <AttendeePanel event={event} />}     
             </div>
           </div>
         )}
@@ -212,13 +256,11 @@ export function EventRow({
   );
 }
 
-// ── Overview tab ────────────────────────────────────────────────────────
+// ── Overview panel ───────────────────────────────────────────────────────
 
 function OverviewPanel({ event }: { event: ManagedEvent }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-      {/* Tickets */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <section className="flex flex-col gap-3">
         <p className="text-gray-400 font-bold text-sm uppercase tracking-widest">Ticket Types</p>
         <div className="flex flex-col gap-2">
@@ -236,24 +278,20 @@ function OverviewPanel({ event }: { event: ManagedEvent }) {
         </div>
       </section>
 
-      {/* Attendance */}
       <section className="flex flex-col gap-3">
         <p className="text-gray-400 font-bold text-sm uppercase tracking-widest">Attendance</p>
         <div className="flex flex-col gap-2.5">
           <MetaRow label="Confirmed"      value={String(event.attendees)} />
           <MetaRow label="Total Capacity" value={String(event.stats.totalCapacity)} />
-          <MetaRow
-            label="Spots Remaining"
+          <MetaRow label="Spots Remaining"
             value={event.stats.spotsRemaining === 0 ? "SOLD OUT" : String(event.stats.spotsRemaining)}
-            valueColor={event.stats.spotsRemaining === 0 ? "text-red-400" : event.stats.spotsRemaining < 20 ? "text-orange-400" : "text-gray-300"}
-          />
-          {/* <MetaRow label="Fill Rate" value={`${event.stats.fillRate}%`} valueColor="text-purple-400" /> */}
-          <FillBar rate={event.stats.fillRate}/>
+            valueColor={event.stats.spotsRemaining === 0 ? "text-red-400" : event.stats.spotsRemaining < 20 ? "text-orange-400" : "text-gray-300"} />
+          <MetaRow label="Fill Rate" value={`${event.stats.fillRate}%`} valueColor="text-purple-400" />
+          <FillBar rate={event.stats.fillRate} />
         </div>
       </section>
 
-      {/* Event info */}
-      <section className="col-span-2 flex flex-col gap-3">
+      <section className="flex flex-col gap-3">
         <p className="text-gray-400 font-bold text-sm uppercase tracking-widest">Event Info</p>
         <div className="flex flex-col gap-2.5">
           <InfoRow icon={CalendarDays} color="text-purple-400" text={`${event.date} · ${event.time}`} />
@@ -290,9 +328,7 @@ function Badge({ variant, children }: { variant: string; children: React.ReactNo
   );
 }
 
-function StatCard({
-  icon: Icon, iconColor, label, value, valueColor = "text-gray-300",
-}: {
+function StatCard({ icon: Icon, iconColor, label, value, valueColor = "text-gray-300" }: {
   icon: React.ElementType; iconColor: string; label: string; value: string; valueColor?: string;
 }) {
   return (
@@ -304,29 +340,26 @@ function StatCard({
   );
 }
 
-function ActionBtn({
-  icon: Icon, label, onClick, active, iconClass,
-}: {
-  icon: React.ElementType; label: string; onClick?: () => void; active?: boolean; iconClass?: string;
+function ActionBtn({ icon: Icon, label, onClick, active, iconClass, fullWidth }: {
+  icon: React.ElementType; label: string; onClick?: () => void;
+  active?: boolean; iconClass?: string; fullWidth?: boolean;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-1.5 text-sm font-medium rounded-lg px-3 py-1.5 border transition duration-300 ${
+    <button onClick={onClick}
+      className={`flex items-center justify-center gap-1.5 text-sm font-medium rounded-lg px-3 py-2.5 border transition duration-300 ${
+        fullWidth ? "w-full" : ""
+      } ${
         active
           ? "bg-purple-600 border-purple-500 text-white hover:bg-purple-700"
           : "border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200"
-      }`}
-    >
+      }`}>
       <Icon className={`w-3.5 h-3.5 ${iconClass ?? ""}`} />
       {label}
     </button>
   );
 }
 
-function MetaRow({ label, value, valueColor = "text-gray-300" }: {
-  label: string; value: string; valueColor?: string;
-}) {
+function MetaRow({ label, value, valueColor = "text-gray-300" }: { label: string; value: string; valueColor?: string }) {
   return (
     <div className="flex justify-between items-center">
       <span className="text-gray-500 text-sm">{label}</span>
@@ -335,9 +368,7 @@ function MetaRow({ label, value, valueColor = "text-gray-300" }: {
   );
 }
 
-function InfoRow({ icon: Icon, color, text }: {
-  icon: React.ElementType; color: string; text: string;
-}) {
+function InfoRow({ icon: Icon, color, text }: { icon: React.ElementType; color: string; text: string }) {
   return (
     <div className="flex items-start gap-2.5">
       <Icon className={`w-4 h-4 shrink-0 mt-0.5 ${color}`} />

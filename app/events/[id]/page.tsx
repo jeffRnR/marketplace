@@ -2,7 +2,7 @@
 import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import EventCard from "@/components/EventCard";
-import { categories } from "@/data/categories";
+import { categories as staticCategories } from "@/data/categories";
 
 interface PageProps {
   params: { id: string };
@@ -10,15 +10,14 @@ interface PageProps {
 
 async function getEvent(id: number) {
   try {
-    const event = await prisma.event.findUnique({
+    return await prisma.event.findUnique({
       where: { id },
       include: {
-        tickets: true,
-        category: true,
-        createdBy: { select: { id: true, name: true, email: true } },
+        tickets:    true,
+        categories: { include: { category: true } }, // many-to-many join
+        createdBy:  { select: { id: true, name: true, email: true } },
       },
     });
-    return event;
   } catch {
     return null;
   }
@@ -31,13 +30,20 @@ export default async function EventDetailPage({ params }: PageProps) {
   const event = await getEvent(eventId);
   if (!event) notFound();
 
-  const localCategory = categories.find((c) => c.id === event.categoryId);
-  if (!localCategory) notFound();
+  // Flatten join table → plain category objects
+  const eventCategories = event.categories.map((ec) => ec.category);
+
+  // Use the first category to resolve the static icon data (iconName lives in static array)
+  const primaryCategory  = eventCategories[0];
+  const localCategory    = primaryCategory
+    ? staticCategories.find((c) => c.id === primaryCategory.id)
+    : null;
+
+  // Only 404 if the event has NO categories at all
+  if (!primaryCategory) notFound();
 
   const formattedDate = new Date(event.date).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
+    month: "short", day: "numeric", year: "numeric",
   });
 
   return (
@@ -51,19 +57,19 @@ export default async function EventDetailPage({ params }: PageProps) {
         time={event.time}
         location={event.location}
         tickets={event.tickets.map((t) => ({
-          type: t.type,
+          type:  t.type,
           price: t.price,
-          link: t.link,
+          link:  t.link,
         }))}
         description={event.description}
         mapUrl={event.mapUrl ?? ""}
         host={event.host}
         attendees={event.attendees}
         category={{
-          id: localCategory.id,
-          name: localCategory.name,
-          iconName: localCategory.iconName,
-          iconColor: localCategory.iconColor,
+          id:        primaryCategory.id,
+          name:      primaryCategory.name,
+          iconName:  localCategory?.iconName  ?? "",
+          iconColor: localCategory?.iconColor ?? primaryCategory.iconColor ?? "",
         }}
       />
     </div>
