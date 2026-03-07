@@ -4,9 +4,7 @@ import prisma from "@/lib/prisma";
 import EventCard from "@/components/EventCard";
 import { categories as staticCategories } from "@/data/categories";
 
-interface PageProps {
-  params: { id: string };
-}
+interface PageProps { params: Promise<{ id: string }> }
 
 async function getEvent(id: number) {
   try {
@@ -14,32 +12,25 @@ async function getEvent(id: number) {
       where: { id },
       include: {
         tickets:    true,
-        categories: { include: { category: true } }, // many-to-many join
+        categories: { include: { category: true } },
         createdBy:  { select: { id: true, name: true, email: true } },
       },
     });
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 export default async function EventDetailPage({ params }: PageProps) {
-  const eventId = Number(params.id);
+  const { id } = await params;
+  const eventId = Number(id);
   if (isNaN(eventId)) notFound();
 
   const event = await getEvent(eventId);
   if (!event) notFound();
 
-  // Flatten join table → plain category objects
   const eventCategories = event.categories.map((ec) => ec.category);
-
-  // Use the first category to resolve the static icon data (iconName lives in static array)
-  const primaryCategory  = eventCategories[0];
-  const localCategory    = primaryCategory
-    ? staticCategories.find((c) => c.id === primaryCategory.id)
-    : null;
-
-  // Only 404 if the event has NO categories at all
+  const primaryCategory = eventCategories[0];
+  const localCategory   = primaryCategory
+    ? staticCategories.find((c) => c.id === primaryCategory.id) : null;
   if (!primaryCategory) notFound();
 
   const formattedDate = new Date(event.date).toLocaleDateString("en-US", {
@@ -57,9 +48,13 @@ export default async function EventDetailPage({ params }: PageProps) {
         time={event.time}
         location={event.location}
         tickets={event.tickets.map((t) => ({
-          type:  t.type,
-          price: t.price,
-          link:  t.link,
+          id:       t.id,
+          type:     t.type,
+          price:    t.price,
+          link:     t.link,
+          isActive: t.isActive,
+          startsAt: t.startsAt ? t.startsAt.toISOString() : null,
+          endsAt:   t.endsAt   ? t.endsAt.toISOString()   : null,
         }))}
         description={event.description}
         mapUrl={event.mapUrl ?? ""}

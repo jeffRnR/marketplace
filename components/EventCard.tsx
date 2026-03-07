@@ -25,6 +25,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
 };
 
 interface TicketOption {
+  id:         number;
   type:     string;
   price:    string;
   link:     string;
@@ -107,7 +108,15 @@ function EventCard({
 
   const handleBuy = () => {
     const selected = liveTickets
-      .map((t, idx) => ({ type: t.type, price: t.price, quantity: quantities[idx] }))
+      .map((t, idx) => {
+        const isRsvpTicket = t.type === "RSVP" || t.price === "Free" || t.price === "0";
+        return {
+          ticketId:   t.id,
+          ticketType: t.type,
+          price:      t.price,
+          quantity:   isRsvpTicket ? 1 : quantities[idx],
+        };
+      })
       .filter((t) => t.quantity > 0);
 
     if (selected.length === 0) {
@@ -116,7 +125,7 @@ function EventCard({
     }
     setErrorMessage("");
     router.push(
-      `/checkout?title=${encodeURIComponent(title)}&image=${encodeURIComponent(image)}&date=${encodeURIComponent(date)}&location=${encodeURIComponent(location)}&tickets=${encodeURIComponent(JSON.stringify(selected))}`
+      `/checkout?eventId=${eventId}&title=${encodeURIComponent(title)}&image=${encodeURIComponent(image)}&date=${encodeURIComponent(date)}&location=${encodeURIComponent(location)}&tickets=${encodeURIComponent(JSON.stringify(selected))}`
     );
   };
 
@@ -205,21 +214,34 @@ function EventCard({
               {/* Live tickets */}
               {liveTickets.length > 0 && (
                 <ul className="space-y-3 mb-4">
-                  {liveTickets.map((ticket, idx) => (
-                    <li key={idx}
-                      className="flex items-center justify-between bg-white/2 px-3 py-2 rounded-2xl border border-gray-400/50">
-                      <span className="text-md text-gray-300 font-semibold">
-                        {ticket.type} — {ticket.price}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => decrease(idx)}
-                          className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-700 text-white hover:bg-gray-600 transition">−</button>
-                        <span className="w-6 text-center text-md text-gray-300 font-medium">{quantities[idx]}</span>
-                        <button onClick={() => increase(idx)}
-                          className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-700 text-white hover:bg-gray-600 transition">+</button>
-                      </div>
-                    </li>
-                  ))}
+                  {liveTickets.map((ticket, idx) => {
+                    const isRsvpTicket = ticket.type === "RSVP" || ticket.price === "Free" || ticket.price === "0";
+                    return (
+                      <li key={idx}
+                        className="flex items-center justify-between bg-white/2 px-3 py-2 rounded-2xl border border-gray-400/50">
+                        <span className="text-md text-gray-300 font-semibold">
+                          {ticket.type} — {ticket.price}
+                        </span>
+                        {isRsvpTicket ? (
+                          /* RSVP — fixed qty of 1, no controls */
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-purple-400 font-semibold border border-purple-700/50 bg-purple-900/20 px-3 py-1 rounded-lg">
+                              1 per person
+                            </span>
+                          </div>
+                        ) : (
+                          /* Paid — normal quantity controls */
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => decrease(idx)}
+                              className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-700 text-white hover:bg-gray-600 transition">−</button>
+                            <span className="w-6 text-center text-md text-gray-300 font-medium">{quantities[idx]}</span>
+                            <button onClick={() => increase(idx)}
+                              className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-700 text-white hover:bg-gray-600 transition">+</button>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
 

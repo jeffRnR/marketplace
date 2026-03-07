@@ -66,6 +66,8 @@ model Event {
   // Many-to-many via explicit join table
   categories  EventCategory[]
   tickets     Ticket[]
+  promoCodes PromoCode[]
+  orders Order[]
 }
 
 model EventCategory {
@@ -125,4 +127,48 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model PromoCode {
+  id        String   @id @default(cuid())
+  eventId   Int
+  code      String
+  discount  String
+  maxUses   Int      @default(50)
+  uses      Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, code])
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  eventId     Int
+  email       String
+  phone       String
+  name        String
+  promoCode   String?
+  discount    String?
+  totalAmount Float    @default(0)
+  isRsvp      Boolean  @default(false)
+  status      String   @default("confirmed")
+  createdAt   DateTime @default(now())
+
+  event Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  items OrderItem[]
+}
+
+model OrderItem {
+  id         String @id @default(cuid())
+  orderId    String
+  ticketId   Int
+  ticketType String
+  price      String
+  quantity   Int    @default(1)
+  ticketCode String @unique
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
