@@ -508,11 +508,11 @@ export default function ProfilePage() {
           </div>
 
           {/* ── Main content ── */}
-          <div className="flex-1 min-w-0 space-y-6 pt-4 lg:pt-0">
+          <div className="flex-1 min-w-0 space-y-6 pt-4 lg:pt-0 w-full">
 
             {/* About */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-              <h2 className="text-gray-200 font-bold text-lg mb-3">About</h2>
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+              <h2 className="text-gray-200 font-bold text-lg">About</h2>
               <p className="text-gray-400 leading-relaxed whitespace-pre-line">{profile.description}</p>
             </div>
 
