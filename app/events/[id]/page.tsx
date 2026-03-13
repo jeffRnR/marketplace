@@ -2,6 +2,7 @@
 import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import EventCard from "@/components/EventCard";
+import EventVendors from "@/components/EventVendors";
 import { categories as staticCategories } from "@/data/categories";
 
 interface PageProps { params: Promise<{ id: string }> }
@@ -67,6 +68,8 @@ export default async function EventDetailPage({ params }: PageProps) {
           iconColor: localCategory?.iconColor ?? primaryCategory.iconColor ?? "",
         }}
       />
+
+      <EventVendors eventId={event.id} />
     </div>
   );
 }

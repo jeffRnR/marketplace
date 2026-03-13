@@ -196,7 +196,7 @@ function EventCard({
               <p className="text-gray-400 text-sm text-center px-4">
                 You created this event and cannot purchase tickets for it.
               </p>
-              <Link href={`/events/${eventId}/manage`}
+              <Link href={`/my-events`}
                 className="mt-1 text-purple-400 hover:text-purple-300 text-sm font-semibold transition">
                 Manage Event →
               </Link>

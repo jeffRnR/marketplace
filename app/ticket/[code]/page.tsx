@@ -3,37 +3,44 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import TicketView from "./TicketView";
 
-interface PageProps { params: { code: string } }
-
-async function getTicket(code: string) {
-  try {
-    const item = await prisma.orderItem.findUnique({
-      where: { ticketCode: code },
-      include: {
-        order: {
-          include: {
-            event: {
-              select: { id: true, title: true, date: true, time: true, location: true, host: true, image: true },
-            },
-          },
-        },
-      },
-    });
-    return item;
-  } catch { return null; }
-}
+interface PageProps { params: Promise<{ code: string }> }
 
 export default async function TicketPage({ params }: PageProps) {
-  const item = await getTicket(params.code);
+  const { code } = await params;
+
+  const item = await prisma.orderItem.findUnique({
+    where: { ticketCode: code },
+    include: {
+      order: {
+        select: {
+          id:    true,
+          name:  true,
+          email: true,
+          isRsvp: true,
+          status: true,
+        },
+      },
+    },
+  });
+
   if (!item) notFound();
 
-  const eventDate = new Date(item.order.event.date).toLocaleDateString("en-US", {
+  const ticket = await prisma.ticket.findUnique({ where: { id: item.ticketId } });
+  if (!ticket) notFound();
+
+  const event = await prisma.event.findUnique({
+    where:  { id: ticket.eventId },
+    select: { id: true, title: true, date: true, time: true, location: true, host: true, image: true },
+  });
+  if (!event) notFound();
+
+  const formattedDate = new Date(event.date).toLocaleDateString("en-US", {
     weekday: "long", month: "long", day: "numeric", year: "numeric",
   });
 
   return (
     <TicketView
-      ticketCode={item.ticketCode}
+      ticketCode={code}
       ticketType={item.ticketType}
       price={item.price}
       quantity={item.quantity}
@@ -43,13 +50,13 @@ export default async function TicketPage({ params }: PageProps) {
       orderId={item.order.id}
       status={item.order.status}
       event={{
-        id:       item.order.event.id,
-        title:    item.order.event.title,
-        date:     eventDate,
-        time:     item.order.event.time,
-        location: item.order.event.location,
-        host:     item.order.event.host,
-        image:    item.order.event.image,
+        id:       event.id,
+        title:    event.title,
+        date:     formattedDate,
+        time:     event.time,
+        location: event.location,
+        host:     event.host,
+        image:    event.image,
       }}
     />
   );

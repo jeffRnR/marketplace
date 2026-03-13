@@ -1,99 +1,43 @@
-// GENERATOR & DATASOURCE
+// ─────────────────────────────────────────────────────────────────────────────
+// prisma/schema.prisma
+// ─────────────────────────────────────────────────────────────────────────────
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
-// ENUMS
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
 enum Role {
   ADMIN
   ORGANIZER
   USER
 }
 
-// MODELS
+// ─── AUTH & USERS ─────────────────────────────────────────────────────────────
+
 model User {
   id        String   @id @default(cuid())
   name      String?
-  email     String   @unique // CHANGED: removed ? to make it required
-  password  String? // Hashed password for credentials login
+  email     String   @unique
+  password  String?
   role      Role     @default(USER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relations
-  accounts   Account[]
-  sessions   Session[]
-  events     Event[]    @relation("UserEvents")
-  categories Category[] @relation("UserCategories")
+  accounts      Account[]
+  sessions      Session[]
+  events        Event[]        @relation("UserEvents")
+  categories    Category[]     @relation("UserCategories")
+  marketProfile MarketProfile?
 }
 
-model Category {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  icon        String?
-  iconColor   String?
-  createdAt   DateTime @default(now())
-
-  createdById String?
-  createdBy   User?    @relation("UserCategories", fields: [createdById], references: [id], onDelete: SetNull)
-
-  // Many-to-many via explicit join table
-  events      EventCategory[]
-}
-
-model Event {
-  id          Int      @id @default(autoincrement())
-  image       String
-  title       String
-  date        DateTime
-  time        String
-  location    String
-  description String
-  mapUrl      String?
-  host        String
-  attendees   Int      @default(0)
-  createdAt   DateTime @default(now())
-
-  createdById String
-  createdBy   User     @relation("UserEvents", fields: [createdById], references: [id], onDelete: Cascade)
-
-  // Many-to-many via explicit join table
-  categories  EventCategory[]
-  tickets     Ticket[]
-  promoCodes PromoCode[]
-  orders Order[]
-}
-
-model EventCategory {
-  eventId    Int
-  categoryId Int
-
-  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  @@id([eventId, categoryId])
-}
-
-model Ticket {
-  id    Int    @id @default(autoincrement())
-  type  String
-  price String
-  link  String
-
-  eventId Int
-  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  isActive  Boolean   @default(true)
-  startsAt  DateTime?
-  endsAt    DateTime?
-}
-
-// NEXTAUTH MODELS
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -117,8 +61,9 @@ model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
   userId       String
-  expires      DateTime @default(now())
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -129,9 +74,73 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// ─── CATEGORIES ───────────────────────────────────────────────────────────────
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  icon      String?
+  iconColor String?
+  createdAt DateTime @default(now())
+
+  createdById String?
+  createdBy   User?   @relation("UserCategories", fields: [createdById], references: [id], onDelete: SetNull)
+
+  events EventCategory[]
+}
+
+// ─── EVENTS ───────────────────────────────────────────────────────────────────
+
+model Event {
+  id          Int      @id @default(autoincrement())
+  image       String
+  title       String
+  date        DateTime
+  time        String
+  location    String
+  description String
+  mapUrl      String?
+  host        String
+  attendees   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  createdById String
+  createdBy   User   @relation("UserEvents", fields: [createdById], references: [id], onDelete: Cascade)
+
+  categories         EventCategory[]
+  tickets            Ticket[]
+  promoCodes         PromoCode[]
+  orders             Order[]
+  vendorApplications VendorApplication[]
+}
+
+model EventCategory {
+  eventId    Int
+  categoryId Int
+
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, categoryId])
+}
+
+// ─── TICKETS & ORDERS ─────────────────────────────────────────────────────────
+
+model Ticket {
+  id       Int       @id @default(autoincrement())
+  type     String
+  price    String
+  link     String
+  isActive Boolean   @default(true)
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  eventId Int
+  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
 model PromoCode {
   id        String   @id @default(cuid())
-  eventId   Int
   code      String
   discount  String
   maxUses   Int      @default(50)
@@ -139,14 +148,14 @@ model PromoCode {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId Int
+  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, code])
 }
 
 model Order {
   id          String   @id @default(cuid())
-  eventId     Int
   email       String
   phone       String
   name        String
@@ -157,18 +166,136 @@ model Order {
   status      String   @default("confirmed")
   createdAt   DateTime @default(now())
 
-  event Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  items OrderItem[]
+  eventId Int
+  event   Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  items   OrderItem[]
 }
 
 model OrderItem {
   id         String @id @default(cuid())
-  orderId    String
   ticketId   Int
   ticketType String
   price      String
   quantity   Int    @default(1)
   ticketCode String @unique
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+// ─── MARKETPLACE ──────────────────────────────────────────────────────────────
+
+model MarketProfile {
+  id           String   @id @default(cuid())
+  businessName String
+  tagline      String?
+  description  String
+  category     String
+  subCategory  String?
+  location     String
+  phone        String
+  email        String
+  website      String?
+  instagram    String?
+  twitter      String?
+  facebook     String?
+  tiktok       String?
+  coverImage   String?
+  logoImage    String?
+  isVerified   Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  rating       Float    @default(0)
+  reviewCount  Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  listings     MarketListing[]
+  applications VendorApplication[]
+  reviews      MarketReview[]
+  inquiries    MarketInquiry[]
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model MarketListing {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  category    String
+  priceType   String
+  price       Float?
+  currency    String   @default("KES")
+  images      String[]
+  tags        String[]
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  profileId String
+  profile   MarketProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  inquiries MarketInquiry[]
+
+  @@index([profileId])
+  @@index([category])
+}
+
+model VendorApplication {
+  id              String   @id @default(cuid())
+  message         String
+  servicesOffered String
+  proposedPrice   Float?
+  currency        String   @default("KES")
+  status          String   @default("pending")
+  ownerNote       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  profileId String
+  profile   MarketProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  eventId Int
+  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, eventId])
+  @@index([eventId])
+  @@index([status])
+}
+
+model MarketInquiry {
+  id          String   @id @default(cuid())
+  senderName  String
+  senderEmail String
+  senderPhone String?
+  message     String
+  status      String   @default("unread")
+  reply       String?
+  createdAt   DateTime @default(now())
+
+  profileId String
+  profile   MarketProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  listingId String?
+  listing   MarketListing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  @@index([profileId])
+  @@index([status])
+}
+
+model MarketReview {
+  id            String   @id @default(cuid())
+  reviewerName  String
+  reviewerEmail String
+  rating        Int
+  comment       String?
+  createdAt     DateTime @default(now())
+
+  profileId String
+  profile   MarketProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
 }

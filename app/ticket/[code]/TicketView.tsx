@@ -5,6 +5,8 @@ import React, { useEffect, useRef, useCallback, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Clock, MapPin, User, CheckCircle, Ticket, Hash, Download, Loader2 } from "lucide-react";
 import QRCode from "qrcode";
+import NextImage from "next/image";
+import logo from "@/images/logo.png";
 
 interface TicketViewProps {
   ticketCode:  string;
@@ -27,6 +29,48 @@ interface TicketViewProps {
   };
 }
 
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const test = current ? `${current} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = test;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+async function loadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload  = () => resolve(img);
+    img.onerror = () => resolve(null);
+    setTimeout(() => resolve(null), 4000);
+    img.src = src;
+  });
+}
+
 export default function TicketView({
   ticketCode, ticketType, price, quantity, holderName,
   holderEmail, isRsvp, orderId, status, event,
@@ -38,135 +82,219 @@ export default function TicketView({
     if (!canvasRef.current) return;
     const ticketUrl = `${window.location.origin}/ticket/${ticketCode}`;
     QRCode.toCanvas(canvasRef.current, ticketUrl, {
-      width:  180,
-      margin: 1,
-      color:  { dark: "#1a1a2e", light: "#ffffff" },
+      width: 180, margin: 1,
+      color: { dark: "#1a1a2e", light: "#ffffff" },
     });
   }, [ticketCode]);
 
   const handleDownload = useCallback(async () => {
     setDownloading(true);
     try {
-      const domtoimage = (await import("dom-to-image-more")).default;
+      const W     = 640;
+      const PAD   = 32;
+      const SCALE = 2;
 
-      // Generate QR code as data URL for the offline card
-      const ticketUrl = `${window.location.origin}/ticket/${ticketCode}`;
-      const qrDataUrl = await QRCode.toDataURL(ticketUrl, {
-        width:  200,
-        margin: 1,
-        color:  { dark: "#000000", light: "#ffffff" },
-      });
+      const tempCanvas = document.createElement("canvas");
+      const tempCtx    = tempCanvas.getContext("2d")!;
+      tempCtx.font = "15px -apple-system, BlinkMacSystemFont, sans-serif";
+      const venueLines  = wrapText(tempCtx, event.location, W - PAD * 2 - 40);
+      const venueExtraH = Math.max(0, (venueLines.length - 1) * 22);
 
-      // Build a fully inline-styled card — no Tailwind, no CSS vars, no outlines
-      const card = document.createElement("div");
-      card.style.cssText = `
-        width: 480px;
-        background: #111827;
-        border-radius: 20px;
-        overflow: hidden;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        position: fixed;
-        left: -9999px;
-        top: 0;
-      `;
+      const IMG_H     = 180;
+      const DETAILS_H = 4 * 52 + venueExtraH;
+      const BOXES_H   = 110;
+      const QTY_H     = quantity > 1 ? 60 : 0;
+      const QR_H      = 260;
+      const FOOTER_H  = 60;
+      const TOTAL_H   = IMG_H + 28 + PAD + DETAILS_H + 20 + 28 + BOXES_H + QTY_H + 28 + QR_H + FOOTER_H;
 
-      card.innerHTML = `
-        <!-- Header image -->
-        <div style="position:relative;height:160px;overflow:hidden;background:#0f172a;">
-          <img src="${event.image}" crossorigin="anonymous"
-            style="width:100%;height:100%;object-fit:cover;opacity:0.5;display:block;" />
-          <div style="position:absolute;inset:0;background:linear-gradient(to top,#111827 0%,transparent 60%);"></div>
-          <div style="position:absolute;bottom:0;left:0;right:0;padding:0 20px 16px;">
-            <p style="color:#a78bfa;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 4px;">
-              ${isRsvp ? "RSVP Ticket" : "Ticket"}
-            </p>
-            <h1 style="color:#f1f5f9;font-size:20px;font-weight:800;margin:0;line-height:1.2;">
-              ${event.title}
-            </h1>
-          </div>
-        </div>
+      const canvas = document.createElement("canvas");
+      canvas.width  = W * SCALE;
+      canvas.height = TOTAL_H * SCALE;
+      const ctx = canvas.getContext("2d")!;
+      ctx.scale(SCALE, SCALE);
 
-        <!-- Dashed separator -->
-        <div style="display:flex;align-items:center;padding:0 20px;margin:0 -1px;">
-          <div style="width:20px;height:20px;border-radius:50%;background:#030712;margin-left:-28px;flex-shrink:0;"></div>
-          <div style="flex:1;border-top:2px dashed #374151;margin:0 8px;"></div>
-          <div style="width:20px;height:20px;border-radius:50%;background:#030712;margin-right:-28px;flex-shrink:0;"></div>
-        </div>
+      ctx.fillStyle = "#0f172a";
+      roundRect(ctx, 0, 0, W, TOTAL_H, 24);
+      ctx.fill();
 
-        <!-- Body -->
-        <div style="padding:20px 24px;display:flex;flex-direction:column;gap:20px;">
+      const [eventImg, logoImg, qrImg] = await Promise.all([
+        loadImage(event.image),
+        loadImage(logo.src),
+        (async () => {
+          const url = await QRCode.toDataURL(`${window.location.origin}/ticket/${ticketCode}`, {
+            width: 200, margin: 2, color: { dark: "#000000", light: "#ffffff" },
+          });
+          return loadImage(url);
+        })(),
+      ]);
 
-          <!-- Event details -->
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            ${row("📅", "#a78bfa", "Date",  event.date)}
-            ${row("🕐", "#60a5fa", "Time",  event.time)}
-            ${row("📍", "#f87171", "Venue", event.location)}
-            ${row("👤", "#fbbf24", "Host",  event.host)}
-          </div>
+      // Header image
+      ctx.save();
+      roundRect(ctx, 0, 0, W, IMG_H, 24);
+      ctx.clip();
+      if (eventImg) {
+        ctx.globalAlpha = 0.4;
+        ctx.drawImage(eventImg, 0, 0, W, IMG_H);
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(0, 0, W, IMG_H);
+      }
+      const grad = ctx.createLinearGradient(0, 60, 0, IMG_H);
+      grad.addColorStop(0, "rgba(15,23,42,0)");
+      grad.addColorStop(1, "rgba(15,23,42,0.97)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, IMG_H);
+      ctx.restore();
 
-          <!-- Dashed separator -->
-          <div style="border-top:1px dashed #374151;"></div>
+      // Logo watermark in header
+      if (logoImg) {
+        const maxLogoW = 160, maxLogoH = 80;
+        const ratio = Math.min(maxLogoW / logoImg.width, maxLogoH / logoImg.height);
+        const lW = logoImg.width * ratio, lH = logoImg.height * ratio;
+        ctx.globalAlpha = 0.30;
+        ctx.drawImage(logoImg, (W - lW) / 2, (IMG_H * 0.45 - lH) / 2 + 10, lW, lH);
+        ctx.globalAlpha = 1;
+      }
 
-          <!-- Ticket type + holder -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div style="background:#1e293b;border-radius:12px;padding:12px;">
-              <p style="color:#6b7280;font-size:11px;margin:0 0 4px;">🎫 Ticket Type</p>
-              <p style="color:#e2e8f0;font-weight:700;font-size:14px;margin:0;">${ticketType}</p>
-              <p style="color:${isRsvp ? "#a78bfa" : "#34d399"};font-size:12px;font-weight:600;margin:4px 0 0;">
-                ${isRsvp ? "Free" : `KES ${price}`}
-              </p>
-            </div>
-            <div style="background:#1e293b;border-radius:12px;padding:12px;">
-              <p style="color:#6b7280;font-size:11px;margin:0 0 4px;">👤 Ticket Holder</p>
-              <p style="color:#e2e8f0;font-weight:700;font-size:14px;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${holderName}</p>
-              <p style="color:#6b7280;font-size:11px;margin:4px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${holderEmail}</p>
-            </div>
-          </div>
+      ctx.font      = "bold 12px -apple-system, sans-serif";
+      ctx.fillStyle = "#a78bfa";
+      ctx.fillText(isRsvp ? "RSVP TICKET" : "TICKET", PAD, IMG_H - 38);
+      ctx.font      = "bold 26px -apple-system, sans-serif";
+      ctx.fillStyle = "#f8fafc";
+      ctx.fillText(event.title.length > 36 ? event.title.slice(0, 36) + "…" : event.title, PAD, IMG_H - 12);
 
-          ${quantity > 1 ? `
-          <div style="background:#2e1065;border-radius:12px;padding:12px;text-align:center;">
-            <p style="color:#c4b5fd;font-size:14px;font-weight:600;margin:0;">× ${quantity} tickets in this order</p>
-          </div>` : ""}
+      // Tear line
+      let y = IMG_H;
+      ctx.save();
+      ctx.setLineDash([7, 5]);
+      ctx.strokeStyle = "#334155";
+      ctx.lineWidth   = 1.5;
+      ctx.beginPath(); ctx.moveTo(PAD, y + 14); ctx.lineTo(W - PAD, y + 14); ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = "#020617";
+      ctx.beginPath(); ctx.arc(0,  y + 14, 13, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(W, y + 14, 13, 0, Math.PI * 2); ctx.fill();
+      y += 28;
 
-          <!-- Dashed separator -->
-          <div style="border-top:1px dashed #374151;"></div>
+      // Body logo watermark (large, centred, very faint)
+      if (logoImg) {
+        const maxW = 320, maxH = 160;
+        const ratio = Math.min(maxW / logoImg.width, maxH / logoImg.height);
+        const lW = logoImg.width * ratio, lH = logoImg.height * ratio;
+        const bodyH = TOTAL_H - IMG_H - 28;
+        ctx.globalAlpha = 0.045;
+        ctx.drawImage(logoImg, (W - lW) / 2, IMG_H + 28 + (bodyH - lH) / 2, lW, lH);
+        ctx.globalAlpha = 1;
+      }
 
-          <!-- QR code -->
-          <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
-            <p style="color:#6b7280;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:0;">Scan to verify</p>
-            <div style="background:#fff;padding:12px;border-radius:12px;">
-              <img src="${qrDataUrl}" style="width:180px;height:180px;display:block;" />
-            </div>
-            <p style="color:#4b5563;font-size:11px;font-family:monospace;margin:0;">
-              # ${ticketCode.slice(0, 8).toUpperCase()}…
-            </p>
-          </div>
+      // Details
+      y += PAD;
+      const details = [
+        { emoji: "📅", label: "Date",  value: event.date },
+        { emoji: "🕐", label: "Time",  value: event.time },
+        { emoji: "📍", label: "Venue", value: event.location },
+        { emoji: "👤", label: "Host",  value: event.host },
+      ];
+      for (const d of details) {
+        ctx.font = "18px -apple-system, sans-serif";
+        ctx.fillText(d.emoji, PAD, y + 4);
+        ctx.font      = "11px -apple-system, sans-serif";
+        ctx.fillStyle = "#64748b";
+        ctx.fillText(d.label.toUpperCase(), PAD + 32, y - 10);
+        ctx.font      = "15px -apple-system, sans-serif";
+        ctx.fillStyle = "#e2e8f0";
+        if (d.label === "Venue") {
+          const lines = wrapText(ctx, d.value, W - PAD * 2 - 40);
+          lines.forEach((line, i) => ctx.fillText(line, PAD + 32, y + 6 + i * 22));
+          y += lines.length * 22 + 30;
+        } else {
+          ctx.fillText(d.value, PAD + 32, y + 6);
+          y += 52;
+        }
+      }
 
-          <!-- Order ID -->
-          <div style="text-align:center;padding-bottom:4px;">
-            <p style="color:#374151;font-size:11px;font-family:monospace;margin:0;">
-              Order: ${orderId.slice(0, 8).toUpperCase()}
-            </p>
-          </div>
-        </div>
-      `;
+      // Divider
+      ctx.save();
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = "#1e293b";
+      ctx.lineWidth   = 1.5;
+      ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
+      ctx.restore();
+      y += 24;
 
-      document.body.appendChild(card);
+      // Boxes
+      const boxW = (W - PAD * 2 - 16) / 2;
+      const boxH = 100;
+      ctx.fillStyle = "#1e293b";
+      roundRect(ctx, PAD, y, boxW, boxH, 14); ctx.fill();
+      ctx.font = "11px -apple-system, sans-serif"; ctx.fillStyle = "#64748b";
+      ctx.fillText("TICKET TYPE", PAD + 14, y + 22);
+      ctx.font = "bold 16px -apple-system, sans-serif"; ctx.fillStyle = "#f1f5f9";
+      ctx.fillText(ticketType, PAD + 14, y + 50);
+      ctx.font = "bold 14px -apple-system, sans-serif";
+      ctx.fillStyle = isRsvp ? "#a78bfa" : "#34d399";
+      ctx.fillText(isRsvp ? "Free RSVP" : `KES ${price}`, PAD + 14, y + 76);
 
-      // Wait a tick for images to start loading
-      await new Promise((r) => setTimeout(r, 300));
+      ctx.fillStyle = "#1e293b";
+      roundRect(ctx, PAD + boxW + 16, y, boxW, boxH, 14); ctx.fill();
+      ctx.font = "11px -apple-system, sans-serif"; ctx.fillStyle = "#64748b";
+      ctx.fillText("TICKET HOLDER", PAD + boxW + 16 + 14, y + 22);
+      ctx.font = "bold 16px -apple-system, sans-serif"; ctx.fillStyle = "#f1f5f9";
+      ctx.fillText(holderName.length > 18 ? holderName.slice(0, 18) + "…" : holderName, PAD + boxW + 16 + 14, y + 50);
+      ctx.font = "13px -apple-system, sans-serif"; ctx.fillStyle = "#64748b";
+      ctx.fillText(holderEmail.length > 22 ? holderEmail.slice(0, 22) + "…" : holderEmail, PAD + boxW + 16 + 14, y + 74);
+      y += boxH + 16;
 
-      const dataUrl = await domtoimage.toPng(card, {
-        quality: 1,
-        scale:   2,
-        bgcolor: "#111827",
-      });
+      if (quantity > 1) {
+        ctx.fillStyle = "rgba(46,16,101,0.5)";
+        roundRect(ctx, PAD, y, W - PAD * 2, 44, 12); ctx.fill();
+        ctx.font = "bold 14px -apple-system, sans-serif"; ctx.fillStyle = "#c4b5fd"; ctx.textAlign = "center";
+        ctx.fillText(`× ${quantity} tickets in this order`, W / 2, y + 28);
+        ctx.textAlign = "left";
+        y += 60;
+      }
 
-      document.body.removeChild(card);
+      ctx.save();
+      ctx.setLineDash([6, 4]); ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
+      ctx.restore();
+      y += 28;
+
+      // QR
+      ctx.font = "11px -apple-system, sans-serif"; ctx.fillStyle = "#475569"; ctx.textAlign = "center";
+      ctx.fillText("SCAN TO VERIFY", W / 2, y + 14);
+      ctx.textAlign = "left";
+      y += 26;
+      const qrSize = 180, qrX = (W - qrSize - 24) / 2;
+      ctx.fillStyle = "#ffffff";
+      roundRect(ctx, qrX - 14, y - 14, qrSize + 28, qrSize + 28, 16); ctx.fill();
+      if (qrImg) ctx.drawImage(qrImg, qrX, y, qrSize, qrSize);
+      y += qrSize + 24;
+
+      ctx.font = "12px 'Courier New', monospace"; ctx.fillStyle = "#334155"; ctx.textAlign = "center";
+      ctx.fillText(`# ${ticketCode.slice(0, 8).toUpperCase()}`, W / 2, y);
+      y += 20;
+
+      // Bottom logo
+      if (logoImg) {
+        const maxW = 80, maxH = 36;
+        const ratio = Math.min(maxW / logoImg.width, maxH / logoImg.height);
+        const lW = logoImg.width * ratio, lH = logoImg.height * ratio;
+        ctx.globalAlpha = 0.18;
+        ctx.drawImage(logoImg, (W - lW) / 2, y, lW, lH);
+        ctx.globalAlpha = 1;
+        y += lH + 8;
+      }
+
+      ctx.font = "11px 'Courier New', monospace"; ctx.fillStyle = "#1e293b"; ctx.textAlign = "center";
+      ctx.fillText(`Order: ${orderId.slice(0, 8).toUpperCase()}`, W / 2, y + 10);
+      ctx.textAlign = "left";
 
       const link = document.createElement("a");
       link.download = `ticket-${ticketCode.slice(0, 8).toUpperCase()}.png`;
-      link.href = dataUrl;
+      link.href = canvas.toDataURL("image/png");
       link.click();
     } catch (err) {
       console.error("Download failed:", err);
@@ -191,12 +319,30 @@ export default function TicketView({
           {isValid ? "Valid ticket — present this at the entrance" : "This ticket is no longer valid"}
         </div>
 
-        {/* Main ticket card (display only) */}
-        <div className="bg-gray-900 border border-gray-700/60 rounded-2xl overflow-hidden shadow-2xl">
+        {/* Display ticket card */}
+        <div className="relative bg-gray-900 border border-gray-700/60 rounded-2xl shadow-2xl isolate">
 
-          <div className="relative h-40 overflow-hidden">
+          {/* Logo watermark behind body content */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none -z-10 rounded-2xl overflow-hidden">
+            <NextImage
+              src={logo}
+              alt="watermark"
+              className="w-64 opacity-[0.07] object-contain"
+            />
+          </div>
+
+          {/* Event image header */}
+          <div className="relative h-40 overflow-hidden rounded-t-2xl z-10">
             <img src={event.image} alt={event.title} className="w-full h-full object-cover brightness-50" crossOrigin="anonymous" />
             <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/50 to-transparent" />
+            {/* Logo in header */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <NextImage
+                src={logo}
+                alt="logo"
+                className="w-28 opacity-25 object-contain"
+              />
+            </div>
             <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
               <p className="text-purple-400 text-xs font-semibold uppercase tracking-widest mb-1">
                 {isRsvp ? "RSVP Ticket" : "Ticket"}
@@ -205,45 +351,42 @@ export default function TicketView({
             </div>
           </div>
 
-          <div className="flex items-center px-5">
+          {/* Tear line */}
+          <div className="flex items-center px-5 z-10 relative">
             <div className="w-5 h-5 rounded-full bg-gray-950 -ml-7 shrink-0" />
             <div className="flex-1 border-t-2 border-dashed border-gray-700/60 mx-2" />
             <div className="w-5 h-5 rounded-full bg-gray-950 -mr-7 shrink-0" />
           </div>
 
-          <div className="px-5 py-5 flex flex-col gap-5">
+          {/* Ticket body */}
+          <div className="px-5 py-5 flex flex-col gap-5 relative z-10">
             <div className="grid grid-cols-1 gap-2.5">
               <InfoRow icon={CalendarDays} color="text-purple-400" label="Date"  value={event.date} />
               <InfoRow icon={Clock}        color="text-blue-400"   label="Time"  value={event.time} />
               <InfoRow icon={MapPin}       color="text-red-400"    label="Venue" value={event.location} />
               <InfoRow icon={User}         color="text-amber-400"  label="Host"  value={event.host} />
             </div>
-
             <div className="border-t border-dashed border-gray-700/60" />
-
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-3">
-                <p className="text-gray-500 text-xs mb-1 flex items-center gap-1"><Ticket className="w-3 h-3" /> Ticket Type</p>
-                <p className="text-gray-200 font-bold text-sm">{ticketType}</p>
+                <p className="text-gray-400 text-xs mb-1 flex items-center gap-1"><Ticket className="w-3 h-3" /> Ticket Type</p>
+                <p className="text-gray-100 font-bold text-sm">{ticketType}</p>
                 <p className={`text-xs font-semibold mt-0.5 ${isRsvp ? "text-purple-400" : "text-green-400"}`}>
-                  {isRsvp ? "Free" : `KES ${price}`}
+                  {isRsvp ? "RSVP" : `KES ${price}`}
                 </p>
               </div>
               <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-3">
-                <p className="text-gray-500 text-xs mb-1 flex items-center gap-1"><User className="w-3 h-3" /> Ticket Holder</p>
-                <p className="text-gray-200 font-bold text-sm truncate">{holderName}</p>
-                <p className="text-gray-500 text-xs mt-0.5 truncate">{holderEmail}</p>
+                <p className="text-gray-400 text-xs mb-1 flex items-center gap-1"><User className="w-3 h-3" /> Ticket Holder</p>
+                <p className="text-gray-100 font-bold text-sm truncate">{holderName}</p>
+                <p className="text-gray-400 text-xs mt-0.5 truncate">{holderEmail}</p>
               </div>
             </div>
-
             {quantity > 1 && (
               <div className="bg-purple-900/20 border border-purple-700/30 rounded-xl px-4 py-3 text-center">
                 <p className="text-purple-300 text-sm font-semibold">× {quantity} tickets in this order</p>
               </div>
             )}
-
             <div className="border-t border-dashed border-gray-700/60" />
-
             <div className="flex flex-col items-center gap-3">
               <p className="text-gray-500 text-xs uppercase tracking-widest">Scan to verify</p>
               <div className="bg-white p-3 rounded-xl shadow-lg">
@@ -254,14 +397,13 @@ export default function TicketView({
                 <span className="font-mono">{ticketCode.slice(0, 8).toUpperCase()}…</span>
               </div>
             </div>
-
             <div className="text-center pt-1">
-              <p className="text-gray-700 text-xs font-mono">Order: {orderId.slice(0, 8).toUpperCase()}</p>
+              <p className="text-gray-500 text-xs font-mono">Order: {orderId.slice(0, 8).toUpperCase()}</p>
             </div>
           </div>
         </div>
 
-        {/* Download button */}
+        {/* Download */}
         <button
           onClick={handleDownload}
           disabled={downloading}
@@ -269,29 +411,15 @@ export default function TicketView({
         >
           {downloading
             ? <><Loader2 className="w-4 h-4 animate-spin" /> Preparing download…</>
-            : <><Download className="w-4 h-4" /> Download Ticket</>
-          }
+            : <><Download className="w-4 h-4" /> Download Ticket</>}
         </button>
 
-        <Link href={`/events/${event.id}`}
-          className="text-center text-gray-600 hover:text-gray-400 text-sm transition">
+        <Link href={`/events/${event.id}`} className="text-center text-gray-600 hover:text-gray-400 text-sm transition">
           ← Back to event
         </Link>
       </div>
     </div>
   );
-}
-
-// Helper to build inline HTML rows for the download card
-function row(emoji: string, color: string, label: string, value: string) {
-  return `
-    <div style="display:flex;align-items:flex-start;gap:10px;">
-      <span style="font-size:14px;margin-top:2px;">${emoji}</span>
-      <div>
-        <p style="color:#6b7280;font-size:11px;margin:0;">${label}</p>
-        <p style="color:#cbd5e1;font-size:13px;font-weight:500;margin:2px 0 0;line-height:1.3;">${value}</p>
-      </div>
-    </div>`;
 }
 
 function InfoRow({ icon: Icon, color, label, value }: {
