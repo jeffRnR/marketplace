@@ -417,7 +417,7 @@ export default function CreateProfilePage() {
                 { key: "instagram", icon: Instagram, label: "Instagram handle",   placeholder: "@yourbusiness" },
                 { key: "twitter",   icon: Twitter,   label: "Twitter / X handle", placeholder: "@yourbusiness" },
                 { key: "facebook",  icon: Facebook,  label: "Facebook page",       placeholder: "https://facebook.com/yourbusiness" },
-                { key: "tiktok",    icon: Music,     label: "TikTok handle",       placeholder: "@yourbusiness" },
+                { key: "tiktok",    icon: Music2,     label: "TikTok handle",       placeholder: "@yourbusiness" },
               ].map(({ key, icon: Icon, label, placeholder, required }) => (
                 <div key={key}>
                   <label className="flex items-center gap-1.5 text-gray-400 text-sm mb-2">
