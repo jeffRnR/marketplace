@@ -1,13 +1,16 @@
 "use client";
 // app/checkout/CheckoutPageContent.tsx
+// RSVP/free: confirms immediately (unchanged).
+// Paid tickets: initiates Flutterwave STK push, shows waiting screen,
+//               polls /api/payment/status?txRef=... until confirmed.
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
   Loader2, CheckCircle, Tag, X, Ticket,
-  User, Mail, Phone, AlertTriangle,
+  User, Mail, Phone, AlertTriangle, Smartphone,
 } from "lucide-react";
 
 interface CartItem {
@@ -17,7 +20,7 @@ interface CartItem {
   quantity:   number;
 }
 
-type CheckoutStatus = "idle" | "loading" | "success" | "error";
+type CheckoutStatus = "idle" | "loading" | "waiting_mpesa" | "success" | "error";
 
 const INPUT = "w-full bg-gray-800 text-gray-300 rounded-xl border border-gray-700 px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none transition placeholder-gray-600";
 
@@ -30,8 +33,6 @@ export default function CheckoutPageContent() {
   const date        = searchParams.get("date")     ?? "";
   const location    = searchParams.get("location") ?? "";
   const ticketsJSON = searchParams.get("tickets")  ?? "";
-
-  // eventId — try dedicated param first, fall back to parsing from tickets
   const eventIdParam = searchParams.get("eventId") ?? "";
 
   const [cartItems,    setCartItems]    = useState<CartItem[]>([]);
@@ -47,33 +48,68 @@ export default function CheckoutPageContent() {
   const [errorMsg,     setErrorMsg]     = useState("");
   const [ticketCodes,  setTicketCodes]  = useState<string[]>([]);
   const [parseError,   setParseError]   = useState("");
+  const [txRef,        setTxRef]        = useState<string | null>(null);
+  const [pollSeconds,  setPollSeconds]  = useState(0);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     try {
       if (!ticketsJSON) { setParseError("No ticket data. Please go back."); return; }
       const parsed = JSON.parse(decodeURIComponent(ticketsJSON));
       if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
-
-      // Normalise — EventCard may send { type, price, quantity } without ticketId/ticketType
       const normalised: CartItem[] = parsed.map((item: any) => ({
         ticketId:   item.ticketId   ?? item.id   ?? 0,
         ticketType: item.ticketType ?? item.type  ?? "Ticket",
         price:      String(item.price ?? "0"),
         quantity:   item.quantity   ?? 1,
       }));
-
       setCartItems(normalised);
-
-      // If eventId wasn't in the URL params, log so we can debug
-      if (!eventIdParam) {
-        console.warn("eventId missing from checkout URL params");
-      }
     } catch {
       setParseError("Could not load ticket data. Please go back and try again.");
     }
   }, [ticketsJSON, eventIdParam]);
 
-  // ── Promo validation ──────────────────────────────────────────────────
+  // ── Stop polling on unmount ───────────────────────────────────────────
+  useEffect(() => {
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, []);
+
+  // ── Poll payment status ───────────────────────────────────────────────
+  function startPolling(ref: string) {
+    let elapsed = 0;
+    pollRef.current = setInterval(async () => {
+      elapsed += 3;
+      setPollSeconds(elapsed);
+
+      // Timeout after 3 minutes
+      if (elapsed >= 180) {
+        clearInterval(pollRef.current!);
+        setStatus("error");
+        setErrorMsg("Payment timed out. If you completed the M-Pesa prompt, please contact support with your reference.");
+        return;
+      }
+
+      try {
+        const res  = await fetch(`/api/payment/status?txRef=${ref}`);
+        const data = await res.json();
+
+        if (data.status === "successful") {
+          clearInterval(pollRef.current!);
+          setTicketCodes(data.ticketCodes ?? []);
+          setStatus("success");
+        } else if (data.status === "failed") {
+          clearInterval(pollRef.current!);
+          setStatus("error");
+          setErrorMsg("Payment failed or was cancelled. Please try again.");
+        }
+        // "pending" → keep polling
+      } catch {
+        // Network blip — keep polling
+      }
+    }, 3000);
+  }
+
+  // ── Promo ─────────────────────────────────────────────────────────────
   const handleApplyPromo = async () => {
     if (!promoInput.trim() || !eventId) return;
     setPromoLoading(true); setPromoError("");
@@ -109,45 +145,84 @@ export default function CheckoutPageContent() {
   // ── Submit ────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     setErrorMsg("");
-
-    if (!name.trim())   { setErrorMsg("Please enter your name.");          return; }
-    if (!email.trim())  { setErrorMsg("Please enter your email address."); return; }
-    if (!phone.trim())  { setErrorMsg("Please enter your phone number.");  return; }
+    if (!name.trim())  { setErrorMsg("Please enter your name.");          return; }
+    if (!email.trim()) { setErrorMsg("Please enter your email address."); return; }
+    if (!phone.trim()) { setErrorMsg("Please enter your phone number.");  return; }
     if (!/^\+?\d{9,15}$/.test(phone.replace(/\s/g, "")))
       { setErrorMsg("Please enter a valid phone number (e.g. +254712345678)."); return; }
-    if (!eventId)
-      { setErrorMsg("Event ID is missing. Please go back and try again."); return; }
-    if (cartItems.length === 0)
-      { setErrorMsg("No tickets selected. Please go back."); return; }
+    if (!eventId)       { setErrorMsg("Event ID is missing. Please go back."); return; }
+    if (cartItems.length === 0) { setErrorMsg("No tickets selected."); return; }
 
     setStatus("loading");
-
-    const payload = {
-      eventId,
-      name:      name.trim(),
-      email:     email.trim(),
-      phone:     phone.trim(),
-      tickets:   cartItems,
-      promoCode: promoApplied?.code ?? null,
-    };
-
-    console.log("Submitting checkout payload:", JSON.stringify(payload, null, 2));
 
     try {
       const res  = await fetch("/api/checkout", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(payload),
+        body:    JSON.stringify({ eventId, name: name.trim(), email: email.trim(), phone: phone.trim(), tickets: cartItems, promoCode: promoApplied?.code ?? null }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Checkout failed");
-      setTicketCodes(data.ticketCodes ?? []);
-      setStatus("success");
+
+      if (data.type === "rsvp") {
+        setTicketCodes(data.ticketCodes ?? []);
+        setStatus("success");
+      } else if (data.type === "mpesa") {
+        // STK push sent — show waiting screen and start polling
+        setTxRef(data.txRef);
+        setStatus("waiting_mpesa");
+        startPolling(data.txRef);
+      }
     } catch (err: any) {
       setErrorMsg(err.message ?? "Something went wrong. Please try again.");
       setStatus("error");
     }
   };
+
+  // ── Waiting for M-Pesa screen ─────────────────────────────────────────
+  if (status === "waiting_mpesa") {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-16">
+        <div className="w-full max-w-md flex flex-col items-center gap-6 text-center">
+          <div className="relative w-20 h-20">
+            <div className="absolute inset-0 rounded-full border-4 border-purple-900/50" />
+            <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Smartphone className="w-8 h-8 text-purple-400" />
+            </div>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-100 mb-2">Check your phone</h1>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              An M-Pesa payment prompt has been sent to<br />
+              <strong className="text-gray-200">{phone}</strong>.<br />
+              Enter your PIN to complete payment of{" "}
+              <strong className="text-green-400">KES {total.toLocaleString()}</strong>.
+            </p>
+          </div>
+          <div className="w-full bg-gray-900 border border-gray-700 rounded-2xl p-5">
+            <p className="text-gray-500 text-xs mb-3">Waiting for confirmation{".".repeat((Math.floor(pollSeconds / 3) % 3) + 1)}</p>
+            <div className="w-full bg-gray-800 rounded-full h-1.5">
+              <div
+                className="bg-purple-500 h-1.5 rounded-full transition-all duration-1000"
+                style={{ width: `${Math.min((pollSeconds / 180) * 100, 100)}%` }}
+              />
+            </div>
+            <p className="text-gray-700 text-xs mt-2">{180 - pollSeconds}s remaining</p>
+          </div>
+          <p className="text-gray-600 text-xs">
+            Don't close this page. You'll be redirected automatically once confirmed.
+          </p>
+          <button
+            onClick={() => { if (pollRef.current) clearInterval(pollRef.current); setStatus("idle"); }}
+            className="text-gray-600 hover:text-gray-400 text-sm transition"
+          >
+            Cancel and go back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ── Success screen ────────────────────────────────────────────────────
   if (status === "success") {
@@ -159,7 +234,7 @@ export default function CheckoutPageContent() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-100 mb-2">
-              {isRsvp ? "You're in! 🎉" : "Order confirmed! 🎟"}
+              {isRsvp ? "You're in!" : "Order confirmed!"}
             </h1>
             <p className="text-gray-400 text-sm">
               Confirmation sent to <strong className="text-gray-300">{email}</strong> and
@@ -205,23 +280,15 @@ export default function CheckoutPageContent() {
     <div className="min-h-screen flex justify-center px-4 py-16">
       <div className="w-full max-w-lg flex flex-col gap-5">
 
-        {/* Header */}
         <div>
           <p className="text-gray-500 text-sm mb-1">Checkout</p>
           <h1 className="text-2xl font-bold text-gray-100">{title}</h1>
           <p className="text-gray-500 text-sm mt-1">{date} · {location}</p>
         </div>
 
-        {/* Image */}
         {image && (
           <div className="relative w-full h-44 rounded-xl overflow-hidden">
-            <Image
-              src={image}
-              alt={title}
-              fill
-              sizes="(max-width: 768px) 100vw, 512px"
-              className="object-cover brightness-75"
-            />
+            <Image src={image} alt={title} fill sizes="(max-width: 768px) 100vw, 512px" className="object-cover brightness-75" />
           </div>
         )}
 
@@ -232,9 +299,7 @@ export default function CheckoutPageContent() {
             <div key={i} className="flex items-center justify-between">
               <div>
                 <p className="text-gray-300 text-sm font-semibold">{item.ticketType}</p>
-                <p className="text-gray-600 text-xs">
-                  {isRsvp ? "Free RSVP" : `${item.quantity} × KES ${item.price}`}
-                </p>
+                <p className="text-gray-600 text-xs">{isRsvp ? "" : `${item.quantity} × KES ${item.price}`}</p>
               </div>
               {!isRsvp && (
                 <p className="text-gray-300 text-sm font-bold">
@@ -243,7 +308,6 @@ export default function CheckoutPageContent() {
               )}
             </div>
           ))}
-
           {!isRsvp && (
             <div className="border-t border-gray-700 pt-3 flex flex-col gap-1">
               {promoApplied && (
@@ -262,22 +326,15 @@ export default function CheckoutPageContent() {
           )}
         </div>
 
-        {/* Promo code */}
+        {/* Promo */}
         {!isRsvp && !promoApplied && (
           <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Promo code"
-              value={promoInput}
+            <input type="text" placeholder="Promo code" value={promoInput}
               onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
               onKeyDown={(e) => e.key === "Enter" && handleApplyPromo()}
-              className={INPUT}
-            />
-            <button
-              onClick={handleApplyPromo}
-              disabled={promoLoading || !promoInput.trim()}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl border border-gray-600 text-gray-300 hover:border-purple-500 hover:text-purple-300 text-sm font-medium transition disabled:opacity-40 shrink-0"
-            >
+              className={INPUT} />
+            <button onClick={handleApplyPromo} disabled={promoLoading || !promoInput.trim()}
+              className="flex items-center gap-2 px-4 py-3 rounded-xl border border-gray-600 text-gray-300 hover:border-purple-500 hover:text-purple-300 text-sm font-medium transition disabled:opacity-40 shrink-0">
               {promoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
               Apply
             </button>
@@ -295,58 +352,55 @@ export default function CheckoutPageContent() {
         )}
         {promoError && <p className="text-red-400 text-xs">{promoError}</p>}
 
-        {/* Contact details */}
+        {/* Contact */}
         <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5 flex flex-col gap-4">
           <p className="text-gray-400 text-xs font-semibold uppercase tracking-widest">Your Details</p>
           <p className="text-gray-600 text-xs -mt-2">
-            Your ticket will be sent to this email and an SMS to your phone.
+            {isRsvp
+              ? "Your ticket will be sent to this email and SMS to your phone."
+              : "An M-Pesa payment prompt will be sent to your phone number."}
           </p>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-500 flex items-center gap-1">
-              <User className="w-3 h-3" /> Full Name *
-            </label>
-            <input type="text" placeholder="Jane Doe" value={name}
-              onChange={(e) => setName(e.target.value)} className={INPUT} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-500 flex items-center gap-1">
-              <Mail className="w-3 h-3" /> Email Address *
-            </label>
-            <input type="email" placeholder="jane@example.com" value={email}
-              onChange={(e) => setEmail(e.target.value)} className={INPUT} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-500 flex items-center gap-1">
-              <Phone className="w-3 h-3" /> Phone Number *
-            </label>
-            <input type="tel" placeholder="+254 712 345 678" value={phone}
-              onChange={(e) => setPhone(e.target.value)} className={INPUT} />
-            <p className="text-gray-700 text-xs">Include country code e.g. +254 for Kenya</p>
-          </div>
+          {[
+            { label: "Full Name",      icon: User,  type: "text",  ph: "Jane Doe",                value: name,  set: setName },
+            { label: "Email Address",  icon: Mail,  type: "email", ph: "jane@example.com",        value: email, set: setEmail },
+            { label: "Phone Number",   icon: Phone, type: "tel",   ph: "+254 712 345 678",        value: phone, set: setPhone },
+          ].map(({ label, icon: Icon, type, ph, value, set }) => (
+            <div key={label} className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 flex items-center gap-1">
+                <Icon className="w-3 h-3" /> {label} *
+              </label>
+              <input type={type} placeholder={ph} value={value}
+                onChange={(e) => set(e.target.value)} className={INPUT} />
+            </div>
+          ))}
+          <p className="text-gray-700 text-xs">Include country code e.g. +254 for Kenya</p>
         </div>
 
-        {/* Error */}
+        {!isRsvp && (
+          <div className="flex items-start gap-3 bg-blue-900/20 border border-blue-700/30 rounded-xl px-4 py-3">
+            <Smartphone className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+            <p className="text-blue-300 text-sm">
+              After clicking pay, you'll receive an M-Pesa prompt on <strong>{phone || "your phone"}</strong>. Enter your PIN to complete.
+            </p>
+          </div>
+        )}
+
         {errorMsg && (
           <div className="flex items-start gap-2 bg-red-900/20 border border-red-700/40 rounded-xl px-4 py-3 text-red-300 text-sm">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {errorMsg}
           </div>
         )}
 
-        {/* CTA */}
-        <button
-          onClick={handleSubmit}
-          disabled={status === "loading"}
-          className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2 text-sm"
-        >
+        <button onClick={handleSubmit} disabled={status === "loading"}
+          className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2 text-sm">
           {status === "loading"
             ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
             : isRsvp
             ? "Confirm RSVP →"
-            : `Pay KES ${total.toLocaleString()} →`}
+            : `Pay KES ${total.toLocaleString()} via M-Pesa →`}
         </button>
 
-        <button onClick={() => router.back()}
-          className="text-center text-gray-600 hover:text-gray-400 text-sm transition">
+        <button onClick={() => router.back()} className="text-center text-gray-600 hover:text-gray-400 text-sm transition">
           ← Go back
         </button>
       </div>

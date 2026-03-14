@@ -1,253 +1,314 @@
 // app/api/checkout/route.ts
+// POST /api/checkout
+//
+// RSVP / free tickets:  confirms order immediately (unchanged behaviour)
+// Paid tickets:         creates order with status="pending", initiates
+//                       Flutterwave M-Pesa STK push, returns txRef for polling.
+//
+// The checkout page polls GET /api/payment/status?txRef=... until "successful".
+// The webhook (app/api/payment/webhook) confirms the order and sends notifications.
+
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-import { Resend } from "resend";
 import { randomUUID } from "crypto";
+import prisma from "@/lib/prisma";
+import { initiateStkPush } from "@/lib/intasend";
+import { sendTicketEmail, sendSMS } from "@/lib/notifications";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// ── Parse discount ───────────────────────────────────────────────────────────
 
-// ── Africa's Talking SMS ─────────────────────────────────────────────────
-async function sendSMS(phone: string, message: string) {
-  const username = process.env.AT_USERNAME;
-  const apiKey   = process.env.AT_API_KEY;
-  const from     = process.env.AT_SENDER_ID || "NOIZYHUB";
-
-  if (!username || !apiKey) {
-    console.warn("⚠️  SMS skipped: AT_USERNAME or AT_API_KEY not set");
-    return;
-  }
-
-  try {
-    const res = await fetch("https://api.africastalking.com/version1/messaging", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "apiKey":        apiKey,
-        "Accept":        "application/json",
-      },
-      body: new URLSearchParams({ username, to: phone, message, from }).toString(),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      console.error("❌ SMS API error:", JSON.stringify(data));
-    } else {
-      console.log("✅ SMS sent:", JSON.stringify(data?.SMSMessageData?.Recipients ?? data));
-    }
-  } catch (err) {
-    console.error("❌ SMS exception:", err);
-  }
-}
-
-// ── Resend email ─────────────────────────────────────────────────────────
-async function sendTicketEmail({
-  to, name, eventTitle, eventDate, eventLocation,
-  items, totalAmount, isRsvp, orderId, baseUrl,
-}: {
-  to: string; name: string; eventTitle: string; eventDate: string;
-  eventLocation: string;
-  items: { ticketType: string; quantity: number; price: string; ticketCode: string }[];
-  totalAmount: number; isRsvp: boolean; orderId: string; baseUrl: string;
-}) {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn("⚠️  Email skipped: RESEND_API_KEY not set");
-    return;
-  }
-
-  const ticketRows = items.map((item) => `
-    <tr>
-      <td style="padding:10px 0;border-bottom:1px solid #2d2d2d;">
-        <strong style="color:#e2e8f0;">${item.ticketType}</strong><br/>
-        <span style="color:#718096;font-size:13px;">Qty: ${item.quantity} · ${isRsvp ? "Free RSVP" : item.price}</span>
-      </td>
-      <td style="padding:10px 0;border-bottom:1px solid #2d2d2d;text-align:right;vertical-align:top;">
-        <a href="${baseUrl}/ticket/${item.ticketCode}"
-           style="background:#7c3aed;color:#fff;padding:6px 14px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;">
-          View Ticket
-        </a>
-      </td>
-    </tr>
-  `).join("");
-
-  const allTicketLinks = items.map((item) =>
-    `<p style="margin:4px 0;"><a href="${baseUrl}/ticket/${item.ticketCode}" style="color:#a78bfa;">${baseUrl}/ticket/${item.ticketCode}</a></p>`
-  ).join("");
-
-  try {
-    const result = await resend.emails.send({
-      from:    process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev",
-      to,
-      subject: `Your ticket for ${eventTitle} 🎟`,
-      html: `
-<!DOCTYPE html>
-<html>
-<body style="margin:0;padding:0;background:#0f0f0f;font-family:system-ui,sans-serif;">
-  <div style="max-width:560px;margin:40px auto;background:#1a1a2e;border-radius:16px;overflow:hidden;border:1px solid #2d2d4e;">
-    <div style="background:linear-gradient(135deg,#4c1d95,#7c3aed);padding:32px;text-align:center;">
-      <p style="color:#ddd6fe;font-size:13px;margin:0 0 8px;">YOUR TICKET</p>
-      <h1 style="color:#fff;margin:0;font-size:26px;">${eventTitle}</h1>
-    </div>
-    <div style="padding:28px;">
-      <p style="color:#a0aec0;margin:0 0 20px;">Hi <strong style="color:#e2e8f0;">${name}</strong>, your ${isRsvp ? "RSVP" : "order"} is confirmed!</p>
-      <div style="background:#111827;border-radius:12px;padding:16px;margin-bottom:20px;">
-        <p style="color:#718096;font-size:12px;margin:0 0 4px;text-transform:uppercase;letter-spacing:1px;">Event Details</p>
-        <p style="color:#e2e8f0;margin:4px 0;">📅 ${eventDate}</p>
-        <p style="color:#e2e8f0;margin:4px 0;">📍 ${eventLocation}</p>
-      </div>
-      <p style="color:#718096;font-size:12px;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">Your Tickets</p>
-      <table style="width:100%;border-collapse:collapse;">${ticketRows}</table>
-      ${!isRsvp ? `
-      <div style="background:#111827;border-radius:12px;padding:16px;margin-top:20px;text-align:right;">
-        <span style="color:#718096;">Total paid: </span>
-        <strong style="color:#68d391;font-size:18px;">KES ${totalAmount.toLocaleString()}</strong>
-      </div>` : ""}
-      <div style="margin-top:24px;padding-top:20px;border-top:1px solid #2d2d2d;">
-        <p style="color:#718096;font-size:12px;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">Ticket Links</p>
-        ${allTicketLinks}
-      </div>
-      <p style="color:#4a5568;font-size:12px;margin-top:24px;text-align:center;">
-        Present your ticket QR code at the entrance.<br/>Order ID: ${orderId}
-      </p>
-    </div>
-  </div>
-</body>
-</html>`,
-    });
-
-    if (result.error) {
-      console.error("❌ Resend error:", JSON.stringify(result.error));
-    } else {
-      console.log("✅ Email sent:", result.data?.id);
-    }
-  } catch (err) {
-    console.error("❌ Email exception:", err);
-  }
-}
-
-// ── Parse discount ───────────────────────────────────────────────────────
 function applyDiscount(price: number, discount: string): number {
   if (discount.endsWith("%")) return price * (1 - parseFloat(discount) / 100);
   const flat = parseFloat(discount.replace(/[^0-9.]/g, "")) || 0;
   return Math.max(0, price - flat);
 }
 
-// ── POST /api/checkout ───────────────────────────────────────────────────
+// ── POST /api/checkout ────────────────────────────────────────────────────────
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { eventId, name, email, phone, tickets: cartItems, promoCode } = body;
 
-    console.log("📦 Checkout payload:", JSON.stringify({ eventId, name, email, phone, cartItems, promoCode }, null, 2));
-
-    if (!eventId || !name?.trim() || !email?.trim() || !phone?.trim() || !cartItems?.length)
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (
+      !eventId ||
+      !name?.trim() ||
+      !email?.trim() ||
+      !phone?.trim() ||
+      !cartItems?.length
+    ) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
+    }
 
     const event = await prisma.event.findUnique({
-      where:  { id: Number(eventId) },
-      select: { title: true, date: true, location: true, attendees: true, time: true },
+      where: { id: Number(eventId) },
+      select: {
+        title: true,
+        date: true,
+        location: true,
+        time: true,
+        attendees: true,
+      },
     });
-    if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    if (!event)
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
     const ticketIds = cartItems.map((i: any) => Number(i.ticketId));
-    const dbTickets = await prisma.ticket.findMany({ where: { id: { in: ticketIds } } });
-    const isRsvp    = dbTickets.every((t) => t.type === "RSVP");
+    const dbTickets = await prisma.ticket.findMany({
+      where: { id: { in: ticketIds } },
+    });
+    const isRsvp = dbTickets.every((t) => t.type === "RSVP");
 
+    // Prevent duplicate RSVP
     if (isRsvp) {
       const existing = await prisma.order.findFirst({
         where: { eventId: Number(eventId), email: email.trim().toLowerCase() },
       });
-      if (existing)
-        return NextResponse.json({ error: "You have already RSVP'd for this event." }, { status: 409 });
+      if (existing) {
+        return NextResponse.json(
+          { error: "You have already RSVP'd for this event." },
+          { status: 409 },
+        );
+      }
     }
 
+    // Validate promo code
     let promoRecord: { id: string; discount: string } | null = null;
     let discountLabel: string | null = null;
 
     if (promoCode?.trim()) {
       promoRecord = await prisma.promoCode.findFirst({
-        where: { eventId: Number(eventId), code: promoCode.trim().toUpperCase(), active: true },
+        where: {
+          eventId: Number(eventId),
+          code: promoCode.trim().toUpperCase(),
+          active: true,
+        },
       });
-      if (!promoRecord)
-        return NextResponse.json({ error: "Invalid or inactive promo code." }, { status: 400 });
-      const promoFull = await prisma.promoCode.findUnique({ where: { id: promoRecord.id } });
-      if (promoFull && promoFull.uses >= promoFull.maxUses)
-        return NextResponse.json({ error: "This promo code has reached its usage limit." }, { status: 400 });
+      if (!promoRecord) {
+        return NextResponse.json(
+          { error: "Invalid or inactive promo code." },
+          { status: 400 },
+        );
+      }
+      const promoFull = await prisma.promoCode.findUnique({
+        where: { id: promoRecord.id },
+      });
+      if (promoFull && promoFull.uses >= promoFull.maxUses) {
+        return NextResponse.json(
+          { error: "This promo code has reached its usage limit." },
+          { status: 400 },
+        );
+      }
       discountLabel = promoRecord.discount;
     }
 
+    // Calculate total
     let totalAmount = 0;
     if (!isRsvp) {
       for (const item of cartItems) {
-        const base = parseFloat(String(item.price).replace(/[^0-9.]/g, "")) || 0;
-        const disc = promoRecord ? applyDiscount(base, promoRecord.discount) : base;
+        const base =
+          parseFloat(String(item.price).replace(/[^0-9.]/g, "")) || 0;
+        const disc = promoRecord
+          ? applyDiscount(base, promoRecord.discount)
+          : base;
         totalAmount += disc * item.quantity;
       }
     }
 
-    const orderId    = randomUUID();
+    const orderId = randomUUID();
     const orderItems = cartItems.map((item: any) => ({
-      id:         randomUUID(),
-      ticketId:   Number(item.ticketId),
+      id: randomUUID(),
+      ticketId: Number(item.ticketId),
       ticketType: item.ticketType,
-      price:      item.price,
-      quantity:   item.quantity,
+      price: item.price,
+      quantity: item.quantity,
       ticketCode: randomUUID(),
     }));
 
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+    const eventDate = new Date(event.date).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    // ── RSVP / free: confirm immediately ──────────────────────────────────────
+    if (isRsvp || totalAmount === 0) {
+      await prisma.$transaction([
+        prisma.order.create({
+          data: {
+            id: orderId,
+            eventId: Number(eventId),
+            email: email.trim().toLowerCase(),
+            phone: phone.trim(),
+            name: name.trim(),
+            promoCode: promoCode?.trim().toUpperCase() || null,
+            discount: discountLabel,
+            totalAmount: 0,
+            isRsvp: true,
+            status: "confirmed",
+            items: { create: orderItems },
+          },
+        }),
+        ...(promoRecord
+          ? [
+              prisma.promoCode.update({
+                where: { id: promoRecord.id },
+                data: { uses: { increment: 1 } },
+              }),
+            ]
+          : []),
+        prisma.event.update({
+          where: { id: Number(eventId) },
+          data: {
+            attendees: {
+              increment: cartItems.reduce(
+                (s: number, i: any) => s + i.quantity,
+                0,
+              ),
+            },
+          },
+        }),
+      ]);
+
+      await sendTicketEmail({
+        to: email.trim(),
+        name: name.trim(),
+        eventTitle: event.title,
+        eventDate,
+        eventLocation: event.location,
+        items: orderItems.map((oi: any) => ({
+          ticketType: oi.ticketType,
+          quantity: oi.quantity,
+          price: oi.price,
+          ticketCode: oi.ticketCode,
+        })),
+        totalAmount: 0,
+        isRsvp: true,
+        orderId,
+        baseUrl,
+      });
+
+      const smsText = `Hi ${name.trim()}! Your RSVP for ${event.title} on ${eventDate} is confirmed. View your ticket: ${baseUrl}/ticket/${orderItems[0].ticketCode}`;
+      await sendSMS(phone.trim(), smsText);
+
+      return NextResponse.json({
+        success: true,
+        type: "rsvp",
+        orderId,
+        ticketCodes: orderItems.map((i: any) => i.ticketCode),
+        totalAmount: 0,
+      });
+    }
+
+    // ── Paid tickets: create pending order + initiate STK push ───────────────
+    const txRef = randomUUID();
+
+    // Create order as "pending" + PaymentRecord atomically
     await prisma.$transaction([
       prisma.order.create({
         data: {
-          id:          orderId,
-          eventId:     Number(eventId),
-          email:       email.trim().toLowerCase(),
-          phone:       phone.trim(),
-          name:        name.trim(),
-          promoCode:   promoCode?.trim().toUpperCase() || null,
-          discount:    discountLabel,
+          id: orderId,
+          eventId: Number(eventId),
+          email: email.trim().toLowerCase(),
+          phone: phone.trim(),
+          name: name.trim(),
+          promoCode: promoCode?.trim().toUpperCase() || null,
+          discount: discountLabel,
           totalAmount,
-          isRsvp,
-          status:      "confirmed",
+          isRsvp: false,
+          status: "pending",
           items: { create: orderItems },
         },
       }),
-      ...(promoRecord ? [
-        prisma.promoCode.update({ where: { id: promoRecord.id }, data: { uses: { increment: 1 } } }),
-      ] : []),
+      prisma.paymentRecord.create({
+        data: {
+          txRef,
+          type: "ticket",
+          amount: totalAmount,
+          currency: "KES",
+          phone: phone.trim(),
+          status: "pending",
+          orderId,
+        },
+      }),
+      ...(promoRecord
+        ? [
+            prisma.promoCode.update({
+              where: { id: promoRecord.id },
+              data: { uses: { increment: 1 } },
+            }),
+          ]
+        : []),
+      // Increment attendees optimistically — webhook will not double-count
       prisma.event.update({
         where: { id: Number(eventId) },
-        data:  { attendees: { increment: cartItems.reduce((s: number, i: any) => s + i.quantity, 0) } },
+        data: {
+          attendees: {
+            increment: cartItems.reduce(
+              (s: number, i: any) => s + i.quantity,
+              0,
+            ),
+          },
+        },
       }),
     ]);
 
-    console.log("✅ Order created:", orderId);
+    // Initiate STK push
+    const nameParts = name.trim().split(" ");
+    const firstName = nameParts[0] ?? name.trim();
+    const lastName = nameParts.slice(1).join(" ") || firstName;
 
-    const baseUrl   = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-    const eventDate = new Date(event.date).toLocaleDateString("en-US", {
-      month: "long", day: "numeric", year: "numeric",
+    const stkResult = await initiateStkPush({
+      phone: phone.trim(),
+      amount: totalAmount,
+      currency: "KES",
+      apiRef: txRef,
+      narrative: `Tickets — ${event.title}`,
+      email: email.trim(),
+      firstName,
+      lastName,
     });
 
-    await sendTicketEmail({
-      to: email.trim(), name: name.trim(),
-      eventTitle: event.title, eventDate, eventLocation: event.location,
-      items: orderItems.map((oi: any) => ({
-        ticketType: oi.ticketType, quantity: oi.quantity,
-        price: oi.price, ticketCode: oi.ticketCode,
-      })),
-      totalAmount, isRsvp, orderId, baseUrl,
-    });
+    if (!stkResult.success) {
+      // Mark payment as failed so the user can retry
+      await prisma.paymentRecord.update({
+        where: {
+          id: (await prisma.paymentRecord.findUnique({
+            where: { txRef },
+            select: { id: true },
+          }))!.id,
+        },
+        data: { status: "failed" },
+      });
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { status: "failed" },
+      });
 
-    const smsText = isRsvp
-      ? `Hi ${name.trim()}! Your RSVP for ${event.title} on ${eventDate} is confirmed. View your ticket: ${baseUrl}/ticket/${orderItems[0].ticketCode}`
-      : `Hi ${name.trim()}! Your tickets for ${event.title} (${eventDate}) are confirmed. Total: KES ${totalAmount.toLocaleString()}. View: ${baseUrl}/ticket/${orderItems[0].ticketCode}`;
-    await sendSMS(phone.trim(), smsText);
+      return NextResponse.json(
+        { error: `Could not initiate payment: ${stkResult.message}` },
+        { status: 502 },
+      );
+    }
 
+    // Return txRef — frontend polls /api/payment/status?txRef=...
     return NextResponse.json({
-      success:     true,
+      success: true,
+      type: "mpesa",
+      txRef,
       orderId,
-      ticketCodes: orderItems.map((i: any) => i.ticketCode),
       totalAmount,
+      message:
+        "Check your phone and enter your M-Pesa PIN to complete payment.",
     });
   } catch (err: any) {
     console.error("❌ Checkout error:", err);
-    return NextResponse.json({ error: err.message ?? "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: err.message ?? "Internal server error" },
+      { status: 500 },
+    );
   }
 }

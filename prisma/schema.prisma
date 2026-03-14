@@ -31,11 +31,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  events        Event[]        @relation("UserEvents")
-  categories    Category[]     @relation("UserCategories")
-  marketProfile MarketProfile?
+  accounts         Account[]
+  sessions         Session[]
+  events           Event[]           @relation("UserEvents")
+  categories       Category[]        @relation("UserCategories")
+  marketProfile    MarketProfile?
+  wallet           VendorWallet?
+  slotApplications SlotApplication[]
 }
 
 model Account {
@@ -112,6 +114,7 @@ model Event {
   promoCodes         PromoCode[]
   orders             Order[]
   vendorApplications VendorApplication[]
+  vendingSlots       VendingSlot[]
 }
 
 model EventCategory {
@@ -163,12 +166,20 @@ model Order {
   discount    String?
   totalAmount Float    @default(0)
   isRsvp      Boolean  @default(false)
+  // "pending" | "confirmed" | "failed" | "cancelled"
   status      String   @default("confirmed")
   createdAt   DateTime @default(now())
 
   eventId Int
   event   Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
   items   OrderItem[]
+
+  // Link to payment record (null for RSVP / free orders)
+  paymentRecord PaymentRecord?
+
+  @@index([eventId])
+  @@index([status])
+  @@index([email])
 }
 
 model OrderItem {
@@ -181,6 +192,167 @@ model OrderItem {
 
   orderId String
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+// ─── PAYMENT RECORDS ─────────────────────────────────────────────────────────
+// Immutable record of every Flutterwave transaction.
+// txRef is our idempotency key — generated before redirect, verified on webhook.
+// type: "ticket" | "vending_slot"
+
+model PaymentRecord {
+  id        String   @id @default(cuid())
+  txRef     String   @unique   // our UUID sent to Flutterwave
+  flwRef    String?            // Flutterwave's reference (set on webhook)
+  type      String             // "ticket" | "vending_slot"
+  amount    Float
+  currency  String   @default("KES")
+  phone     String
+  // "pending" | "successful" | "failed"
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One of these is set depending on type
+  orderId         String?          @unique
+  order           Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  slotApplicationId String?        @unique
+  slotApplication   SlotApplication? @relation(fields: [slotApplicationId], references: [id], onDelete: SetNull)
+
+  @@index([txRef])
+  @@index([status])
+}
+
+// ─── VENDING SLOTS ────────────────────────────────────────────────────────────
+
+model VendingSlot {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  price       Float
+  currency    String   @default("KES")
+  totalSlots  Int                        // NEVER exposed to public
+  // "open" | "closed"
+  status      String   @default("open")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  eventId Int
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  applications SlotApplication[]
+
+  @@index([eventId])
+  @@index([status])
+}
+
+// ─── SLOT APPLICATIONS ────────────────────────────────────────────────────────
+// status flow: "pending" → "approved" → "paid" → "confirmed"
+//                       → "rejected"
+//              "approved" → "expired" (if not paid within 48h)
+
+model SlotApplication {
+  id              String   @id @default(cuid())
+  businessName    String             // snapshot at time of application
+  contactName     String
+  contactEmail    String
+  contactPhone    String
+  description     String             // what they plan to sell/offer
+  hasPriority     Boolean  @default(false)  // true if applicant has a MarketProfile
+  // "pending" | "approved" | "rejected" | "paid" | "confirmed" | "expired"
+  status          String   @default("pending")
+  ownerNote       String?            // event owner's note on approve/reject
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  slotId String
+  slot   VendingSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  // Applicant user (required — must be logged in to apply)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Optional link to their market profile (sets hasPriority = true)
+  marketProfileId String?
+  marketProfile   MarketProfile? @relation(fields: [marketProfileId], references: [id], onDelete: SetNull)
+
+  paymentRecord PaymentRecord?
+
+  @@unique([slotId, userId])   // one application per user per slot
+  @@index([slotId])
+  @@index([userId])
+  @@index([status])
+}
+
+// ─── VENDOR WALLET ────────────────────────────────────────────────────────────
+// One wallet per user. Created lazily when they first receive a payment.
+
+model VendorWallet {
+  id             String   @id @default(cuid())
+  balance        Float    @default(0)   // available to withdraw
+  totalEarned    Float    @default(0)   // lifetime credited (before fees)
+  totalWithdrawn Float    @default(0)   // lifetime withdrawn
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions       WalletTransaction[]
+  withdrawalRequests WithdrawalRequest[]
+}
+
+// ─── WALLET TRANSACTIONS ──────────────────────────────────────────────────────
+// Immutable ledger — never updated or deleted after creation.
+// type: "credit" | "platform_fee" | "withdrawal" | "refund"
+
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  type        String
+  amount      Float
+  description String
+  // Snapshot of balance AFTER this transaction (for audit trail)
+  balanceAfter Float
+  createdAt   DateTime @default(now())
+
+  walletId String
+  wallet   VendorWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  // Reference to the source payment (for traceability)
+  paymentTxRef String?
+
+  @@index([walletId])
+  @@index([createdAt])
+}
+
+// ─── WITHDRAWAL REQUESTS ──────────────────────────────────────────────────────
+// status: "pending" | "processing" | "completed" | "failed"
+// Payout details encrypted at rest with AES-256-GCM (lib/encryption.ts)
+
+model WithdrawalRequest {
+  id     String @id @default(cuid())
+  amount Float
+  // "mpesa" | "bank"
+  method String
+
+  // Encrypted JSON blob — decrypt only at payout time
+  // For mpesa: { phone: string }
+  // For bank:  { accountName: string, accountNumber: string, bankName: string, bankCode: string }
+  encryptedPayoutDetails String @db.Text
+
+  // "pending" | "processing" | "completed" | "failed"
+  status      String   @default("pending")
+  failureNote String?
+  // Flutterwave transfer reference (set when processing starts)
+  flwTransferRef String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  walletId String
+  wallet   VendorWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([status])
 }
 
 // ─── MARKETPLACE ──────────────────────────────────────────────────────────────
@@ -212,10 +384,11 @@ model MarketProfile {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  listings     MarketListing[]
-  applications VendorApplication[]
-  reviews      MarketReview[]
-  inquiries    MarketInquiry[]
+  listings         MarketListing[]
+  applications     VendorApplication[]
+  reviews          MarketReview[]
+  inquiries        MarketInquiry[]
+  slotApplications SlotApplication[]
 
   @@index([category])
   @@index([isActive])
@@ -299,3 +472,5 @@ model MarketReview {
 
   @@index([profileId])
 }
+
+

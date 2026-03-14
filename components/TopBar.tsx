@@ -68,7 +68,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
 
           <div className="flex items-center gap-3 ml-2 lg:ml-10 flex-1">
             {isAuthenticated && (
-              <Link href="/events">
+              <Link href="/events/all">
                 <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 hover:cursor-pointer transition flex gap-2 items-center">
                   <Telescope className="h-4 w-4" />
                   <span>View events</span>

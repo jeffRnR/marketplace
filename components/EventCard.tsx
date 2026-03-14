@@ -109,7 +109,7 @@ function EventCard({
   const handleBuy = () => {
     const selected = liveTickets
       .map((t, idx) => {
-        const isRsvpTicket = t.type === "RSVP" || t.price === "Free" || t.price === "0";
+        const isRsvpTicket = t.type === "RSVP" || t.price === " " || t.price === "0";
         return {
           ticketId:   t.id,
           ticketType: t.type,
@@ -215,7 +215,7 @@ function EventCard({
               {liveTickets.length > 0 && (
                 <ul className="space-y-3 mb-4">
                   {liveTickets.map((ticket, idx) => {
-                    const isRsvpTicket = ticket.type === "RSVP" || ticket.price === "Free" || ticket.price === "0";
+                    const isRsvpTicket = ticket.type === "RSVP" || ticket.price === " " || ticket.price === "0";
                     return (
                       <li key={idx}
                         className="flex items-center justify-between bg-white/2 px-3 py-2 rounded-2xl border border-gray-400/50">

@@ -100,7 +100,7 @@ export function EventRow({
 
           <div className="absolute top-3 right-3 flex items-center gap-2 flex-wrap justify-end">
             {event.stats.isRsvp
-              ? <Badge variant="blue">Free RSVP</Badge>
+              ? <Badge variant="blue">RSVP</Badge>
               : <Badge variant="purple">Paid</Badge>}
             {event.stats.spotsRemaining === 0 && <Badge variant="red">Sold Out</Badge>}
             {event.stats.fillRate >= 90 && event.stats.spotsRemaining > 0 && <Badge variant="orange">Almost Full</Badge>}
@@ -297,7 +297,7 @@ function OverviewPanel({ event }: { event: ManagedEvent }) {
                 <p className="text-gray-500 text-xs mt-0.5">{t.capacity} spots</p>
               </div>
               <span className={`font-bold text-sm ${t.type === "RSVP" ? "text-purple-400" : "text-green-400"}`}>
-                {t.type === "RSVP" ? "FREE" : t.price}
+                {t.type === "RSVP" ? " " : t.price}
               </span>
             </div>
           ))}

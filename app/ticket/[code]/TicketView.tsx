@@ -235,7 +235,7 @@ export default function TicketView({
       ctx.fillText(ticketType, PAD + 14, y + 50);
       ctx.font = "bold 14px -apple-system, sans-serif";
       ctx.fillStyle = isRsvp ? "#a78bfa" : "#34d399";
-      ctx.fillText(isRsvp ? "Free RSVP" : `KES ${price}`, PAD + 14, y + 76);
+      ctx.fillText(isRsvp ? "RSVP" : `KES ${price}`, PAD + 14, y + 76);
 
       ctx.fillStyle = "#1e293b";
       roundRect(ctx, PAD + boxW + 16, y, boxW, boxH, 14); ctx.fill();

@@ -467,7 +467,7 @@ export default function CreateEvent() {
                       : "border-gray-600 bg-gray-800/30 text-gray-400 hover:border-gray-500"
                   }`}
                 >
-                  {type === "rsvp" ? "🎟 RSVP (Free)" : "💳 Paid Tickets"}
+                  {type === "rsvp" ? "RSVP" : "Paid Tickets"}
                 </button>
               ))}
             </div>
