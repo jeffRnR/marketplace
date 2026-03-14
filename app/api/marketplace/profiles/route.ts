@@ -31,6 +31,7 @@ export async function GET(req: Request) {
       where: {
         isActive: true,
         ...(category ? { category } : {}),
+        ...(mine ? { mine } : {}),
         ...(search ? {
           OR: [
             { businessName: { contains: search, mode: "insensitive" } },
