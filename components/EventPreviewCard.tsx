@@ -7,7 +7,7 @@ interface EventPreviewCardProps {
   date: string;
   time: string;
   location: string;
-  variant?: "allEvents"; // 👈 only one variant
+  variant?: "allEvents";
 }
 
 function EventPreviewCard({
@@ -16,53 +16,58 @@ function EventPreviewCard({
   date,
   time,
   location,
-  variant, // 👈 no default fallback needed
+  variant,
 }: EventPreviewCardProps) {
+  const isAllEvents = variant === "allEvents";
+
   return (
     <div
-      className={`shadow-md flex items-center overflow-hidden hover:shadow-lg transition ${
-        variant === "allEvents" ? "flex-col items-start" : ""
-      }`}
+      className={`
+        flex overflow-hidden hover:shadow-lg transition duration-300 h-full
+        ${isAllEvents ? "flex-col" : "flex-row items-center gap-3"}
+      `}
     >
-      {/* Event Image */}
-      <img
-        src={image}
-        alt={title}
-        className={`rounded-xl shadow-md shadow-gray-800/20 object-cover ${
-          variant === "allEvents"
-            ? "w-full h-80 mb-3" // bigger image for allEvents
-            : "w-30 h-30"
-        }`}
-      />
+      {/* Image */}
+      <div
+        className={`
+          shrink-0 overflow-hidden rounded-xl 
+          ${isAllEvents ? "w-full aspect-video" : "w-28 h-28"}
+        `}
+      >
+        <img
+          src={image}
+          alt={title}
+          className="w-full h-full object-cover"
+        />
+      </div>
 
-      {/* Event Info */}
-      <div className={`${variant === "allEvents" ? "p-2 space-y-1 mb-4 " : "p-3 space-y-1"}`}>
+      {/* Info */}
+      <div className="flex flex-col justify-between flex-1 min-w-0 p-2 gap-1">
         <h2
-          className={`font-bold text-gray-300 ${
-            variant === "allEvents" ? "text-[1.5rem]" : "text-[1.3rem]"
-          }`}
+          className={`
+            font-bold text-gray-300 leading-snug line-clamp-2
+            ${isAllEvents ? "text-xl" : "text-base"}
+          `}
         >
           {title}
         </h2>
 
-        <span className="text-gray-400 flex items-center gap-2 text-md">
-          <CalendarDays className="h-4 w-4" />
-          {date}
-        </span>
+        <div className="flex flex-col gap-1 mt-1">
+          <span className="text-gray-400 flex items-center gap-2 text-sm truncate">
+            <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{date}</span>
+          </span>
 
-        <span className="text-gray-400 flex items-center gap-2 text-md">
-          <Clock className="h-4 w-4" />
-          {time} - {time}
-        </span>
+          <span className="text-gray-400 flex items-center gap-2 text-sm truncate">
+            <Clock className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{time}</span>
+          </span>
 
-        <p
-          className={`text-gray-400 flex items-center gap-2 ${
-            variant === "allEvents" ? "text-sm" : "text-md"
-          }`}
-        >
-          <MapPin className="h-4 w-4" />
-          {location}
-        </p>
+          <span className="text-gray-400 flex items-center gap-2 text-sm truncate">
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{location}</span>
+          </span>
+        </div>
       </div>
     </div>
   );

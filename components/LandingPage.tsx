@@ -11,13 +11,12 @@ function LandingPage() {
   const { data: session, status } = useSession();
   const [showSignIn, setShowSignIn] = useState(false);
   const router = useRouter();
+  const [showSignInModal, setShowSignInModal] = useState(false);
 
   const handleCreateEvent = () => {
     if (status !== "authenticated") {
-      // Show sign-in modal if not logged in
       setShowSignIn(true);
     } else {
-      // Use Next.js router instead of window.location
       router.push("/events/create");
     }
   };
@@ -46,19 +45,23 @@ function LandingPage() {
               Loading...
             </div>
           ) : isAuthenticated ? (
-            <Link href="/events/create">
-              <button className="bg-purple-800 text-gray-100 rounded-lg px-4 py-2 text-md font-bold border border-purple-800 hover:bg-purple-600 hover:cursor-pointer transition duration-300 flex justify-center gap-2 items-center">
-                <span>Create Event</span>
+            <Link href="/my-events">
+              <button
+                className="bg-gray-200 text-gray-800 rounded-lg px-4 py-2 text-md font-bold border border-gray-400 hover:bg-transparent hover:text-gray-300 hover:cursor-pointer transition duration-300 flex justify-center gap-2 items-center"
+                // onClick={() => setShowSignInModal(true)}
+              >
+                <span>My Events</span>
                 <ArrowUpRight className="w-4 h-4" />
               </button>
             </Link>
           ) : (
-            <Link href="/events">
-              <button className="bg-gray-200 text-gray-800 rounded-lg px-4 py-2 text-md font-bold border border-gray-400 hover:bg-transparent hover:text-gray-300 hover:cursor-pointer transition duration-300 flex justify-center gap-2 items-center">
-                <span>View Events</span>
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
-            </Link>
+            <button
+              className="bg-gray-200 text-gray-800 rounded-lg px-4 py-2 text-md font-bold border border-gray-400 hover:bg-transparent hover:text-gray-300 hover:cursor-pointer transition duration-300 flex justify-center gap-2 items-center"
+              onClick={() => setShowSignInModal(true)}
+            >
+              <span>Sign in to create event</span>
+              <ArrowUpRight className="w-4 h-4" />
+            </button>
           )}
         </div>
       </div>
@@ -66,7 +69,7 @@ function LandingPage() {
       {/* Right: Video */}
       <div className="flex items-center justify-center">
         <video
-          className="w-[450px] h-[450px] lg:w-[500px] lg:h-[500px] rounded-full object-cover shadow-lg"
+          className="w-[300px] h-[300px] lg:w-[450px] lg:h-[450px] rounded-full object-cover shadow-lg"
           autoPlay
           loop
           muted
@@ -77,7 +80,7 @@ function LandingPage() {
         </video>
       </div>
 
-      {showSignIn && <SignInModal onClose={() => setShowSignIn(false)} />}
+      {showSignInModal && <SignInModal onClose={() => setShowSignInModal(false)} />}
     </div>
   );
 }
