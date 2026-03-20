@@ -9,6 +9,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
 import { initiateStkPush } from "@/lib/intasend";
+import { notifyVendingApplication } from "@/lib/createNotification";
 
 async function getSessionUser(email: string) {
   return prisma.user.findUnique({
@@ -116,6 +117,21 @@ export async function POST(req: Request) {
         status:        "pending",
       },
     });
+
+    // Notify event owner
+    const slotWithEvent = await prisma.vendingSlot.findUnique({
+      where:   { id: slotId },
+      include: { event: { select: { createdById: true, title: true, id: true } } },
+    });
+    if (slotWithEvent?.event) {
+      notifyVendingApplication({
+        ownerId:    slotWithEvent.event.createdById,
+        businessName: businessName.trim(),
+        slotTitle:  slot.title,
+        eventTitle: slotWithEvent.event.title,
+        eventId:    slotWithEvent.event.id,
+      });
+    }
 
     return NextResponse.json({ application }, { status: 201 });
   } catch (err: any) {

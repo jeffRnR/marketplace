@@ -30,6 +30,10 @@ import {
   sendVendingConfirmationEmail,
   sendSMS,
 } from "@/lib/notifications";
+import {
+  notifyTicketOrder,
+  notifyVendingConfirmed,
+} from "@/lib/createNotification";
 
 export async function POST(req: Request) {
   let body: Record<string, unknown>;
@@ -177,6 +181,17 @@ async function handleTicketPayment(
   const smsText = `Hi ${order.name}! Tickets for ${order.event.title} (${eventDate}) confirmed. KES ${order.totalAmount.toLocaleString()} paid. View: ${baseUrl}/ticket/${order.items[0]?.ticketCode}`;
   await sendSMS(order.phone, smsText);
 
+  // In-app notification for event owner
+  const firstItem = order.items[0];
+  notifyTicketOrder({
+    ownerId:    order.event.createdById,
+    buyerName:  order.name,
+    eventTitle: order.event.title,
+    quantity:   order.items.reduce((s, i) => s + i.quantity, 0),
+    ticketType: firstItem?.ticketType ?? "Ticket",
+    isRsvp:     false,
+  });
+
   console.log(`✅ Ticket payment confirmed: order=${order.id} invoice=${invoiceId}`);
 }
 
@@ -258,6 +273,15 @@ async function handleVendingPayment(
 
   const smsText = `Hi ${application.contactName}! Vending slot (${application.slot.title}) at ${application.slot.event.title} on ${eventDate} confirmed. KES ${record.amount.toLocaleString()} paid. Ref: ${application.id.slice(0, 8).toUpperCase()}`;
   await sendSMS(application.contactPhone, smsText);
+
+  // In-app notification for event owner
+  notifyVendingConfirmed({
+    ownerId:      application.slot.event.createdById,
+    businessName: application.businessName,
+    slotTitle:    application.slot.title,
+    eventTitle:   application.slot.event.title,
+    amount:       record.amount,
+  });
 
   console.log(`✅ Vending payment confirmed: application=${application.id} invoice=${invoiceId}`);
 }
