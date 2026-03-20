@@ -9,7 +9,7 @@ import prisma from "@/lib/prisma";
 
 export async function GET(
   _req: Request,
-  { params }: { params: { eventId: string } }
+  { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -23,7 +23,8 @@ export async function GET(
     if (!user)
       return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const eventId = Number(params.eventId);
+    const { eventId: eventIdParam } = await params;
+    const eventId = Number(eventIdParam);
 
     const event = await prisma.event.findUnique({
       where:  { id: eventId },

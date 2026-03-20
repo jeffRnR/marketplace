@@ -28,19 +28,20 @@ async function assertParticipant(conversationId: string, userId: string, marketP
   return { conv, isVendor, isBuyer };
 }
 
-export async function GET(req: Request, { params }: { params: { conversationId: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ conversationId: string }> }) {
+  const { conversationId } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const user = await getUser(session.user.email);
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const check = await assertParticipant(params.conversationId, user.id, user.marketProfile?.id);
+  const check = await assertParticipant(conversationId, user.id, user.marketProfile?.id);
   if (!check) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   // Mark all messages NOT sent by me as read
   await prisma.message.updateMany({
     where: {
-      conversationId: params.conversationId,
+      conversationId: conversationId,
       senderId:       { not: user.id },
       readAt:         null,
     },
@@ -49,12 +50,12 @@ export async function GET(req: Request, { params }: { params: { conversationId: 
 
   const [messages, conversation] = await Promise.all([
     prisma.message.findMany({
-      where:   { conversationId: params.conversationId },
+      where:   { conversationId: conversationId },
       include: { sender: { select: { id: true, name: true, email: true } } },
       orderBy: { createdAt: "asc" },
     }),
     prisma.conversation.findUnique({
-      where:   { id: params.conversationId },
+      where:   { id: conversationId },
       include: {
         buyer:         { select: { id: true, name: true, email: true } },
         vendorProfile: { select: { id: true, businessName: true, logoImage: true, userId: true } },
@@ -70,13 +71,14 @@ export async function GET(req: Request, { params }: { params: { conversationId: 
   return NextResponse.json({ messages, conversation });
 }
 
-export async function POST(req: Request, { params }: { params: { conversationId: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ conversationId: string }> }) {
+  const { conversationId } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const user = await getUser(session.user.email);
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const check = await assertParticipant(params.conversationId, user.id, user.marketProfile?.id);
+  const check = await assertParticipant(conversationId, user.id, user.marketProfile?.id);
   if (!check) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
@@ -85,18 +87,18 @@ export async function POST(req: Request, { params }: { params: { conversationId:
   const [message] = await prisma.$transaction([
     prisma.message.create({
       data: {
-        conversationId: params.conversationId,
+        conversationId: conversationId,
         senderId:       user.id,
         content:        body.content.trim(),
       },
     }),
     prisma.conversation.update({
-      where: { id: params.conversationId },
+      where: { id: conversationId },
       data:  { lastMessageAt: new Date() },
     }),
   ]);
 
-  broadcastMessage(params.conversationId, {
+  broadcastMessage(conversationId, {
     id:             message.id,
     conversationId: message.conversationId,
     senderId:       message.senderId,
@@ -108,7 +110,7 @@ export async function POST(req: Request, { params }: { params: { conversationId:
 
   // Notify the other participant
   const conv = await prisma.conversation.findUnique({
-    where:  { id: params.conversationId },
+    where:  { id: conversationId },
     select: { buyerId: true, vendorProfile: { select: { userId: true } } },
   });
   if (conv) {
@@ -116,7 +118,7 @@ export async function POST(req: Request, { params }: { params: { conversationId:
     notifyNewMessage({
       recipientId,
       senderName:     user.name ?? session.user.email ?? "Someone",
-      conversationId: params.conversationId,
+      conversationId: conversationId,
       preview:        body.content.trim(),
     });
   }

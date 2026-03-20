@@ -10,7 +10,8 @@ import { sseClients } from "@/app/api/messages/route";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: Request, { params }: { params: { conversationId: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ conversationId: string }> }) {
+  const { conversationId } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return new Response("Unauthorized", { status: 401 });
@@ -24,7 +25,7 @@ export async function GET(req: Request, { params }: { params: { conversationId: 
   if (!user) return new Response("Not found", { status: 404 });
 
   const conv = await prisma.conversation.findUnique({
-    where:  { id: params.conversationId },
+    where:  { id: conversationId },
     select: { buyerId: true, vendorProfile: { select: { userId: true } } },
   });
   if (!conv) return new Response("Not found", { status: 404 });
@@ -47,10 +48,10 @@ export async function GET(req: Request, { params }: { params: { conversationId: 
       };
 
       // Register this client
-      if (!sseClients.has(params.conversationId)) {
-        sseClients.set(params.conversationId, new Set());
+      if (!sseClients.has(conversationId)) {
+        sseClients.set(conversationId, new Set());
       }
-      sseClients.get(params.conversationId)!.add(send);
+      sseClients.get(conversationId)!.add(send);
 
       // Send a heartbeat comment every 20 seconds to keep connection alive
       const heartbeat = setInterval(() => {
@@ -63,9 +64,9 @@ export async function GET(req: Request, { params }: { params: { conversationId: 
       req.signal.addEventListener("abort", () => {
         isClosed = true;
         clearInterval(heartbeat);
-        sseClients.get(params.conversationId)?.delete(send);
-        if (sseClients.get(params.conversationId)?.size === 0) {
-          sseClients.delete(params.conversationId);
+        sseClients.get(conversationId)?.delete(send);
+        if (sseClients.get(conversationId)?.size === 0) {
+          sseClients.delete(conversationId);
         }
         try { controller.close(); } catch { /* already closed */ }
       });
