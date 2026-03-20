@@ -202,7 +202,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                 <Link href="/marketplace" onClick={closeMobileMenu}>
                   <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center">
                     <Store className="h-5 w-5" />
-                    <span>Marketplace1</span>
+                    <span>Marketplace</span>
                   </button>
                 </Link>
                 <Link href="/messages" onClick={closeMobileMenu}>
