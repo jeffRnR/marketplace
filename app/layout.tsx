@@ -6,6 +6,7 @@ import TopBarClient from "@/components/TopBarClient";
 import FooterClient from "@/components/FooterClient";
 import NextAuthProvider from "@/components/NextAuthProvider";
 import type { Metadata } from "next";
+import BackButton from "@/components/BackButton";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       >
         <NextAuthProvider>
           <TopBarClient />
+          <BackButton />
           <main className="mt-4 flex-grow">{children}</main>
           <FooterClient />
         </NextAuthProvider>
