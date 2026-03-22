@@ -94,7 +94,7 @@ export default function EventsBannerSlider({ events, vendors, loading }: Props) 
     <div className="flex flex-col items-start">
       {/* Tab toggle */}
       <div className="flex gap-1 bg-gray-900 border border-gray-800 border-b-0
-                      rounded-t-xl px-1.5 pt-1.5 pb-0">
+                      rounded-t-xl px-1 pt-1 pb-0">
         {(["events", "vendors"] as const).map(t => (
           <button
             key={t}
@@ -114,7 +114,7 @@ export default function EventsBannerSlider({ events, vendors, loading }: Props) 
       {/* Card */}
       <div className="w-full rounded-b-2xl rounded-tr-2xl overflow-hidden
                       border border-gray-800 bg-gray-900 shadow-2xl">
-        <div className="relative w-full h-54 sm:h-60 overflow-hidden">
+        <div className="relative w-full h-40 sm:h-44 overflow-hidden">
 
           {/* Loading skeleton */}
           {loading && (
@@ -143,14 +143,14 @@ export default function EventsBannerSlider({ events, vendors, loading }: Props) 
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-5">
+                    <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
                       {(currentEvent.categories?.[0] as any)?.category?.name && (
                         <span className="inline-block text-xs bg-purple-600 text-white
                                          px-2.5 py-0.5 rounded-full font-semibold mb-2">
                           {(currentEvent.categories![0] as any).category.name}
                         </span>
                       )}
-                      <h3 className="text-white font-black text-xl sm:text-2xl leading-tight mb-2">
+                      <h3 className="text-white font-black text-lg sm:text-xl leading-tight mb-1">
                         {currentEvent.title}
                       </h3>
                       <div className="flex items-center gap-3 flex-wrap">
@@ -182,8 +182,8 @@ export default function EventsBannerSlider({ events, vendors, loading }: Props) 
                              className="w-full h-full object-cover" />
                       : <div className="w-full h-full bg-gradient-to-br from-purple-900/60 to-gray-800" />}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end gap-4">
-                      <div className="w-14 h-14 rounded-2xl border-2 border-white/20 bg-gray-800
+                    <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 flex items-end gap-3">
+                      <div className="w-10 h-10 rounded-xl border-2 border-white/20 bg-gray-800
                                       overflow-hidden flex items-center justify-center shrink-0 shadow-lg">
                         {currentVendor.logoImage
                           ? <img src={currentVendor.logoImage} alt="" className="w-full h-full object-cover" />
@@ -191,7 +191,7 @@ export default function EventsBannerSlider({ events, vendors, loading }: Props) 
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-white font-black text-xl sm:text-2xl leading-tight truncate">
+                          <h3 className="text-white font-black text-lg sm:text-xl leading-tight truncate">
                             {currentVendor.businessName}
                           </h3>
                           {currentVendor.isVerified && (

@@ -92,13 +92,7 @@ export default function EventsPage() {
   return (
     <div className="p-4 lg:w-[70%] mt-14 mx-auto w-full min-h-screen flex flex-col gap-8">
 
-      {/* ── Header ── */}
-      <div className="w-full">
-        <h1 className="text-gray-300 font-bold text-[2.5rem]">Discover Events</h1>
-        <p className="text-gray-400 text-md">
-          Find upcoming events — search by name, location, or sort by proximity.
-        </p>
-      </div>
+      
 
       {/* ── Banner slider ── */}
       <EventsBannerSlider
@@ -114,6 +108,14 @@ export default function EventsPage() {
         isEventOwner={isEventOwner}
         onSignIn={() => setShowSignInModal(true)}
       />
+      
+      {/* ── Header ── */}
+      <div className="w-full">
+        <h1 className="text-gray-300 font-bold text-[2.5rem]">Discover Events</h1>
+        <p className="text-gray-400 text-md">
+          Find upcoming events — search by name, location, or sort by proximity.
+        </p>
+      </div>
 
       {/* ── Upcoming events grid ── */}
       <UpcomingEvents
