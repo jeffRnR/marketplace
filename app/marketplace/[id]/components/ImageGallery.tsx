@@ -49,7 +49,7 @@ export default function ImageGallery({ images, title }: Props) {
       {/* ── Main image ── */}
       <div className="flex flex-col gap-3">
         <div
-          className="relative w-full aspect-video bg-gray-900 rounded-2xl overflow-hidden border border-gray-800 group cursor-zoom-in"
+          className="relative w-full aspect-square sm:aspect-video bg-gray-900 rounded-2xl overflow-hidden border border-gray-800 group cursor-zoom-in"
           onClick={() => setLightbox(true)}
         >
           <img

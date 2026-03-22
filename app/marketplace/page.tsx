@@ -297,11 +297,8 @@ export default function MarketplacePage() {
         <div className="max-w-6xl mx-auto px-4 py-14">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div>
-              <p className="text-gray-500 text-sm font-semibold uppercase tracking-widest mb-3">
-                Event Ecosystem
-              </p>
               <h1 className="text-4xl lg:text-5xl font-black text-gray-100 leading-tight mb-3">
-                The Event
+                Noizy
                 <br />
                 <span>Marketplace</span>
               </h1>

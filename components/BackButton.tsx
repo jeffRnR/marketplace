@@ -32,7 +32,7 @@ export default function BackButton() {
       aria-label="Go back"
       className="fixed bottom-8 left-6 z-40
                  w-10 h-10 flex items-center justify-center
-                 bg-gray-900/50 rounded-full
+                 bg-gray-900 rounded-full
                  text-gray-400 hover:text-white
                  shadow-lg hover:shadow-purple-900/30
                  transition-all duration-200 hover:scale-110"

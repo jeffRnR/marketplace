@@ -1,50 +1,65 @@
 "use client";
 // app/components/TopBar.tsx
-// Added: /messages link with unread badge via NotificationBar
+// Changes from original:
+//  - Added visible MessageCircle icon with unread badge on desktop nav
+//  - Badge count fetched from /api/messages/unread-count (lightweight poll)
+//  - Mobile menu already had /messages link — unchanged
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
 import logo from "@/images/logo.png";
 import logo5 from "@/images/logo5.png";
 import {
-  CalendarPlus,
-  Telescope,
-  Store,
-  Ticket,
-  Menu,
-  X,
-  MessageCircle,
+  CalendarPlus, Telescope, Store, Ticket,
+  Menu, X, MessageCircle,
 } from "lucide-react";
-import SearchBar from "./SearchBar";
+import SearchBar       from "./SearchBar";
 import NotificationBar from "./NotificationBar";
-import SignInModal from "./SignInModal";
+import SignInModal     from "./SignInModal";
 
 interface TopBarProps {
   onViewEvents?: () => void;
 }
 
 export default function TopBar({ onViewEvents }: TopBarProps) {
-  const [scrolled, setScrolled] = useState(false);
-  const [showSignInModal, setShowSignInModal] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled,         setScrolled]         = useState(false);
+  const [showSignInModal,  setShowSignInModal]   = useState(false);
+  const [mobileMenuOpen,   setMobileMenuOpen]    = useState(false);
+  const [unreadMessages,   setUnreadMessages]    = useState(0);
   const { data: session, status } = useSession();
 
+  // ── Scroll shadow ──────────────────────────────────────────────────────────
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 0);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const handleSignOut = async () => {
-    await signOut({ redirect: false });
-    window.location.href = "/";
-  };
+  // ── Poll unread message count for the desktop badge ────────────────────────
+  // Uses a lightweight dedicated endpoint so we don't fetch full conversation
+  // data just for the badge. Falls back gracefully if endpoint doesn't exist yet.
+  const fetchUnreadMessages = useCallback(async () => {
+    if (status !== "authenticated") return;
+    try {
+      const res = await fetch("/api/messages/unread-count");
+      if (!res.ok) return;
+      const data = await res.json();
+      setUnreadMessages(data.unreadCount ?? 0);
+    } catch { /* silent */ }
+  }, [status]);
 
+  useEffect(() => {
+    fetchUnreadMessages();
+    const id = setInterval(fetchUnreadMessages, 30_000);
+    return () => clearInterval(id);
+  }, [fetchUnreadMessages]);
+
+  const handleSignOut  = async () => { await signOut({ redirect: false }); window.location.href = "/"; };
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
-  const isLoading = status === "loading";
+  const isLoading       = status === "loading";
   const isAuthenticated = status === "authenticated";
 
   return (
@@ -57,30 +72,20 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
               : "border-b border-gray-400/50"
           }`}
         >
+          {/* Logo */}
           <div className="flex items-center lg:w-auto">
             <Link href="/" className="font-bold shrink-0">
-              <Image
-                src={logo}
-                alt="logo"
-                width={100}
-                height={100}
-                className="w-20 hidden lg:block"
-              />
-              <Image
-                src={logo5}
-                alt="logo"
-                width={50}
-                height={50}
-                className="w-7 lg:hidden"
-              />
+              <Image src={logo}  alt="logo" width={100} height={100} className="w-20 hidden lg:block" />
+              <Image src={logo5} alt="logo" width={50}  height={50}  className="w-7 lg:hidden" />
             </Link>
           </div>
 
+          {/* Search + view events */}
           <div className="flex items-center gap-3 ml-2 lg:ml-10 flex-1">
             {isAuthenticated && (
               <Link href="/events/all">
                 <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 transition flex gap-2 items-center">
-                  <Telescope className="h-4 w-4" />
+                  <Telescope className="h-4 w-4 sm:hidden" />
                   <span>View events</span>
                 </button>
               </Link>
@@ -88,17 +93,34 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
             <SearchBar />
           </div>
 
+          {/* Right side */}
           <div className="ml-auto flex items-center gap-3">
             {isLoading ? (
               <div className="text-gray-400 text-sm">Loading...</div>
             ) : isAuthenticated ? (
               <>
-                {/* NotificationBar now shows message unread count */}
-                <div className="flex items-center">
-                  <NotificationBar />
-                </div>
+                {/* Notification bell (includes chats tab) */}
+                <NotificationBar />
 
-                {/* Desktop nav */}
+                {/* ── Messages icon — desktop only ── */}
+                <Link
+                  href="/messages"
+                  className="hidden lg:flex relative items-center text-gray-300 hover:text-gray-100 transition"
+                  title="Messages"
+                  aria-label={`Messages${unreadMessages > 0 ? ` — ${unreadMessages} unread` : ""}`}
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  {unreadMessages > 0 && (
+                    <span
+                      className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center
+                                 bg-purple-500 text-white text-[10px] font-bold rounded-full px-0.5 leading-none"
+                    >
+                      {unreadMessages > 99 ? "99+" : unreadMessages}
+                    </span>
+                  )}
+                </Link>
+
+                {/* Desktop nav links */}
                 <div className="hidden lg:flex items-center gap-4 px-4">
                   <Link href="/events/create" onClick={closeMobileMenu}>
                     <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 transition flex gap-2 items-center">
@@ -138,12 +160,8 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                   className="lg:hidden text-gray-300 hover:text-gray-100 transition-all duration-300"
                 >
                   <div className="relative w-6 h-6">
-                    <Menu
-                      className={`h-6 w-6 absolute transition-all duration-300 ${mobileMenuOpen ? "rotate-180 opacity-0" : "rotate-0 opacity-100"}`}
-                    />
-                    <X
-                      className={`h-6 w-6 absolute transition-all duration-300 ${mobileMenuOpen ? "rotate-0 opacity-100" : "-rotate-180 opacity-0"}`}
-                    />
+                    <Menu className={`h-6 w-6 absolute transition-all duration-300 ${mobileMenuOpen ? "rotate-180 opacity-0" : "rotate-0 opacity-100"}`} />
+                    <X    className={`h-6 w-6 absolute transition-all duration-300 ${mobileMenuOpen ? "rotate-0 opacity-100" : "-rotate-180 opacity-0"}`} />
                   </div>
                 </button>
               </>
@@ -166,7 +184,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
           </div>
         </div>
 
-        {/* Mobile menu */}
+        {/* ── Mobile menu ── */}
         {mobileMenuOpen && isAuthenticated && (
           <div className="lg:hidden fixed inset-0 z-40 flex items-start justify-center pt-24 min-h-screen bg-black/50 backdrop-blur-lg">
             <div className="w-[70%] max-w-2xl rounded-2xl bg-gray-300 p-6 shadow-md transition duration-300 relative mx-4">
@@ -183,40 +201,42 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
               <div className="space-y-3">
                 <Link href="/events/create" onClick={closeMobileMenu}>
                   <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center">
-                    <CalendarPlus className="h-5 w-5" />
-                    <span>Create Event</span>
+                    <CalendarPlus className="h-5 w-5" /><span>Create Event</span>
                   </button>
                 </Link>
                 <Link href="/events" onClick={closeMobileMenu}>
                   <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center">
-                    <Telescope className="h-5 w-5" />
-                    <span>Discover</span>
+                    <Telescope className="h-5 w-5" /><span>Discover</span>
                   </button>
                 </Link>
                 <Link href="/my-events" onClick={closeMobileMenu}>
                   <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center">
-                    <Ticket className="h-5 w-5" />
-                    <span>My Events</span>
+                    <Ticket className="h-5 w-5" /><span>My Events</span>
                   </button>
                 </Link>
                 <Link href="/marketplace" onClick={closeMobileMenu}>
                   <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center">
-                    <Store className="h-5 w-5" />
-                    <span>Marketplace</span>
+                    <Store className="h-5 w-5" /><span>Marketplace</span>
                   </button>
                 </Link>
+
+                {/* Messages with unread badge in mobile menu */}
                 <Link href="/messages" onClick={closeMobileMenu}>
-                  <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center">
-                    <MessageCircle className="h-5 w-5" />
-                    <span>Messages</span>
+                  <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center justify-between">
+                    <span className="flex gap-3 items-center">
+                      <MessageCircle className="h-5 w-5" /><span>Messages</span>
+                    </span>
+                    {unreadMessages > 0 && (
+                      <span className="bg-purple-600 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                        {unreadMessages}
+                      </span>
+                    )}
                   </button>
                 </Link>
+
                 <div className="border-t border-gray-400 my-3" />
                 <button
-                  onClick={() => {
-                    handleSignOut();
-                    closeMobileMenu();
-                  }}
+                  onClick={() => { handleSignOut(); closeMobileMenu(); }}
                   className="w-full text-gray-800 font-bold px-4 py-3 text-sm rounded-lg hover:bg-red-700 hover:text-gray-100 transition border-2 border-red-700/50"
                 >
                   Sign out
@@ -227,9 +247,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
         )}
       </div>
 
-      {showSignInModal && (
-        <SignInModal onClose={() => setShowSignInModal(false)} />
-      )}
+      {showSignInModal && <SignInModal onClose={() => setShowSignInModal(false)} />}
     </>
   );
 }
