@@ -133,6 +133,7 @@ export default function ProfilePage() {
             <ListingsGrid
               listings={profile.listings}
               isOwner={isOwner}
+              vendorProfileId={profile.id}
               msgStarting={msgStarting}
               msgError={msgError}
               onMessage={startConversation}

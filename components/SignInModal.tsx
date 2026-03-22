@@ -36,7 +36,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
       } else {
         onClose();
         router.refresh();
-        window.location.href = "/events";        
+        // window.location.href = "/events";        
       }
     } catch (err) {
       setError("An error occurred during sign in");
@@ -91,7 +91,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
         );
       } else {
         onClose();
-        router.push("/events");
+        // router.push("/events");
         router.refresh();
       }
     } catch (err: any) {
@@ -105,7 +105,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
   // Google sign-in
   const handleGoogleSignIn = () => {
     signIn("google", {
-      callbackUrl: "/events",
+      // callbackUrl: "/events",
     });
   };
 
