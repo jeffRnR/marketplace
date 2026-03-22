@@ -35,7 +35,7 @@ async function sendUpdateEmail({
 
   try {
     await transporter.sendMail({
-      from:    `"Event Platform" <${process.env.GMAIL_USER}>`,
+      from:    `"Noizy Hub" <${process.env.GMAIL_USER}>`,
       to,
       subject: `Update: ${eventTitle} has changed`,
       html: `

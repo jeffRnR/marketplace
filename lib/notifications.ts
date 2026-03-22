@@ -109,7 +109,7 @@ export async function sendTicketEmail({
 
   try {
     const info = await transporter.sendMail({
-      from:    `"Event Platform" <${process.env.GMAIL_USER}>`,
+      from:    `"Noizy Hub" <${process.env.GMAIL_USER}>`,
       to,
       subject: `Your ticket for ${eventTitle} 🎟`,
       html: `
@@ -185,7 +185,7 @@ export async function sendVendingConfirmationEmail({
 
   try {
     const info = await transporter.sendMail({
-      from:    `"Event Platform" <${process.env.GMAIL_USER}>`,
+      from:    `"Noizy Hub" <${process.env.GMAIL_USER}>`,
       to,
       subject: `Vending slot confirmed — ${eventTitle} 🛒`,
       html: `
@@ -242,7 +242,7 @@ export async function sendBookingEmail({
 
   try {
     const info = await transporter.sendMail({
-      from:    `"Event Platform" <${process.env.GMAIL_USER}>`,
+      from:    `"Noizy Hub" <${process.env.GMAIL_USER}>`,
       to,
       subject,
       html: `

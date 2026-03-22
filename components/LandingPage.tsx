@@ -329,7 +329,7 @@ function LandingPage() {
         </div>
 
         {/* ── Bottom CTA (logged-out only) ── */}
-        {!isAuthenticated && !isLoading && (
+        {/* {!isAuthenticated && !isLoading && (
           <div className="text-center py-8 border-t border-gray-800">
             <h3 className="text-gray-100 font-black text-2xl mb-2">Ready to join?</h3>
             <p className="text-gray-500 text-sm mb-6">
@@ -340,7 +340,7 @@ function LandingPage() {
               Get Started Free <ArrowUpRight className="w-4 h-4" />
             </button>
           </div>
-        )}
+        )} */}
       </div>
 
       {showSignInModal && <SignInModal onClose={() => setShowSignInModal(false)} />}
