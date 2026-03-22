@@ -1,9 +1,5 @@
 "use client";
 // app/components/TopBar.tsx
-// Changes from original:
-//  - Added visible MessageCircle icon with unread badge on desktop nav
-//  - Badge count fetched from /api/messages/unread-count (lightweight poll)
-//  - Mobile menu already had /messages link — unchanged
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
@@ -24,10 +20,10 @@ interface TopBarProps {
 }
 
 export default function TopBar({ onViewEvents }: TopBarProps) {
-  const [scrolled,         setScrolled]         = useState(false);
-  const [showSignInModal,  setShowSignInModal]   = useState(false);
-  const [mobileMenuOpen,   setMobileMenuOpen]    = useState(false);
-  const [unreadMessages,   setUnreadMessages]    = useState(0);
+  const [scrolled,        setScrolled]        = useState(false);
+  const [showSignInModal, setShowSignInModal]  = useState(false);
+  const [mobileMenuOpen,  setMobileMenuOpen]   = useState(false);
+  const [unreadMessages,  setUnreadMessages]   = useState(0);
   const { data: session, status } = useSession();
 
   // ── Scroll shadow ──────────────────────────────────────────────────────────
@@ -37,9 +33,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // ── Poll unread message count for the desktop badge ────────────────────────
-  // Uses a lightweight dedicated endpoint so we don't fetch full conversation
-  // data just for the badge. Falls back gracefully if endpoint doesn't exist yet.
+  // ── Poll unread message count (mobile badge only) ──────────────────────────
   const fetchUnreadMessages = useCallback(async () => {
     if (status !== "authenticated") return;
     try {
@@ -56,7 +50,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
     return () => clearInterval(id);
   }, [fetchUnreadMessages]);
 
-  const handleSignOut  = async () => { await signOut({ redirect: false }); window.location.href = "/"; };
+  const handleSignOut   = async () => { await signOut({ redirect: false }); window.location.href = "/"; };
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
   const isLoading       = status === "loading";
@@ -85,7 +79,8 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
             {isAuthenticated && (
               <Link href="/events/all">
                 <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 transition flex gap-2 items-center">
-                  <Telescope className="h-4 w-4 sm:hidden" />
+                  {/* Icon: show on desktop, hide on mobile */}
+                  <Telescope className="h-4 w-4 hidden lg:block" />
                   <span>View events</span>
                 </button>
               </Link>
@@ -102,25 +97,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                 {/* Notification bell (includes chats tab) */}
                 <NotificationBar />
 
-                {/* ── Messages icon — desktop only ── */}
-                <Link
-                  href="/messages"
-                  className="hidden lg:flex relative items-center text-gray-300 hover:text-gray-100 transition"
-                  title="Messages"
-                  aria-label={`Messages${unreadMessages > 0 ? ` — ${unreadMessages} unread` : ""}`}
-                >
-                  <MessageCircle className="w-5 h-5" />
-                  {unreadMessages > 0 && (
-                    <span
-                      className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center
-                                 bg-purple-500 text-white text-[10px] font-bold rounded-full px-0.5 leading-none"
-                    >
-                      {unreadMessages > 99 ? "99+" : unreadMessages}
-                    </span>
-                  )}
-                </Link>
-
-                {/* Desktop nav links */}
+                {/* Desktop nav links — no separate messages icon */}
                 <div className="hidden lg:flex items-center gap-4 px-4">
                   <Link href="/events/create" onClick={closeMobileMenu}>
                     <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 transition flex gap-2 items-center">
@@ -190,10 +167,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
             <div className="w-[70%] max-w-2xl rounded-2xl bg-gray-300 p-6 shadow-md transition duration-300 relative mx-4">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-bold text-gray-800">Menu</h2>
-                <button
-                  onClick={closeMobileMenu}
-                  className="text-purple-800 font-bold text-xl hover:text-purple-600 transition"
-                >
+                <button onClick={closeMobileMenu} className="text-purple-800 font-bold text-xl hover:text-purple-600 transition">
                   ×
                 </button>
               </div>
@@ -220,7 +194,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                   </button>
                 </Link>
 
-                {/* Messages with unread badge in mobile menu */}
+                {/* Messages with unread badge */}
                 <Link href="/messages" onClick={closeMobileMenu}>
                   <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center justify-between">
                     <span className="flex gap-3 items-center">
