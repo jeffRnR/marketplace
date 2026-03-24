@@ -1,6 +1,5 @@
 "use client";
 // app/events/page.tsx
-// Thin orchestrator — all UI lives in ./_components/
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
@@ -14,8 +13,6 @@ import UpcomingEvents     from "./_components/UpcomingEvents";
 import CategoryBrowser    from "./_components/CategoryBrowser";
 import LocationBrowser    from "./_components/LocationBrowser";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type EventWithDistance = Event & { distance?: number };
 
 interface VendorProfile {
@@ -26,10 +23,8 @@ interface VendorProfile {
   _count: { listings: number; reviews: number };
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
 export default function EventsPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
 
   const [events,          setEvents]          = useState<EventWithDistance[]>([]);
   const [vendors,         setVendors]         = useState<VendorProfile[]>([]);
@@ -37,17 +32,26 @@ export default function EventsPage() {
   const [loading,         setLoading]         = useState(true);
   const [error,           setError]           = useState<string | null>(null);
   const [showSignInModal, setShowSignInModal] = useState(false);
+  const [myId,            setMyId]            = useState<string | null>(null);
 
   const isAuthenticated = status === "authenticated";
   const isLoading       = status === "loading";
   const isEventOwner    = isAuthenticated && events.length > 0;
 
-  // ── Fetch events + vendors on mount ────────────────────────────────────────
+  // Fetch current user ID
+  useEffect(() => {
+    if (!session?.user?.email) return;
+    fetch("/api/auth/session")
+      .then(r => r.json())
+      .then(s => setMyId((s as any)?.user?.id ?? null))
+      .catch(() => {});
+  }, [session]);
+
+  // Fetch events + vendors
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        setLoading(true);
-        setError(null);
+        setLoading(true); setError(null);
         const [eventsRes, vendorsRes] = await Promise.all([
           fetch("/api/events"),
           fetch("/api/marketplace/profiles"),
@@ -55,15 +59,11 @@ export default function EventsPage() {
         const rawEvents  = eventsRes.ok  ? await eventsRes.json()  : [];
         const rawVendors = vendorsRes.ok ? await vendorsRes.json() : [];
 
-        const formatted: EventWithDistance[] = (Array.isArray(rawEvents) ? rawEvents : [])
-          .map(formatDbEvent);
+        const formatted: EventWithDistance[] = (Array.isArray(rawEvents) ? rawEvents : []).map(formatDbEvent);
         const now = new Date().setHours(0, 0, 0, 0);
-        const upcoming = formatted.filter(e => new Date(e.date).getTime() >= now);
-
-        setEvents(upcoming);
+        setEvents(formatted.filter(e => new Date(e.date).getTime() >= now));
         setVendors(Array.isArray(rawVendors) ? rawVendors.slice(0, 12) : []);
       } catch (err: any) {
-        console.error("Failed to fetch:", err);
         setError("Could not load events. Please try again.");
       } finally {
         setLoading(false);
@@ -72,7 +72,7 @@ export default function EventsPage() {
     fetchAll();
   }, []);
 
-  // ── Fetch live category counts ─────────────────────────────────────────────
+  // Fetch live category counts
   useEffect(() => {
     (async () => {
       try {
@@ -92,24 +92,19 @@ export default function EventsPage() {
   return (
     <div className="p-4 lg:w-[70%] mt-14 mx-auto w-full min-h-screen flex flex-col gap-8">
 
-      
-
-      {/* ── Banner slider ── */}
       <EventsBannerSlider
         events={events.slice(0, 12)}
         vendors={vendors}
         loading={loading}
       />
 
-      {/* ── Create event CTA ── */}
       <CreateEventCTA
         isAuthenticated={isAuthenticated}
         isLoading={isLoading}
         isEventOwner={isEventOwner}
         onSignIn={() => setShowSignInModal(true)}
       />
-      
-      {/* ── Header ── */}
+
       <div className="w-full">
         <h1 className="text-gray-300 font-bold text-[2.5rem]">Discover Events</h1>
         <p className="text-gray-400 text-md">
@@ -117,23 +112,18 @@ export default function EventsPage() {
         </p>
       </div>
 
-      {/* ── Upcoming events grid ── */}
+      {/* Pass myId so UpcomingEvents can show "Your Event" badge */}
       <UpcomingEvents
         events={events}
         loading={loading}
         error={error}
+        // myId={myId}
       />
 
-      {/* ── Category browser ── */}
       <CategoryBrowser categories={categories} />
-
-      {/* ── Location browser + map ── */}
       <LocationBrowser events={events} loading={loading} />
 
-      {/* ── Sign in modal ── */}
-      {showSignInModal && (
-        <SignInModal onClose={() => setShowSignInModal(false)} />
-      )}
+      {showSignInModal && <SignInModal onClose={() => setShowSignInModal(false)} />}
     </div>
   );
 }
