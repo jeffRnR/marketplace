@@ -1,4 +1,5 @@
 // app/api/marketplace/bookings/route.ts
+// GET   — vendor fetches their bookings
 // POST  — buyer creates a booking request
 // PATCH — vendor approves/rejects OR triggers payment OR marks offline confirmed
 //       — buyer cancels
@@ -22,6 +23,40 @@ async function getUser(email: string) {
     where:  { email },
     select: { id: true, name: true, email: true, marketProfile: { select: { id: true, userId: true } } },
   });
+}
+
+// ── GET — fetch vendor's bookings ────────────────────────────────────────────
+
+export async function GET(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getUser(session.user.email);
+  if (!user?.marketProfile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+
+  const bookings = await prisma.serviceBooking.findMany({
+    where: {
+      listing: {
+        profile: {
+          userId: user.id
+        }
+      }
+    },
+    include: {
+      listing: {
+        select: { id: true, title: true }
+      },
+      conversation: {
+        select: {
+          buyer: {
+            select: { id: true, name: true, email: true }
+          }
+        }
+      }
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  return NextResponse.json({ bookings });
 }
 
 // ── POST — create booking ─────────────────────────────────────────────────────

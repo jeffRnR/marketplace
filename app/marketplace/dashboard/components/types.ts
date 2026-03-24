@@ -13,6 +13,21 @@ export interface Inquiry {
   listing: { id: string; title: string } | null;
 }
 
+export interface Booking {
+  id: string;
+  eventDate: string | null;
+  quantity: number;
+  notes: string | null;
+  totalAmount: number;
+  currency: string;
+  paymentMethod: string;
+  status: string;
+  vendorNote: string | null;
+  createdAt: string;
+  listing: { id: string; title: string };
+  conversation: { buyer: { id: string; name: string | null; email: string } };
+}
+
 export interface Profile {
   id: string; businessName: string; tagline: string | null;
   description: string; category: string; location: string;

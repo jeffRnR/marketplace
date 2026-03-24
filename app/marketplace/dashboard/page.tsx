@@ -9,6 +9,7 @@ import { Store, Loader2, BadgeCheck, Star, Eye } from "lucide-react";
 import { Profile } from "./components/types";
 import ListingForm    from "./components/ListingForm";
 import InquiryRow     from "./components/InquiryRow";
+import BookingsTab    from "./components/BookingsTab";
 import SettingsTab    from "./components/SettingsTab";
 import WalletTab      from "./components/WalletTab";
 import {
@@ -22,7 +23,7 @@ export default function DashboardPage() {
 
   const [profile,        setProfile]        = useState<Profile | null>(null);
   const [loading,        setLoading]        = useState(true);
-  const [tab,            setTab]            = useState<"listings"|"inquiries"|"wallet"|"settings">("listings");
+  const [tab,            setTab]            = useState<"listings"|"inquiries"|"bookings"|"wallet"|"settings">("listings");
   const [showAdd,        setShowAdd]        = useState(false);
   const [editId,         setEditId]         = useState<string | null>(null);
   const [saving,         setSaving]         = useState(false);
@@ -87,6 +88,7 @@ export default function DashboardPage() {
   const TABS = [
     { id: "listings",  label: "Listings",  count: profile.listings.length },
     { id: "inquiries", label: "Inquiries", count: unreadCount, dot: unreadCount > 0 },
+    { id: "bookings",  label: "Bookings" },
     { id: "wallet",    label: "Wallet" },
     { id: "settings",  label: "Settings" },
   ] as const;
@@ -328,6 +330,9 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
+
+        {/* ── BOOKINGS ── */}
+        {tab === "bookings" && <BookingsTab profileId={profile.id} />}
 
         {/* ── WALLET ── */}
         {tab === "wallet" && <WalletTab />}
