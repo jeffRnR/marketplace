@@ -176,35 +176,73 @@ export default function ScanPage() {
       initializingRef.current = true;
       try {
         const mobile = isMobile();
+        console.log("Initializing camera, mobile:", mobile);
         
         // Initialize the scanner with direct control
         scannerRef.current = new Html5Qrcode("qr-reader");
         
-        // Configure camera constraints
-        const constraints = mobile ? {
-          facingMode: 'environment',
-          aspectRatio: 1.0
-        } : {
-          facingMode: 'environment'
-        };
+        // Try different camera constraints for mobile
+        let constraints;
+        if (mobile) {
+          // Try environment camera first, fallback to any camera
+          constraints = { facingMode: 'environment' };
+        } else {
+          constraints = { facingMode: 'environment' };
+        }
         
-        // Start camera directly
-        await scannerRef.current.start(
-          constraints,
-          {
-            fps: 10,
-            qrbox: mobile ? { width: 200, height: 200 } : { width: 250, height: 250 }
-          },
-          (decodedText) => {
-            // Auto-stop on scan
-            setCameraActive(false);
-            setInput(decodedText);
-            doScan(decodedText);
-          },
-          (error) => {
-            console.log("QR scan error:", error);
+        console.log("Using camera constraints:", constraints);
+        
+        try {
+          // Start camera directly
+          await scannerRef.current.start(
+            constraints,
+            {
+              fps: 10,
+              qrbox: mobile ? { width: 200, height: 200 } : { width: 250, height: 250 }
+            },
+            (decodedText) => {
+              console.log("QR code detected:", decodedText);
+              // Auto-stop on scan
+              setCameraActive(false);
+              setInput(decodedText);
+              doScan(decodedText);
+            },
+            (error) => {
+              console.log("QR scan error:", error);
+            }
+          );
+          
+          console.log("Camera started successfully");
+        } catch (envError) {
+          // If environment camera fails on mobile, try user facing camera
+          if (mobile && constraints.facingMode === 'environment') {
+            console.log("Environment camera failed, trying user facing camera");
+            try {
+              await scannerRef.current.start(
+                { facingMode: 'user' },
+                {
+                  fps: 10,
+                  qrbox: { width: 200, height: 200 }
+                },
+                (decodedText) => {
+                  console.log("QR code detected:", decodedText);
+                  // Auto-stop on scan
+                  setCameraActive(false);
+                  setInput(decodedText);
+                  doScan(decodedText);
+                },
+                (error) => {
+                  console.log("QR scan error:", error);
+                }
+              );
+              console.log("User facing camera started successfully");
+            } catch (userError) {
+              throw userError; // Re-throw to be caught by outer catch
+            }
+          } else {
+            throw envError; // Re-throw if not mobile or already tried user camera
           }
-        );
+        }
       } catch (error) {
         console.error("Failed to start camera:", error);
         
@@ -215,8 +253,8 @@ export default function ScanPage() {
         setScanResult("invalid");
         setMessage(
           isPermissionDenied 
-            ? "Camera permission denied. Please enable camera access in your device settings."
-            : "Camera access unavailable. Check your connection or device settings."
+            ? "Camera permission denied. Please enable camera access in your device settings and refresh the page."
+            : `Camera access failed: ${error instanceof Error ? error.message : 'Unknown error'}. Try a different browser or device.`
         );
         setCameraActive(false);
         scannerRef.current = null;
@@ -268,7 +306,7 @@ export default function ScanPage() {
   const expiresIn = Math.max(0, Math.round((new Date(sessionInfo.expiresAt).getTime() - Date.now()) / 60000));
 
   return (
-    <div className="p-4 lg:w-[70%] mt-14 mx-auto w-full min-h-screen flex flex-col gap-6">
+    <div className="p-4 lg:w-[70%] mt-14 mx-auto w-full min-h-screen flex flex-col gap-4">
 
       {/* Scan result overlay */}
       {scanResult !== "idle" && scanResult !== "loading" && (
