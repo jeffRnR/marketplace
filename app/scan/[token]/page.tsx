@@ -234,13 +234,13 @@ export default function ScanPage() {
   // ── Loading / error states ─────────────────────────────────────────────────
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+    <div className="p-4 lg:w-[70%] mt-14 mx-auto w-full min-h-screen flex items-center justify-center">
       <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
     </div>
   );
 
   if (sessionError) return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4 p-8 text-center">
+    <div className="p-4 lg:w-[70%] mt-14 mx-auto w-full min-h-screen flex flex-col items-center justify-center gap-4 text-center">
       <WifiOff className="w-16 h-16 text-red-400" />
       <p className="text-white font-black text-2xl">Scanner Unavailable</p>
       <p className="text-gray-400">{sessionError}</p>
@@ -253,7 +253,7 @@ export default function ScanPage() {
   const expiresIn = Math.max(0, Math.round((new Date(sessionInfo.expiresAt).getTime() - Date.now()) / 60000));
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
+    <div className="p-4 lg:w-[70%] mt-14 mx-auto w-full min-h-screen flex flex-col gap-6">
 
       {/* Scan result overlay */}
       {scanResult !== "idle" && scanResult !== "loading" && (
@@ -265,48 +265,47 @@ export default function ScanPage() {
       )}
 
       {/* Header */}
-      <div className={`p-4 border-b border-gray-800 ${station.isFinal ? "bg-purple-950/40" : "bg-gray-900"}`}>
-        <div className="flex items-center justify-between mb-1">
+      <div className="p-4 rounded-2xl border bg-gray-900/30 border-gray-800">
+        <div className="flex sm:items-center justify-between mb-2 flex-col sm:flex-row">
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full animate-pulse ${expiresIn > 30 ? "bg-green-400" : "bg-amber-400"}`} />
-            <p className="text-white font-black text-lg">{station.name}</p>
+            <p className="text-gray-200 font-black text-lg">{station.name}</p>
             {station.isFinal && (
-              <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-semibold">Final</span>
+              <span className="text-xs bg-green-400/30 text-gray-200 px-4 py-0.5 rounded-full font-semibold">Final</span>
             )}
           </div>
           <p className="text-gray-500 text-xs">
             Expires in {expiresIn >= 60 ? `${Math.floor(expiresIn/60)}h` : `${expiresIn}m`}
           </p>
         </div>
-        <p className="text-gray-400 text-sm truncate">{event.title}</p>
-        <p className="text-gray-600 text-xs mt-0.5">{sessionInfo.label} · Station {station.order}</p>
+        <p className="text-gray-400 text-sm font-semibold truncate">{event.title}</p>
+        <p className="text-gray-500 text-xs">{sessionInfo.label} · Station {station.order}</p>
       </div>
 
       {/* Main scan area */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
+      <div className="flex-1 flex flex-col items-center justify-center gap-6">
 
         {/* Camera scanner area */}
-        <div className="w-64 h-64 border-2 rounded-2xl overflow-hidden" style={{ borderColor: cameraActive ? '#a855f7' : '#374151', borderStyle: cameraActive ? 'solid' : 'dashed' }}>
+        <div className="w-full sm:w-72 md:w-80 aspect-square border-2 rounded-2xl overflow-hidden" style={{ borderColor: cameraActive ? '#a855f7' : '#374151', borderStyle: cameraActive ? 'solid' : 'dashed' }}>
           <div id="qr-reader" className="w-full h-full">
             {!cameraActive && (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-gray-600">
-                <QrCode className="w-16 h-16" />
-                <p className="text-sm text-center px-4">Point camera at QR code<br/>or type ticket number below</p>
+              <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-gray-600 bg-gray-800/50">
+                <QrCode className="w-12 h-12 sm:w-16 sm:h-16" />
+                <p className="text-xs sm:text-sm text-center px-4">Point camera at QR code<br/>or type ticket number below</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Controls */}
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap justify-center">
           <button
             onClick={() => setCameraActive(!cameraActive)}
             disabled={scanning}
-            className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 text-sm ${
               cameraActive ? "bg-red-600 hover:bg-red-700 text-white" : "bg-purple-600 hover:bg-purple-700 text-white"
             } disabled:opacity-50`}
           >
-            <Camera className="w-5 h-5" />
+            <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
             {cameraActive ? "Stop Camera" : "Start Camera"}
           </button>
         </div>
@@ -326,15 +325,15 @@ export default function ScanPage() {
                 autoCorrect="off"
                 autoCapitalize="characters"
                 spellCheck={false}
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-3.5 text-white font-mono text-base focus:outline-none focus:border-purple-500 uppercase tracking-wider"
+                className="w-full bg-gray-900/60 border border-gray-700 rounded-xl pl-10 pr-4 py-3 text-white text-sm sm:text-base font-mono focus:outline-none focus:border-purple-500 focus:bg-gray-900 uppercase tracking-wider"
               />
             </div>
             <button
               onClick={() => doScan(input)}
               disabled={!input.trim() || scanning}
-              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white font-bold px-5 rounded-xl transition flex items-center gap-2"
+              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white font-bold px-3 sm:px-5 py-3 rounded-xl transition flex items-center gap-2"
             >
-              {scanning ? <Loader2 className="w-5 h-5 animate-spin" /> : <Ticket className="w-5 h-5" />}
+              {scanning ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
           </div>
 
@@ -345,8 +344,8 @@ export default function ScanPage() {
       </div>
 
       {/* Footer — station order indicator */}
-      <div className="p-4 border-t border-gray-800 bg-gray-900">
-        <div className="flex items-center justify-center gap-2">
+      <div className="p-4 rounded-2xl bg-gray-900/40 border border-gray-800">
+        <div className="flex items-center justify-center gap-2 flex-wrap">
           {Array.from({ length: station.order + 1 }).map((_, i) => {
             if (i === 0) return null;
             return (
