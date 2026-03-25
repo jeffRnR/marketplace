@@ -484,6 +484,7 @@ model ScanSession {
   expiresAt DateTime
   isActive  Boolean   @default(true)
   isEmailed Boolean   @default(false)      // whether this link was sent via email (makes it unsharable)
+  firstAccessIP String?                    // IP address of first access, to prevent sharing
   createdAt DateTime  @default(now())
   lastUsed  DateTime?
 

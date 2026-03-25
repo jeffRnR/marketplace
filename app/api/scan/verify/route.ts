@@ -20,6 +20,10 @@ export async function POST(req: Request) {
   if (!token || !ticketCode?.trim())
     return NextResponse.json({ result: "invalid", message: "Missing token or ticket code." }, { status: 400 });
 
+  // Get client IP
+  const forwarded = req.headers.get("x-forwarded-for");
+  const clientIP = forwarded ? forwarded.split(",")[0] : req.headers.get("x-real-ip") || "unknown";
+
   // 1. Validate session
   const scanSession = await prisma.scanSession.findUnique({
     where:   { token },
@@ -34,6 +38,11 @@ export async function POST(req: Request) {
 
   if (!scanSession || !scanSession.isActive || new Date() > scanSession.expiresAt) {
     return NextResponse.json({ result: "invalid", message: "Scanner session is invalid or expired." }, { status: 403 });
+  }
+
+  // Check IP
+  if (scanSession.firstAccessIP && scanSession.firstAccessIP !== clientIP) {
+    return NextResponse.json({ result: "invalid", message: "This scanner link can only be used from the device it was first accessed on." }, { status: 403 });
   }
 
   const station = scanSession.station;

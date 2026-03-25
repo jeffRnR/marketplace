@@ -5,6 +5,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { Html5QrcodeScanner } from "html5-qrcode";
 import {
   QrCode, CheckCircle, XCircle, AlertTriangle, Loader2,
   Keyboard, Camera, RotateCcw, Wifi, WifiOff, Ticket,
@@ -91,6 +92,10 @@ export default function ScanPage() {
   const [isFinal,    setIsFinal]    = useState(false);
   const [scanning,   setScanning]   = useState(false);
 
+  const [cameraActive, setCameraActive] = useState(false);
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const initializingRef = useRef(false);
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Load session info
@@ -105,18 +110,13 @@ export default function ScanPage() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  // Focus input on mount
-  useEffect(() => {
-    if (sessionInfo) setTimeout(() => inputRef.current?.focus(), 100);
-  }, [sessionInfo]);
-
   const resetScan = useCallback(() => {
     setScanResult("idle");
     setMessage(""); setInput(""); setTicketType(""); setIsFinal(false);
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
-  async function doScan(code: string) {
+  const doScan = useCallback(async (code: string) => {
     const clean = code.trim().toUpperCase();
     if (!clean || !sessionInfo) return;
     setScanning(true); setScanResult("loading");
@@ -132,13 +132,82 @@ export default function ScanPage() {
       setMessage(data.message ?? "");
       setTicketType(data.ticketType ?? "");
       setIsFinal(data.isFinal ?? false);
+      
+      // Auto-close camera on success
+      if (data.result === "success") {
+        setCameraActive(false);
+      }
     } catch {
       setScanResult("invalid");
       setMessage("Network error. Try again.");
     } finally {
       setScanning(false);
     }
-  }
+  }, [sessionInfo, token]);
+
+  // Handle camera initialization and cleanup
+  useEffect(() => {
+    if (!cameraActive) {
+      // Stop and cleanup scanner
+      if (scannerRef.current && !initializingRef.current) {
+        try {
+          scannerRef.current.clear().catch(() => {});
+          scannerRef.current = null;
+        } catch (error) {
+          console.error("Error stopping scanner:", error);
+          scannerRef.current = null;
+        }
+      }
+      return;
+    }
+
+    // Start camera
+    const initCamera = async () => {
+      if (initializingRef.current || scannerRef.current) return;
+      
+      initializingRef.current = true;
+      try {
+        scannerRef.current = new Html5QrcodeScanner(
+          "qr-reader",
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          false
+        );
+        
+        // Don't await render - it may not return a promise in all versions
+        scannerRef.current.render(
+          (decodedText) => {
+            // Auto-stop on scan
+            setCameraActive(false);
+            setInput(decodedText);
+            doScan(decodedText);
+          },
+          (error) => {
+            console.log("QR scan error:", error);
+          }
+        );
+      } catch (error) {
+        console.error("Failed to start camera:", error);
+        setScanResult("invalid");
+        setMessage("Camera access denied or not available.");
+        setCameraActive(false);
+        scannerRef.current = null;
+      } finally {
+        initializingRef.current = false;
+      }
+    };
+
+    initCamera();
+
+    // Cleanup on unmount or cameraActive change
+    return () => {
+      if (scannerRef.current && !initializingRef.current) {
+        try {
+          scannerRef.current.clear().catch(() => {});
+          scannerRef.current = null;
+        } catch {}
+      }
+    };
+  }, [cameraActive, doScan]);
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") { doScan(input); }
@@ -198,10 +267,30 @@ export default function ScanPage() {
       {/* Main scan area */}
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
 
-        {/* QR placeholder / camera hint */}
-        <div className="w-64 h-64 border-2 border-dashed border-gray-700 rounded-2xl flex flex-col items-center justify-center gap-3 text-gray-600">
-          <QrCode className="w-16 h-16" />
-          <p className="text-sm text-center px-4">Point camera at QR code<br/>or type ticket number below</p>
+        {/* Camera scanner area */}
+        <div className="w-64 h-64 border-2 rounded-2xl overflow-hidden" style={{ borderColor: cameraActive ? '#a855f7' : '#374151', borderStyle: cameraActive ? 'solid' : 'dashed' }}>
+          <div id="qr-reader" className="w-full h-full">
+            {!cameraActive && (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-gray-600">
+                <QrCode className="w-16 h-16" />
+                <p className="text-sm text-center px-4">Point camera at QR code<br/>or type ticket number below</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="flex gap-3">
+          <button
+            onClick={() => setCameraActive(!cameraActive)}
+            disabled={scanning}
+            className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 ${
+              cameraActive ? "bg-red-600 hover:bg-red-700 text-white" : "bg-purple-600 hover:bg-purple-700 text-white"
+            } disabled:opacity-50`}
+          >
+            <Camera className="w-5 h-5" />
+            {cameraActive ? "Stop Camera" : "Start Camera"}
+          </button>
         </div>
 
         {/* Ticket code input */}
@@ -232,7 +321,7 @@ export default function ScanPage() {
           </div>
 
           <p className="text-gray-600 text-xs text-center">
-            Press Enter or tap the button to scan · QR scanner auto-submits
+            Press Enter or tap the button to scan · Camera auto-scans QR codes
           </p>
         </div>
       </div>

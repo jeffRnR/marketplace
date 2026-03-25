@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params;
@@ -32,6 +32,20 @@ export async function GET(
 
   if (new Date() > scanSession.expiresAt)
     return NextResponse.json({ error: "This scanner link has expired" }, { status: 403 });
+
+  // Get client IP
+  const forwarded = req.headers.get("x-forwarded-for");
+  const clientIP = forwarded ? forwarded.split(",")[0] : req.headers.get("x-real-ip") || "unknown";
+
+  // If first access, set IP
+  if (!scanSession.firstAccessIP) {
+    await prisma.scanSession.update({
+      where: { id: scanSession.id },
+      data:  { firstAccessIP: clientIP },
+    });
+  } else if (scanSession.firstAccessIP !== clientIP) {
+    return NextResponse.json({ error: "This scanner link can only be used from the device it was first accessed on" }, { status: 403 });
+  }
 
   // Update last used
   await prisma.scanSession.update({
