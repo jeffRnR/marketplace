@@ -158,7 +158,8 @@ export default function ScanPage() {
       // Stop and cleanup scanner
       if (scannerRef.current && !initializingRef.current) {
         try {
-          scannerRef.current.clear().catch(() => {});
+          scannerRef.current.stop();
+          scannerRef.current.clear();
           scannerRef.current = null;
         } catch (error) {
           console.error("Error stopping scanner:", error);
@@ -230,11 +231,13 @@ export default function ScanPage() {
     return () => {
       if (scannerRef.current && !initializingRef.current) {
         try {
-          scannerRef.current.stop().then(() => {
-            scannerRef.current?.clear();
-            scannerRef.current = null;
-          }).catch(() => {});
-        } catch {}
+          scannerRef.current.stop();
+          scannerRef.current.clear();
+          scannerRef.current = null;
+        } catch (error) {
+          console.error("Error stopping scanner:", error);
+          scannerRef.current = null;
+        }
       }
     };
   }, [cameraActive, doScan]);
