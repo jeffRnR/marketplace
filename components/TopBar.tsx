@@ -9,7 +9,7 @@ import logo from "@/images/logo.png";
 import logo5 from "@/images/logo5.png";
 import {
   CalendarPlus, Telescope, Store, Ticket,
-  Menu, X, MessageCircle,
+  Menu, X, MessageCircle, ShoppingCart,
 } from "lucide-react";
 import SearchBar       from "./SearchBar";
 import NotificationBar from "./NotificationBar";
@@ -20,24 +20,22 @@ interface TopBarProps {
 }
 
 export default function TopBar({ onViewEvents }: TopBarProps) {
-  const [scrolled,        setScrolled]        = useState(false);
-  const [showSignInModal, setShowSignInModal]  = useState(false);
-  const [mobileMenuOpen,  setMobileMenuOpen]   = useState(false);
-  const [unreadMessages,  setUnreadMessages]   = useState(0);
+  const [scrolled,        setScrolled]       = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [mobileMenuOpen,  setMobileMenuOpen]  = useState(false);
+  const [unreadMessages,  setUnreadMessages]  = useState(0);
   const { data: session, status } = useSession();
 
-  // ── Scroll shadow ──────────────────────────────────────────────────────────
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 0);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // ── Poll unread message count (mobile badge only) ──────────────────────────
   const fetchUnreadMessages = useCallback(async () => {
     if (status !== "authenticated") return;
     try {
-      const res = await fetch("/api/messages/unread-count");
+      const res  = await fetch("/api/messages/unread-count");
       if (!res.ok) return;
       const data = await res.json();
       setUnreadMessages(data.unreadCount ?? 0);
@@ -56,16 +54,16 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
   const isLoading       = status === "loading";
   const isAuthenticated = status === "authenticated";
 
+  // First name only for greeting
+  const firstName = session?.user?.name?.split(" ")[0] ?? session?.user?.email?.split("@")[0] ?? "";
+
   return (
     <>
       <div className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md">
-        <div
-          className={`flex items-center gap-3 p-4 transition-all duration-300 ${
-            scrolled
-              ? "shadow-xs shadow-gray-400 border-b border-gray-400"
-              : "border-b border-gray-400/50"
-          }`}
-        >
+        <div className={`flex items-center gap-3 p-4 transition-all duration-300 ${
+          scrolled ? "shadow-xs shadow-gray-400 border-b border-gray-400" : "border-b border-gray-400/50"
+        }`}>
+
           {/* Logo */}
           <div className="flex items-center lg:w-auto">
             <Link href="/" className="font-bold shrink-0">
@@ -78,12 +76,12 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
           <div className="flex items-center gap-3 ml-2 lg:ml-10 flex-1">
             {isAuthenticated && (
               <Link href="/events/all">
-                <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 transition flex gap-2 items-center">
-                  {/* Icon: show on desktop, hide on mobile */}
-                  <Telescope className="h-4 w-4 hidden lg:block" />
-                  <span>View events</span>
+                <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 transition hidden lg:flex gap-2 items-center">
+                  <Telescope className="h-4 w-4" />
+                  <span>Events</span>
                 </button>
               </Link>
+              
             )}
             <SearchBar />
           </div>
@@ -94,54 +92,59 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
               <div className="text-gray-400 text-sm">Loading...</div>
             ) : isAuthenticated ? (
               <>
-                {/* Notification bell (includes chats tab) */}
-                <NotificationBar />
+                {/* Welcome greeting — desktop only */}
+                {firstName && (
+                  <span className="lg:pr-4 text-gray-400 text-sm">
+                    Hi, <span className="text-purple-400 font-semibold">{firstName}👋</span>
+                  </span>
+                )}
 
-                {/* Desktop nav links — no separate messages icon */}
-                <div className="hidden lg:flex items-center gap-4 px-4">
-                  <Link href="/events/create" onClick={closeMobileMenu}>
+                {/* Notification bell */}
+                <div className="flex items-center">
+                  <NotificationBar />
+                </div>
+
+                {/* Desktop nav */}
+                <div className="hidden lg:flex items-center gap-4 px-2">
+                  <Link href="/events/create">
                     <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 transition flex gap-2 items-center">
-                      <CalendarPlus className="h-4 w-4" />
-                      <span>Create Event</span>
-                    </button>
-                  </Link>
-                  <Link href="/events">
-                    <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 transition flex gap-2 items-center">
-                      <Telescope className="h-4 w-4" />
-                      <span>Discover</span>
+                      <CalendarPlus className="h-4 w-4" /><span>Create Event</span>
                     </button>
                   </Link>
                   <Link href="/my-events">
                     <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 transition flex gap-2 items-center">
-                      <Ticket className="h-4 w-4" />
-                      <span>My Events</span>
+                      <Ticket className="h-4 w-4" /><span>My Events</span>
                     </button>
                   </Link>
                   <Link href="/marketplace">
                     <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 transition flex gap-2 items-center">
-                      <Store className="h-4 w-4" />
-                      <span>Marketplace</span>
+                      <Store className="h-4 w-4" /><span>Marketplace</span>
                     </button>
                   </Link>
-                  <Link href="/messages" className="hidden lg:block">
+                  <Link href="/messages">
+                    <button className="relative text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 transition flex gap-2 items-center">
+                      <MessageCircle className="h-4 w-4" /><span>Messages</span>
+                      {unreadMessages > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                          {unreadMessages > 9 ? "9+" : unreadMessages}
+                        </span>
+                      )}
+                    </button>
+                  </Link>
+                  <Link href="/bookings">
                     <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 transition flex gap-2 items-center">
-                      <CalendarPlus className="h-4 w-4" />
-                      <span>Bookings</span>
+                      <ShoppingCart className="h-4 w-4" /><span>Bookings</span>
                     </button>
                   </Link>
-                  <button
-                    onClick={handleSignOut}
-                    className="text-gray-300 font-bold px-2 py-1 text-sm rounded-lg hover:bg-gray-200 hover:text-gray-800 transition duration-300 border border-gray-400"
-                  >
+                  <button onClick={handleSignOut}
+                    className="text-gray-300 font-bold px-2 py-1 text-sm rounded-lg hover:bg-gray-200 hover:text-gray-800 transition duration-300 border border-gray-400">
                     Logout
                   </button>
                 </div>
 
                 {/* Mobile hamburger */}
-                <button
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="lg:hidden text-gray-300 hover:text-gray-100 transition-all duration-300"
-                >
+                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="lg:hidden text-gray-300 hover:text-gray-100 transition-all duration-300">
                   <div className="relative w-6 h-6">
                     <Menu className={`h-6 w-6 absolute transition-all duration-300 ${mobileMenuOpen ? "rotate-180 opacity-0" : "rotate-0 opacity-100"}`} />
                     <X    className={`h-6 w-6 absolute transition-all duration-300 ${mobileMenuOpen ? "rotate-0 opacity-100" : "-rotate-180 opacity-0"}`} />
@@ -152,14 +155,11 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
               <>
                 <Link href="/events">
                   <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 transition flex gap-2 items-center">
-                    <span>View Events</span>
-                    <Telescope className="h-4 w-4" />
+                    <span>View Events</span><Telescope className="h-4 w-4" />
                   </button>
                 </Link>
-                <button
-                  onClick={() => setShowSignInModal(true)}
-                  className="text-gray-300 font-bold px-2 py-1 text-sm rounded-lg hover:bg-gray-200 hover:text-gray-800 transition duration-300 border border-gray-400"
-                >
+                <button onClick={() => setShowSignInModal(true)}
+                  className="text-gray-300 font-bold px-2 py-1 text-sm rounded-lg hover:bg-gray-200 hover:text-gray-800 transition duration-300 border border-gray-400">
                   Sign In
                 </button>
               </>
@@ -172,59 +172,41 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
           <div className="lg:hidden fixed inset-0 z-40 flex items-start justify-center pt-24 min-h-screen bg-black/50 backdrop-blur-lg">
             <div className="w-[70%] max-w-2xl rounded-2xl bg-gray-300 p-6 shadow-md transition duration-300 relative mx-4">
               <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-bold text-gray-800">Menu</h2>
-                <button onClick={closeMobileMenu} className="text-purple-800 font-bold text-xl hover:text-purple-600 transition">
-                  ×
-                </button>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800">Menu</h2>
+                  
+                </div>
+                <button onClick={closeMobileMenu} className="text-purple-800 font-bold text-xl hover:text-purple-600 transition">×</button>
               </div>
               <div className="border-t border-gray-400 my-2" />
-              <div className="space-y-3">
-                <Link href="/events/create" onClick={closeMobileMenu}>
-                  <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center">
-                    <CalendarPlus className="h-5 w-5" /><span>Create Event</span>
-                  </button>
-                </Link>
-                <Link href="/events" onClick={closeMobileMenu}>
-                  <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center">
-                    <Telescope className="h-5 w-5" /><span>Discover</span>
-                  </button>
-                </Link>
-                <Link href="/my-events" onClick={closeMobileMenu}>
-                  <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center">
-                    <Ticket className="h-5 w-5" /><span>My Events</span>
-                  </button>
-                </Link>
-                <Link href="/marketplace" onClick={closeMobileMenu}>
-                  <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center">
-                    <Store className="h-5 w-5" /><span>Marketplace</span>
-                  </button>
-                </Link>
+              <div className="space-y-1">
+                {[
+                  { href: "/events/create", icon: <CalendarPlus className="h-5 w-5" />, label: "Create Event" },
+                  { href: "/events",        icon: <Telescope className="h-5 w-5" />,    label: "Discover" },
+                  { href: "/my-events",     icon: <Ticket className="h-5 w-5" />,       label: "My Events" },
+                  { href: "/marketplace",   icon: <Store className="h-5 w-5" />,        label: "Marketplace" },
+                  { href: "/bookings",      icon: <ShoppingCart className="h-5 w-5" />, label: "Bookings" },
+                ].map(({ href, icon, label }) => (
+                  <Link key={href} href={href} onClick={closeMobileMenu}>
+                    <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center">
+                      {icon}<span>{label}</span>
+                    </button>
+                  </Link>
+                ))}
 
-                {/* Messages with unread badge */}
+                {/* Messages with badge */}
                 <Link href="/messages" onClick={closeMobileMenu}>
                   <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center justify-between">
-                    <span className="flex gap-3 items-center">
-                      <MessageCircle className="h-5 w-5" /><span>Messages</span>
-                    </span>
+                    <span className="flex gap-3 items-center"><MessageCircle className="h-5 w-5" /><span>Messages</span></span>
                     {unreadMessages > 0 && (
-                      <span className="bg-purple-600 text-white text-xs font-bold rounded-full px-2 py-0.5">
-                        {unreadMessages}
-                      </span>
+                      <span className="bg-purple-600 text-white text-xs font-bold rounded-full px-2 py-0.5">{unreadMessages}</span>
                     )}
                   </button>
                 </Link>
 
-                <Link href="/messages" onClick={closeMobileMenu}>
-                  <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center">
-                    <CalendarPlus className="h-5 w-5" /><span>Bookings</span>
-                  </button>
-                </Link>
-
-                <div className="border-t border-gray-400 my-3" />
-                <button
-                  onClick={() => { handleSignOut(); closeMobileMenu(); }}
-                  className="w-full text-gray-800 font-bold px-4 py-3 text-sm rounded-lg hover:bg-red-700 hover:text-gray-100 transition border-2 border-red-700/50"
-                >
+                <div className="border-t border-gray-400 my-2" />
+                <button onClick={() => { handleSignOut(); closeMobileMenu(); }}
+                  className="w-full text-gray-800 font-bold px-4 py-3 text-sm rounded-lg hover:bg-red-700 hover:text-gray-100 transition border-2 border-red-700/50">
                   Sign out
                 </button>
               </div>
