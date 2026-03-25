@@ -131,7 +131,7 @@ function MessagesPageInner() {
   const buyerConvs     = conversations?.asBuyer  ?? [];
   const hasVendor      = vendorConvs.length > 0;
   const displayedConvs = activeTab === "vendor" ? vendorConvs : buyerConvs;
-  const isVendorInActive = convDetail ? convDetail.vendorProfile.userId === myId : false;
+  const isVendorInActive = convDetail ? convDetail.vendorProfile?.userId === myId : false;
 
   function convName(conv: ConvSummary, tab: "buyer"|"vendor") {
     return tab === "vendor"

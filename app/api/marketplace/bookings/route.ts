@@ -43,12 +43,16 @@ export async function GET(req: Request) {
     },
     include: {
       listing: {
-        select: { id: true, title: true }
+        select: { id: true, title: true, price: true, priceType: true }
       },
       conversation: {
         select: {
+          id: true,
           buyer: {
             select: { id: true, name: true, email: true }
+          },
+          vendorProfile: {
+            select: { id: true, businessName: true, logoImage: true, userId: true }
           }
         }
       }

@@ -29,7 +29,7 @@ interface Booking {
   conversation: {
     id: string;
     buyer: { id: string; name: string | null; email: string };
-    vendorProfile: { id: string; businessName: string; logoImage: string | null; userId: string };
+    vendorProfile?: { id: string; businessName: string; logoImage: string | null; userId: string };
   };
 }
 
@@ -62,7 +62,7 @@ function BookingCard({
   booking: Booking; myId: string; onAction: () => void;
 }) {
   const router   = useRouter();
-  const isVendor = booking.conversation.vendorProfile.userId === myId;
+  const isVendor = booking.conversation.vendorProfile?.userId === myId;
   const s        = STATUS[booking.status] ?? { label: booking.status, color: "bg-gray-800 border-gray-700 text-gray-500", icon: null };
   const [expanded,   setExpanded]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -101,7 +101,7 @@ function BookingCard({
 
   const other = isVendor
     ? (booking.conversation.buyer.name ?? booking.conversation.buyer.email)
-    : booking.conversation.vendorProfile.businessName;
+    : (booking.conversation.vendorProfile?.businessName ?? "Vendor");
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
