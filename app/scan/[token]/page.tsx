@@ -167,13 +167,22 @@ export default function ScanPage() {
       
       initializingRef.current = true;
       try {
+        // Request camera permission explicitly
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
+        });
+        
+        // Stop the stream immediately — we just needed to request permission
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Now initialize the scanner
         scannerRef.current = new Html5QrcodeScanner(
           "qr-reader",
           { fps: 10, qrbox: { width: 250, height: 250 } },
           false
         );
         
-        // Don't await render - it may not return a promise in all versions
+        // Render the scanner
         scannerRef.current.render(
           (decodedText) => {
             // Auto-stop on scan
@@ -187,8 +196,17 @@ export default function ScanPage() {
         );
       } catch (error) {
         console.error("Failed to start camera:", error);
+        
+        // Check if it's a permission error
+        const isPermissionDenied = error instanceof DOMException && 
+          (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError');
+        
         setScanResult("invalid");
-        setMessage("Camera access denied or not available.");
+        setMessage(
+          isPermissionDenied 
+            ? "Camera permission denied. Please enable camera access in your device settings."
+            : "Camera access unavailable. Check your connection or device settings."
+        );
         setCameraActive(false);
         scannerRef.current = null;
       } finally {
