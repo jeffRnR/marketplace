@@ -267,3 +267,90 @@ export async function sendBookingEmail({
     console.error("❌ Booking email error:", err);
   }
 }
+
+// ─── Scanner link email ───────────────────────────────────────────────────────
+
+export async function sendScannerLinkEmail({
+  to, scannerName, eventTitle, eventDate, eventLocation,
+  stationName, scanUrl, expiresAt, baseUrl,
+}: {
+  to:           string;
+  scannerName: string;
+  eventTitle:   string;
+  eventDate:    string;
+  eventLocation:string;
+  stationName:  string;
+  scanUrl:      string;
+  expiresAt:    string;
+  baseUrl:      string;
+}): Promise<void> {
+  const transporter = getTransporter();
+  if (!transporter) return;
+
+  const expiryDate = new Date(expiresAt).toLocaleString("en-KE", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  try {
+    const info = await transporter.sendMail({
+      from:    `"Noizy Hub" <${process.env.GMAIL_USER}>`,
+      to,
+      subject: `Scanner access for ${eventTitle} 🎫`,
+      html: `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#0f0f0f;font-family:system-ui,sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:#1a1a2e;border-radius:16px;
+              overflow:hidden;border:1px solid #2d2d4e;">
+    <div style="background:linear-gradient(135deg,#4c1d95,#7c3aed);padding:32px;text-align:center;">
+      <p style="color:#ddd6fe;font-size:13px;margin:0 0 8px;">SCANNER ACCESS</p>
+      <h1 style="color:#fff;margin:0;font-size:24px;">${eventTitle}</h1>
+    </div>
+    <div style="padding:28px;">
+      <p style="color:#a0aec0;margin:0 0 20px;">
+        Hi <strong style="color:#e2e8f0;">${scannerName}</strong>,
+        you've been assigned as a scanner for this event!
+      </p>
+      <div style="background:#111827;border-radius:12px;padding:16px;margin-bottom:20px;">
+        <p style="color:#718096;font-size:12px;margin:0 0 8px;
+                  text-transform:uppercase;letter-spacing:1px;">Your Assignment</p>
+        <p style="color:#e2e8f0;margin:4px 0;">🎫 Station: <strong>${stationName}</strong></p>
+        <p style="color:#e2e8f0;margin:4px 0;">📅 ${eventDate}</p>
+        <p style="color:#e2e8f0;margin:4px 0;">📍 ${eventLocation}</p>
+        <p style="color:#fbbf24;margin:12px 0 0;font-size:14px;">
+          Expires: ${expiryDate}
+        </p>
+      </div>
+      <div style="text-align:center;margin-bottom:20px;">
+        <a href="${scanUrl}"
+           style="display:inline-block;background:#7c3aed;color:#fff;padding:16px 32px;
+                  border-radius:12px;text-decoration:none;font-weight:bold;font-size:16px;
+                  box-shadow:0 4px 12px rgba(124,58,237,0.3);">
+          🚀 Open Scanner App
+        </a>
+      </div>
+      <p style="color:#718096;font-size:12px;margin:0 0 8px;
+                text-transform:uppercase;letter-spacing:1px;">Direct Link</p>
+      <p style="color:#a78bfa;font-size:14px;margin:4px 0;word-break:break-all;">
+        ${scanUrl}
+      </p>
+      <p style="color:#4a5568;font-size:12px;margin-top:20px;text-align:center;">
+        Use this link on your phone or tablet to scan tickets.<br/>
+        No app installation required — works in any browser.
+      </p>
+    </div>
+  </div>
+</body>
+</html>`,
+    });
+
+    console.log("✅ Scanner link email sent:", info.messageId);
+  } catch (err) {
+    console.error("❌ Scanner email exception:", err);
+  }
+}

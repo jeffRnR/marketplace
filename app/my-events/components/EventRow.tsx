@@ -17,8 +17,10 @@ import { AnalyticsPanel } from "./AnalyticsPanel";
 import { EditEventModal } from "./EditEventModal";
 import { TicketsPanel } from "./TicketsPanel";
 import VendorsPanel from "./VendorsPanel";
+import { ScanPanel } from "./ScanPanel";
+import { ScanLine } from "lucide-react";
 
-type DetailTab = "overview" | "analytics" | "attendees" | "revenue" | "tickets" | "promos" | "vendors";
+type DetailTab = "overview" | "analytics" | "attendees" | "revenue" | "tickets" | "promos" | "vendors" | "scan";
 
 const TABS: { key: DetailTab; label: string; icon: React.ElementType }[] = [
   { key: "overview",  label: "Overview",  icon: BarChart2  },
@@ -28,6 +30,7 @@ const TABS: { key: DetailTab; label: string; icon: React.ElementType }[] = [
   { key: "tickets",   label: "Tickets",   icon: Ticket     },
   { key: "promos",    label: "Promos",    icon: Tag        },
   { key: "vendors",   label: "Vendors",   icon: Store      },
+  { key: "scan", label: "Scan", icon: ScanLine },
 ];
 
 export function EventRow({
@@ -266,6 +269,7 @@ export function EventRow({
               {tab === "analytics" && <AnalyticsPanel event={event} />}
               {tab === "attendees" && <AttendeePanel event={event} />}
               {tab === "vendors"   && <VendorsPanel eventId={event.id} />}
+              {tab === "scan" && <ScanPanel event={event} />}
             </div>
           </div>
         )}

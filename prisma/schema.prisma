@@ -98,6 +98,7 @@ model Event {
   orders             Order[]
   vendorApplications VendorApplication[]
   vendingSlots       VendingSlot[]
+  scanStations       ScanStation[]
 }
 
 model EventCategory {
@@ -160,6 +161,8 @@ model OrderItem {
   price      String
   quantity   Int    @default(1)
   ticketCode String @unique
+  checkedIn  Boolean  @default(false)
+  checkedInAt DateTime?
   orderId    String
   order      Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
@@ -448,4 +451,64 @@ model Notification {
   @@index([userId])
   @@index([isRead])
   @@index([createdAt])
+}
+
+// ─── TICKET SCANNING ──────────────────────────────────────────────────────────
+
+// A scanning station created by the event owner.
+// Stations are ordered — ticket must pass them in sequence.
+// The station with the highest `order` number is the final station.
+model ScanStation {
+  id        String   @id @default(cuid())
+  name      String                        // e.g. "Gate 1", "Security Check"
+  order     Int                           // 1, 2, 3 — sequence order
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  eventId     Int
+  event       Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sessions    ScanSession[]
+  logs        ScanLog[]
+
+  @@index([eventId])
+  @@index([order])
+}
+
+// A scanner session — a tokenized link sent to a scanner person.
+// No account required to use it. Token is cryptographically random.
+model ScanSession {
+  id        String    @id @default(cuid())
+  token     String    @unique              // the secret URL token
+  label     String                         // e.g. "John at Gate 1"
+  expiresAt DateTime
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  lastUsed  DateTime?
+
+  stationId String
+  station   ScanStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  logs      ScanLog[]
+
+  @@index([token])
+  @@index([stationId])
+}
+
+// Every scan attempt — success or failure — is logged here.
+model ScanLog {
+  id         String   @id @default(cuid())
+  ticketCode String
+  result     String                        // "success" | "already_scanned" | "invalid" | "wrong_order" | "duplicate_final"
+  scannedAt  DateTime @default(now())
+  note       String?                       // extra detail e.g. "previously scanned at 14:32"
+
+  stationId String
+  station   ScanStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
+
+  sessionId String
+  session   ScanSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([stationId])
+  @@index([sessionId])
+  @@index([ticketCode])
+  @@index([scannedAt])
 }
