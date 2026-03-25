@@ -5,11 +5,18 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5QrcodeScanner, Html5Qrcode } from "html5-qrcode";
 import {
   QrCode, CheckCircle, XCircle, AlertTriangle, Loader2,
   Keyboard, Camera, RotateCcw, Wifi, WifiOff, Ticket,
 } from "lucide-react";
+
+// ─── Utilities ───────────────────────────────────────────────────────────────
+
+const isMobile = () => {
+  if (typeof window === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -93,7 +100,7 @@ export default function ScanPage() {
   const [scanning,   setScanning]   = useState(false);
 
   const [cameraActive, setCameraActive] = useState(false);
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const initializingRef = useRef(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -167,23 +174,26 @@ export default function ScanPage() {
       
       initializingRef.current = true;
       try {
-        // Request camera permission explicitly
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
-        });
+        const mobile = isMobile();
         
-        // Stop the stream immediately — we just needed to request permission
-        stream.getTracks().forEach(track => track.stop());
+        // Initialize the scanner with direct control
+        scannerRef.current = new Html5Qrcode("qr-reader");
         
-        // Now initialize the scanner
-        scannerRef.current = new Html5QrcodeScanner(
-          "qr-reader",
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          false
-        );
+        // Configure camera constraints
+        const constraints = mobile ? {
+          facingMode: 'environment',
+          aspectRatio: 1.0
+        } : {
+          facingMode: 'environment'
+        };
         
-        // Render the scanner
-        scannerRef.current.render(
+        // Start camera directly
+        await scannerRef.current.start(
+          constraints,
+          {
+            fps: 10,
+            qrbox: mobile ? { width: 200, height: 200 } : { width: 250, height: 250 }
+          },
           (decodedText) => {
             // Auto-stop on scan
             setCameraActive(false);
@@ -220,8 +230,10 @@ export default function ScanPage() {
     return () => {
       if (scannerRef.current && !initializingRef.current) {
         try {
-          scannerRef.current.clear().catch(() => {});
-          scannerRef.current = null;
+          scannerRef.current.stop().then(() => {
+            scannerRef.current?.clear();
+            scannerRef.current = null;
+          }).catch(() => {});
         } catch {}
       }
     };
