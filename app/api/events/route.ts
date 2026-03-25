@@ -47,16 +47,18 @@ export async function POST(req: Request) {
         { status: 400 }
       );
 
-    if (!lat || !lng)
-      return NextResponse.json(
-        { error: "Please select a valid venue with coordinates." },
-        { status: 400 }
-      );
+    // Allow manual locations without coordinates, but validate if coordinates are provided
+    const hasCoordinates = lat && lng;
+    if (!hasCoordinates) {
+      console.log(`Manual location accepted: "${location}" (no coordinates)`);
+    }
 
     // 5. Build fields
     const eventDate      = new Date(`${startDate}T${startTime}`);
     const timeLabel      = `${startTime}${endDate && endTime ? ` – ${endTime} (${endDate})` : ""}`;
-    const mapUrl         = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`;
+    const mapUrl         = hasCoordinates 
+      ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`
+      : null;
     const fullDescription = requireApproval
       ? `${description}\n\n[Attendance requires host approval]`
       : description;
