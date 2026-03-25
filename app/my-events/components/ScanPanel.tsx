@@ -14,11 +14,11 @@ import { ManagedEvent } from "../types";
 
 interface ScanSession {
   id: string; token: string; label: string; expiresAt: string;
-  isActive: boolean; lastUsed: string | null;
+  isActive: boolean; isEmailed: boolean; lastUsed: string | null;
 }
 
 interface Station {
-  id: string; name: string; order: number; isActive: boolean; createdAt: string;
+  id: string; name: string; order: number; isActive: boolean; isFinal: boolean; createdAt: string;
   _count: { logs: number; sessions: number };
   sessions: ScanSession[];
 }
@@ -46,13 +46,32 @@ function expiryLabel(d: string) {
 // ─── Generate link modal ──────────────────────────────────────────────────────
 
 function GenerateLinkModal({ station, event, onClose, onCreated }: {
-  station: Station; event: ManagedEvent; onClose: () => void; onCreated: (url: string) => void;
+  station: Station; event: ManagedEvent; onClose: () => void; onCreated: (url: string, isEmailed: boolean) => void;
 }) {
   const [label,   setLabel]   = useState("");
   const [hours,   setHours]   = useState("12");
   const [email,   setEmail]   = useState("");
   const [saving,  setSaving]  = useState(false);
   const [error,   setError]   = useState("");
+
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
+  // Reset form when modal opens
+  useEffect(() => {
+    setLabel("");
+    setHours("12");
+    setEmail("");
+    setError("");
+  }, []);
 
   async function handleCreate() {
     if (!label.trim() || !hours) return;
@@ -80,26 +99,48 @@ function GenerateLinkModal({ station, event, onClose, onCreated }: {
             expiresAt: data.session.expiresAt,
           }),
         });
+        // Mark session as emailed
+        await fetch("/api/scan/sessions", {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId: data.session.id, isEmailed: true }),
+        });
         // Don't block on email failure - link creation succeeded
       }
 
-      onCreated(data.url);
-    } catch { setError("Network error."); }
-    finally { setSaving(false); }
+      onCreated(data.url, email.trim() !== "");
+    } catch (err) {
+      console.error("Error creating scanner link:", err);
+      setError("Network error.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-md bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <div
+        className="w-full max-w-md bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl relative"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="absolute inset-0" onClick={onClose}></div>
+        <div className="relative z-10">
         <div className="flex items-center justify-between p-5 border-b border-gray-800">
           <div>
             <h3 className="text-gray-100 font-bold">Generate Scanner Link</h3>
             <p className="text-gray-500 text-sm mt-0.5">{station.name}</p>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 transition text-xl font-bold">×</button>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
+            }}
+            className="text-gray-500 hover:text-gray-300 transition text-xl font-bold w-8 h-8 flex items-center justify-center rounded hover:bg-gray-800"
+          >
+            ×
+          </button>
         </div>
-        <div className="p-5 flex flex-col gap-4">
+        <form onSubmit={(e) => e.preventDefault()} className="p-5 flex flex-col gap-4">
           <div>
             <label className="block text-gray-400 text-xs font-semibold mb-1.5 uppercase tracking-wider">Scanner label *</label>
             <input value={label} onChange={e => setLabel(e.target.value)} placeholder="e.g. John at Gate 1"
@@ -140,6 +181,7 @@ function GenerateLinkModal({ station, event, onClose, onCreated }: {
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
             Generate Link
           </button>
+        </form>
         </div>
       </div>
     </div>
@@ -148,12 +190,13 @@ function GenerateLinkModal({ station, event, onClose, onCreated }: {
 
 // ─── Station card ─────────────────────────────────────────────────────────────
 
-function StationCard({ station, isFinal, eventId, event, onRefresh }: {
-  station: Station; isFinal: boolean; eventId: number; event: ManagedEvent; onRefresh: () => void;
+function StationCard({ station, eventId, event, onRefresh }: {
+  station: Station; eventId: number; event: ManagedEvent; onRefresh: () => void;
 }) {
   const [expanded,  setExpanded]  = useState(false);
   const [showGen,   setShowGen]   = useState(false);
   const [newLink,   setNewLink]   = useState("");
+  const [isEmailed, setIsEmailed] = useState(false);
   const [copied,    setCopied]    = useState(false);
   const [revoking,  setRevoking]  = useState<string | null>(null);
   const [toggling,  setToggling]  = useState(false);
@@ -172,6 +215,14 @@ function StationCard({ station, isFinal, eventId, event, onRefresh }: {
       body: JSON.stringify({ stationId: station.id, isActive: !station.isActive }),
     });
     setToggling(false); onRefresh();
+  }
+
+  async function toggleFinal() {
+    await fetch("/api/scan/stations", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stationId: station.id, isFinal: !station.isFinal }),
+    });
+    onRefresh();
   }
 
   async function deleteStation() {
@@ -199,14 +250,14 @@ function StationCard({ station, isFinal, eventId, event, onRefresh }: {
         {/* Header */}
         <div className="flex items-center gap-3 p-4">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-black shrink-0 ${
-            isFinal ? "bg-purple-600 text-white" : "bg-gray-700 text-gray-300"
+            station.isFinal ? "bg-purple-600 text-white" : "bg-gray-700 text-gray-300"
           }`}>
             {station.order}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <p className="text-gray-200 font-bold truncate">{station.name}</p>
-              {isFinal && <span className="text-xs bg-purple-900/40 border border-purple-700/40 text-purple-400 px-2 py-0.5 rounded-full">Final</span>}
+              {station.isFinal && <span className="text-xs bg-purple-900/40 border border-purple-700/40 text-purple-400 px-2 py-0.5 rounded-full">Final</span>}
               {!station.isActive && <span className="text-xs text-gray-600">Paused</span>}
             </div>
             <p className="text-gray-600 text-xs mt-0.5">
@@ -221,6 +272,14 @@ function StationCard({ station, isFinal, eventId, event, onRefresh }: {
             <button onClick={toggleStation} disabled={toggling}
               className="p-1.5 rounded-lg border border-gray-700 text-gray-500 hover:text-gray-300 transition">
               {station.isActive ? <ToggleRight className="w-4 h-4 text-green-400" /> : <ToggleLeft className="w-4 h-4" />}
+            </button>
+            <button onClick={toggleFinal}
+              className={`p-1.5 rounded-lg border transition ${
+                station.isFinal 
+                  ? "border-purple-700 text-purple-400 hover:text-purple-300" 
+                  : "border-gray-700 text-gray-500 hover:text-gray-300"
+              }`}>
+              <Shield className="w-4 h-4" />
             </button>
             <button onClick={deleteStation}
               className="p-1.5 rounded-lg border border-gray-700 text-gray-500 hover:text-red-400 hover:border-red-700 transition">
@@ -239,15 +298,26 @@ function StationCard({ station, isFinal, eventId, event, onRefresh }: {
             <div className="flex items-start gap-3">
               <CheckCircle className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="text-green-400 text-sm font-semibold mb-2">New scanner link ready!</p>
-                <p className="text-green-300 text-xs font-mono break-all mb-3">{newLink}</p>
+                <p className="text-green-400 text-sm font-semibold mb-2">
+                  {isEmailed ? "Scanner link sent via email!" : "New scanner link ready!"}
+                </p>
+                {!isEmailed && (
+                  <>
+                    <p className="text-green-300 text-xs font-mono break-all mb-3">{newLink}</p>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => copyLink(newLink)}
+                        className="flex items-center gap-1.5 text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg transition">
+                        {copied ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copied ? "Copied!" : "Copy Link"}
+                      </button>
+                    </div>
+                  </>
+                )}
+                {isEmailed && (
+                  <p className="text-green-300 text-xs mb-2">The link has been sent to the team member's email and cannot be shared manually.</p>
+                )}
                 <div className="flex items-center gap-2">
-                  <button onClick={() => copyLink(newLink)}
-                    className="flex items-center gap-1.5 text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg transition">
-                    {copied ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    {copied ? "Copied!" : "Copy Link"}
-                  </button>
-                  <button onClick={() => setNewLink("")}
+                  <button onClick={() => { setNewLink(""); setIsEmailed(false); }}
                     className="text-xs text-green-400 hover:text-green-300 transition">
                     Dismiss
                   </button>
@@ -278,10 +348,15 @@ function StationCard({ station, isFinal, eventId, event, onRefresh }: {
                       </p>
                     </div>
                     <div className="flex items-center gap-2 ml-3">
-                      <button onClick={() => toggleShowUrl(s.id)}
-                        className="text-xs text-gray-400 hover:text-gray-300 transition">
-                        {showUrls[s.id] ? "Hide" : "Show"} Link
-                      </button>
+                      {!s.isEmailed && (
+                        <button onClick={() => toggleShowUrl(s.id)}
+                          className="text-xs text-gray-400 hover:text-gray-300 transition">
+                          {showUrls[s.id] ? "Hide" : "Show"} Link
+                        </button>
+                      )}
+                      {s.isEmailed && (
+                        <span className="text-xs text-gray-500">Emailed</span>
+                      )}
                       {s.isActive && !expired && (
                         <button onClick={() => revokeSession(s.id)} disabled={revoking === s.id}
                           className="text-xs text-red-400 hover:text-red-300 transition">
@@ -290,7 +365,7 @@ function StationCard({ station, isFinal, eventId, event, onRefresh }: {
                       )}
                     </div>
                   </div>
-                  {showUrls[s.id] && (
+                  {showUrls[s.id] && !s.isEmailed && (
                     <div className="mt-2 pt-2 border-t border-gray-700">
                       <p className="text-gray-500 text-xs mb-1.5">Share this link with your team:</p>
                       <div className="flex items-center gap-2">
@@ -315,7 +390,7 @@ function StationCard({ station, isFinal, eventId, event, onRefresh }: {
           station={station}
           event={event}
           onClose={() => setShowGen(false)}
-          onCreated={url => { setNewLink(url); setShowGen(false); setExpanded(true); onRefresh(); }}
+          onCreated={(url, emailed) => { setNewLink(url); setIsEmailed(emailed); setShowGen(false); setExpanded(true); onRefresh(); }}
         />
       )}
     </>
@@ -384,9 +459,10 @@ export function ScanPanel({ event }: { event: ManagedEvent }) {
       <div className="bg-gray-700/30 border border-gray-700 rounded-xl px-4 py-3 text-gray-500 text-xs leading-relaxed">
         <p className="font-semibold text-gray-400 mb-1">How it works</p>
         <p>• Create stations in order (e.g. Gate 1 → Security → Final Check).</p>
+        <p>• Mark stations as "Final" using the shield icon — multiple stations can be final checkpoints.</p>
         <p>• Generate a scanner link per station — share it with your team. No login needed.</p>
-        <p>• Tickets must pass stations in sequence. The final station marks tickets as admitted.</p>
-        <p>• A ticket scanned again at the final station is silently rejected (red screen).</p>
+        <p>• Tickets must pass stations in sequence. Final stations mark tickets as admitted.</p>
+        <p>• A ticket scanned again at any final station is silently rejected (red screen).</p>
       </div>
 
       {/* Add station */}
@@ -437,7 +513,6 @@ export function ScanPanel({ event }: { event: ManagedEvent }) {
             <StationCard
               key={station.id}
               station={station}
-              isFinal={i === stations.length - 1}
               eventId={event.id}
               event={event}
               onRefresh={fetchStations}

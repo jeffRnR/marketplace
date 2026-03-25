@@ -70,3 +70,28 @@ export async function DELETE(req: Request) {
 
   return NextResponse.json({ success: true });
 }
+
+export async function PATCH(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const user = await getOwner(session.user.email);
+  if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const { sessionId, isEmailed } = await req.json();
+  if (!sessionId) return NextResponse.json({ error: "sessionId required" }, { status: 400 });
+
+  const scanSession = await prisma.scanSession.findUnique({
+    where:   { id: sessionId },
+    include: { station: { include: { event: { select: { createdById: true } } } } },
+  });
+  if (!scanSession || scanSession.station.event.createdById !== user.id)
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const updated = await prisma.scanSession.update({
+    where: { id: sessionId },
+    data:  { isEmailed } as any,
+  });
+
+  return NextResponse.json(updated);
+}

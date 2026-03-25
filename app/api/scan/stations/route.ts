@@ -79,7 +79,7 @@ export async function PATCH(req: Request) {
   const user = await getOwner(session.user.email);
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const { stationId, name, isActive, order } = await req.json();
+  const { stationId, name, isActive, order, isFinal } = await req.json();
   if (!stationId) return NextResponse.json({ error: "stationId required" }, { status: 400 });
 
   const station = await prisma.scanStation.findUnique({
@@ -94,6 +94,7 @@ export async function PATCH(req: Request) {
       ...(name     !== undefined ? { name: name.trim() } : {}),
       ...(isActive !== undefined ? { isActive }          : {}),
       ...(order    !== undefined ? { order }              : {}),
+      ...(isFinal  !== undefined ? { isFinal }           : {}),
     },
   });
 

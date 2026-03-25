@@ -457,12 +457,13 @@ model Notification {
 
 // A scanning station created by the event owner.
 // Stations are ordered — ticket must pass them in sequence.
-// The station with the highest `order` number is the final station.
+// Stations can be marked as final checkpoints. Multiple stations can be final.
 model ScanStation {
   id        String   @id @default(cuid())
   name      String                        // e.g. "Gate 1", "Security Check"
   order     Int                           // 1, 2, 3 — sequence order
   isActive  Boolean  @default(true)
+  isFinal   Boolean  @default(false)      // Whether this is a final checkpoint
   createdAt DateTime @default(now())
 
   eventId     Int
@@ -482,6 +483,7 @@ model ScanSession {
   label     String                         // e.g. "John at Gate 1"
   expiresAt DateTime
   isActive  Boolean   @default(true)
+  isEmailed Boolean   @default(false)      // whether this link was sent via email (makes it unsharable)
   createdAt DateTime  @default(now())
   lastUsed  DateTime?
 
