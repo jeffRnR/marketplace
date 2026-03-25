@@ -306,7 +306,7 @@ export default function ScanPage() {
   const expiresIn = Math.max(0, Math.round((new Date(sessionInfo.expiresAt).getTime() - Date.now()) / 60000));
 
   return (
-    <div className="p-4 lg:w-[70%] mt-14 mx-auto w-full min-h-screen flex flex-col gap-4">
+    <div className="p-4 lg:w-[70%] mt-14 mx-auto w-full min-h-screen flex flex-col gap-6">
 
       {/* Scan result overlay */}
       {scanResult !== "idle" && scanResult !== "loading" && (
@@ -355,7 +355,7 @@ export default function ScanPage() {
             onClick={() => setCameraActive(!cameraActive)}
             disabled={scanning}
             className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 text-sm ${
-              cameraActive ? "bg-red-600 hover:bg-red-700 text-white" : "bg-purple-600 hover:bg-purple-700 text-white"
+              cameraActive ? "bg-red-600/30 hover:bg-red-700/30 text-gray-200" : "bg-purple-600 hover:bg-purple-700 text-gray-200"
             } disabled:opacity-50`}
           >
             <Camera className="w-4 h-4 sm:w-5 sm:h-5" />

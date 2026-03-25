@@ -22,6 +22,7 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const [profile,        setProfile]        = useState<Profile | null>(null);
+  const [bookingsCount,  setBookingsCount]  = useState(0);
   const [loading,        setLoading]        = useState(true);
   const [tab,            setTab]            = useState<"listings"|"inquiries"|"bookings"|"wallet"|"settings">("listings");
   const [showAdd,        setShowAdd]        = useState(false);
@@ -49,6 +50,17 @@ export default function DashboardPage() {
         });
       } else {
         router.push("/marketplace/create-profile");
+      }
+      
+      // Fetch bookings count
+      try {
+        const bookingsRes = await fetch("/api/marketplace/bookings");
+        if (bookingsRes.ok) {
+          const bookingsData = await bookingsRes.json();
+          setBookingsCount(bookingsData.bookings?.length || 0);
+        }
+      } catch (e) {
+        console.error("Failed to fetch bookings count:", e);
       }
     } finally { setLoading(false); }
   }, [router]);
@@ -88,7 +100,7 @@ export default function DashboardPage() {
   const TABS = [
     { id: "listings",  label: "Listings",  count: profile.listings.length },
     { id: "inquiries", label: "Inquiries", count: unreadCount, dot: unreadCount > 0 },
-    { id: "bookings",  label: "Bookings" },
+    { id: "bookings",  label: "Bookings", count: bookingsCount },
     { id: "wallet",    label: "Wallet" },
     { id: "settings",  label: "Settings" },
   ] as const;

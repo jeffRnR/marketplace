@@ -123,6 +123,12 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                       <span>Marketplace</span>
                     </button>
                   </Link>
+                  <Link href="/messages" className="hidden lg:block">
+                    <button className="text-gray-300 font-bold text-sm rounded-lg hover:text-gray-100 transition flex gap-2 items-center">
+                      <CalendarPlus className="h-4 w-4" />
+                      <span>Bookings</span>
+                    </button>
+                  </Link>
                   <button
                     onClick={handleSignOut}
                     className="text-gray-300 font-bold px-2 py-1 text-sm rounded-lg hover:bg-gray-200 hover:text-gray-800 transition duration-300 border border-gray-400"
@@ -205,6 +211,12 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                         {unreadMessages}
                       </span>
                     )}
+                  </button>
+                </Link>
+
+                <Link href="/messages" onClick={closeMobileMenu}>
+                  <button className="w-full text-left text-gray-800 font-bold text-sm rounded-lg hover:bg-purple-800 hover:text-gray-100 p-3 transition flex gap-3 items-center">
+                    <CalendarPlus className="h-5 w-5" /><span>Bookings</span>
                   </button>
                 </Link>
 

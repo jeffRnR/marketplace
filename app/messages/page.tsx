@@ -498,7 +498,7 @@ function MessagesPageInner() {
 
         {/* ── Chat panel ── */}
         {activeId ? (
-          <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Header */}
               <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-600 shrink-0">
@@ -589,7 +589,7 @@ function MessagesPageInner() {
 
             {/* Right panel: bookings */}
             {convDetail && (
-              <div className="hidden lg:flex w-56 border-l border-gray-600 flex-col overflow-y-auto">
+              <div className="flex w-full lg:w-56 border-t lg:border-t-0 lg:border-l border-gray-600 flex-col overflow-y-auto">
                 <div className="p-4 border-b border-gray-600 shrink-0">
                   <p className="text-gray-300 text-sm font-bold">Booking & Services</p>
                 </div>
