@@ -99,6 +99,7 @@ model Event {
   vendorApplications VendorApplication[]
   vendingSlots       VendingSlot[]
   scanStations       ScanStation[]
+  ticketCapacities EventTicketCapacity[]
 }
 
 model EventCategory {
@@ -514,4 +515,15 @@ model ScanLog {
   @@index([sessionId])
   @@index([ticketCode])
   @@index([scannedAt])
+}
+
+model EventTicketCapacity {
+  id          String   @id @default(cuid())
+  eventId     Int
+  ticketType  String   // must match OrderItem.ticketType exactly
+  maxCapacity Int
+  laneNote    String?  // e.g. "VIP → Left entrance, red wristband"
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, ticketType])
 }
