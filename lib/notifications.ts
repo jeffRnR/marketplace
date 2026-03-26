@@ -2,6 +2,8 @@
 // Email via Nodemailer + Gmail (no domain needed, free, sends to anyone)
 // SMS via Africa's Talking sandbox
 
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 import nodemailer from "nodemailer";
 
 // ─── Gmail transporter ────────────────────────────────────────────────────────
@@ -25,8 +27,8 @@ function getTransporter() {
 
 export async function sendSMS(phone: string, message: string): Promise<void> {
   const username = process.env.AT_USERNAME;
-  const apiKey   = process.env.AT_API_KEY;
-  const from     = process.env.AT_SENDER_ID ?? "PLATFORM";
+  const apiKey = process.env.AT_API_KEY;
+  const from = process.env.AT_SENDER_ID ?? "PLATFORM";
 
   if (!username || !apiKey) {
     console.warn("⚠️  SMS skipped: AT_USERNAME or AT_API_KEY not set");
@@ -34,23 +36,51 @@ export async function sendSMS(phone: string, message: string): Promise<void> {
   }
 
   try {
-    const res = await fetch("https://api.africastalking.com/version1/messaging", {
-      method:  "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "apiKey":        apiKey,
-        "Accept":        "application/json",
+    const res = await fetch(
+      "https://api.africastalking.com/version1/messaging",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          apiKey: apiKey,
+          Accept: "application/json",
+        },
+        body: new URLSearchParams({
+          username,
+          to: phone,
+          message,
+          from,
+        }).toString(),
       },
-      body: new URLSearchParams({ username, to: phone, message, from }).toString(),
-    });
+    );
     const data = await res.json();
     if (!res.ok) {
       console.error("❌ SMS API error:", JSON.stringify(data));
     } else {
-      console.log("✅ SMS sent:", JSON.stringify(data?.SMSMessageData?.Recipients ?? data));
+      console.log(
+        "✅ SMS sent:",
+        JSON.stringify(data?.SMSMessageData?.Recipients ?? data),
+      );
     }
   } catch (err) {
     console.error("❌ SMS exception:", err);
+  }
+}
+
+// ─── Generate ticket PDF ────────────────────────────────────────────────────
+
+async function generateTicketPDF(ticketCode: string, baseUrl: string): Promise<Buffer> {
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    executablePath: await chromium.executablePath(),
+    headless: true,
+  });
+  try {
+    const page = await browser.newPage();
+    await page.goto(`${baseUrl}/ticket/${ticketCode}`, { waitUntil: "networkidle0" });
+    return Buffer.from(await page.pdf({ format: "A4", printBackground: true }));
+  } finally {
+    await browser.close();
   }
 }
 
@@ -58,58 +88,77 @@ export async function sendSMS(phone: string, message: string): Promise<void> {
 
 export interface TicketEmailItem {
   ticketType: string;
-  quantity:   number;
-  price:      string;
+  quantity: number;
+  price: string;
   ticketCode: string;
 }
 
 export async function sendTicketEmail({
-  to, name, eventTitle, eventDate, eventLocation,
-  items, totalAmount, isRsvp, orderId, baseUrl,
+  to,
+  name,
+  eventTitle,
+  eventDate,
+  eventLocation,
+  items,
+  totalAmount,
+  isRsvp,
+  orderId,
+  baseUrl,
 }: {
-  to:            string;
-  name:          string;
-  eventTitle:    string;
-  eventDate:     string;
+  to: string;
+  name: string;
+  eventTitle: string;
+  eventDate: string;
   eventLocation: string;
-  items:         TicketEmailItem[];
-  totalAmount:   number;
-  isRsvp:        boolean;
-  orderId:       string;
-  baseUrl:       string;
+  items: TicketEmailItem[];
+  totalAmount: number;
+  isRsvp: boolean;
+  orderId: string;
+  baseUrl: string;
 }): Promise<void> {
   const transporter = getTransporter();
   if (!transporter) return;
 
-  const ticketRows = items.map((item) => `
+  const ticketRows = items
+    .map((item) => {
+      const ticketUrl = `${baseUrl}/ticket/${item.ticketCode}`;
+      return `
     <tr>
       <td style="padding:10px 0;border-bottom:1px solid #2d2d2d;">
         <strong style="color:#e2e8f0;">${item.ticketType}</strong><br/>
         <span style="color:#718096;font-size:13px;">
           Qty: ${item.quantity} · ${isRsvp ? "Free RSVP" : item.price}
-        </span>
-      </td>
-      <td style="padding:10px 0;border-bottom:1px solid #2d2d2d;text-align:right;vertical-align:top;">
-        <a href="${baseUrl}/ticket/${item.ticketCode}"
-           style="background:#7c3aed;color:#fff;padding:6px 14px;border-radius:8px;
-                  text-decoration:none;font-size:13px;font-weight:600;">
-          View Ticket
+        </span><br/>
+        <a href="${ticketUrl}"
+           style="color:#a78bfa;font-size:12px;text-decoration:none;word-break:break-all;">
+          🔗 ${ticketUrl}
         </a>
       </td>
     </tr>
-  `).join("");
+  `;
+    })
+    .join("");
 
-  const allTicketLinks = items.map((item) =>
-    `<p style="margin:4px 0;">
-       <a href="${baseUrl}/ticket/${item.ticketCode}" style="color:#a78bfa;">
-         ${baseUrl}/ticket/${item.ticketCode}
-       </a>
-     </p>`
-  ).join("");
+  // Generate PDF attachments
+  const attachments = [];
+  for (const item of items) {
+    try {
+      const pdfBuffer = await generateTicketPDF(item.ticketCode, baseUrl);
+      attachments.push({
+        filename: `ticket-${item.ticketCode}.pdf`,
+        content: Buffer.from(pdfBuffer),
+      });
+    } catch (err) {
+      console.error(
+        `❌ Failed to generate PDF for ticket ${item.ticketCode}:`,
+        err,
+      );
+    }
+  }
 
   try {
     const info = await transporter.sendMail({
-      from:    `"Noizy Hub" <${process.env.GMAIL_USER}>`,
+      from: `"Noizy Hub" <${process.env.GMAIL_USER}>`,
       to,
       subject: `Your ticket for ${eventTitle} 🎟`,
       html: `
@@ -136,26 +185,32 @@ export async function sendTicketEmail({
       <p style="color:#718096;font-size:12px;margin:0 0 8px;
                 text-transform:uppercase;letter-spacing:1px;">Your Tickets</p>
       <table style="width:100%;border-collapse:collapse;">${ticketRows}</table>
-      ${!isRsvp ? `
+      ${
+        !isRsvp
+          ? `
       <div style="background:#111827;border-radius:12px;padding:16px;
                   margin-top:20px;text-align:right;">
         <span style="color:#718096;">Total paid: </span>
         <strong style="color:#68d391;font-size:18px;">
           KES ${totalAmount.toLocaleString()}
         </strong>
-      </div>` : ""}
+      </div>`
+          : ""
+      }
       <div style="margin-top:24px;padding-top:20px;border-top:1px solid #2d2d2d;">
-        <p style="color:#718096;font-size:12px;margin:0 0 8px;
-                  text-transform:uppercase;letter-spacing:1px;">Ticket Links</p>
-        ${allTicketLinks}
+        <p style="color:#a0aec0;font-size:12px;margin:8px 0 0;">
+          Your ticket PDF${items.length > 1 ? "s are" : " is"} attached to this email.
+          You can also view ${items.length > 1 ? "them" : "it"} online using the link${items.length > 1 ? "s" : ""} above.
+        </p>
       </div>
       <p style="color:#4a5568;font-size:12px;margin-top:24px;text-align:center;">
-        Present your ticket QR code at the entrance.<br/>Order ID: ${orderId}
+        Present your ticket QR code at the entrance.<br/>Order ID: <span style="font-weight:bold; text-color:#e2e8f0;">${orderId}</span>
       </p>
     </div>
   </div>
 </body>
 </html>`,
+      attachments,
     });
 
     console.log("✅ Ticket email sent:", info.messageId);
@@ -167,25 +222,32 @@ export async function sendTicketEmail({
 // ─── Vending slot confirmation email ─────────────────────────────────────────
 
 export async function sendVendingConfirmationEmail({
-  to, name, eventTitle, eventDate, eventLocation,
-  slotTitle, amount, applicationId, baseUrl,
+  to,
+  name,
+  eventTitle,
+  eventDate,
+  eventLocation,
+  slotTitle,
+  amount,
+  applicationId,
+  baseUrl,
 }: {
-  to:            string;
-  name:          string;
-  eventTitle:    string;
-  eventDate:     string;
+  to: string;
+  name: string;
+  eventTitle: string;
+  eventDate: string;
   eventLocation: string;
-  slotTitle:     string;
-  amount:        number;
+  slotTitle: string;
+  amount: number;
   applicationId: string;
-  baseUrl:       string;
+  baseUrl: string;
 }): Promise<void> {
   const transporter = getTransporter();
   if (!transporter) return;
 
   try {
     const info = await transporter.sendMail({
-      from:    `"Noizy Hub" <${process.env.GMAIL_USER}>`,
+      from: `"Noizy Hub" <${process.env.GMAIL_USER}>`,
       to,
       subject: `Vending slot confirmed — ${eventTitle} 🛒`,
       html: `
@@ -232,17 +294,26 @@ export async function sendVendingConfirmationEmail({
 // ─── Generic booking email ────────────────────────────────────────────────────
 
 export async function sendBookingEmail({
-  to, subject, name, body, ctaUrl, ctaLabel,
+  to,
+  subject,
+  name,
+  body,
+  ctaUrl,
+  ctaLabel,
 }: {
-  to: string; subject: string; name: string;
-  body: string; ctaUrl: string; ctaLabel: string;
+  to: string;
+  subject: string;
+  name: string;
+  body: string;
+  ctaUrl: string;
+  ctaLabel: string;
 }): Promise<void> {
   const transporter = getTransporter();
   if (!transporter) return;
 
   try {
     const info = await transporter.sendMail({
-      from:    `"Noizy Hub" <${process.env.GMAIL_USER}>`,
+      from: `"Noizy Hub" <${process.env.GMAIL_USER}>`,
       to,
       subject,
       html: `
@@ -271,18 +342,25 @@ export async function sendBookingEmail({
 // ─── Scanner link email ───────────────────────────────────────────────────────
 
 export async function sendScannerLinkEmail({
-  to, scannerName, eventTitle, eventDate, eventLocation,
-  stationName, scanUrl, expiresAt, baseUrl,
+  to,
+  scannerName,
+  eventTitle,
+  eventDate,
+  eventLocation,
+  stationName,
+  scanUrl,
+  expiresAt,
+  baseUrl,
 }: {
-  to:           string;
+  to: string;
   scannerName: string;
-  eventTitle:   string;
-  eventDate:    string;
-  eventLocation:string;
-  stationName:  string;
-  scanUrl:      string;
-  expiresAt:    string;
-  baseUrl:      string;
+  eventTitle: string;
+  eventDate: string;
+  eventLocation: string;
+  stationName: string;
+  scanUrl: string;
+  expiresAt: string;
+  baseUrl: string;
 }): Promise<void> {
   const transporter = getTransporter();
   if (!transporter) return;
@@ -298,7 +376,7 @@ export async function sendScannerLinkEmail({
 
   try {
     const info = await transporter.sendMail({
-      from:    `"Noizy Hub" <${process.env.GMAIL_USER}>`,
+      from: `"Noizy Hub" <${process.env.GMAIL_USER}>`,
       to,
       subject: `Scanner access for ${eventTitle} 🎫`,
       html: `
