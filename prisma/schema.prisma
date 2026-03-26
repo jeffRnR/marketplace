@@ -507,8 +507,8 @@ model ScanLog {
   stationId String
   station   ScanStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
 
-  sessionId String
-  session   ScanSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId String?
+  session   ScanSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([stationId])
   @@index([sessionId])
