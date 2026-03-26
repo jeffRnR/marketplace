@@ -54,8 +54,3 @@ export function verifyTicketSignature(
 
   return { ticketCode: code, eventId };
 }
-```
-
-Add to `.env`:
-```
-TICKET_SIGNING_SECRET=your_64_char_hex_here
