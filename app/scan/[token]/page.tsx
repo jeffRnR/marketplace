@@ -6,15 +6,24 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Html5Qrcode } from "html5-qrcode";
 import {
-  QrCode, CheckCircle, XCircle, AlertTriangle, Loader2,
-  Keyboard, Camera, Ticket, WifiOff
+  QrCode,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Loader2,
+  Keyboard,
+  Camera,
+  Ticket,
+  WifiOff,
 } from "lucide-react";
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
 
 const isMobile = () => {
   if (typeof window === "undefined") return false;
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent,
+  );
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -25,7 +34,13 @@ interface SessionInfo {
   label: string;
   expiresAt: string;
   station: { id: string; name: string; order: number; isFinal: boolean };
-  event: { id: number; title: string; date: string; location: string; image: string };
+  event: {
+    id: number;
+    title: string;
+    date: string;
+    location: string;
+    image: string;
+  };
 }
 
 type ScanResult =
@@ -58,7 +73,8 @@ function ResultScreen({
     return () => clearTimeout(timeout);
   }, [result, onReset]);
 
-  const baseClasses = "fixed inset-0 flex flex-col items-center justify-center gap-6 z-50 p-8 text-white";
+  const baseClasses =
+    "fixed inset-0 flex flex-col items-center justify-center gap-6 z-50 p-8 text-white";
 
   if (result === "success")
     return (
@@ -67,7 +83,9 @@ function ResultScreen({
         <div className="text-center">
           <p className="text-4xl font-black mb-2">ADMIT</p>
           {ticketType && <p className="text-xl opacity-80">{ticketType}</p>}
-          {isFinal && <p className="text-lg opacity-70 mt-2">Final checkpoint ✓</p>}
+          {isFinal && (
+            <p className="text-lg opacity-70 mt-2">Final checkpoint ✓</p>
+          )}
           <p className="text-base opacity-60 mt-4">{message}</p>
         </div>
         <p className="text-sm opacity-50">Resetting in 3s…</p>
@@ -125,8 +143,8 @@ export default function ScanPage() {
   // Load session info
   useEffect(() => {
     fetch(`/api/scan/sessions/${token}`)
-      .then(r => r.json())
-      .then(data => {
+      .then((r) => r.json())
+      .then((data) => {
         if (data.valid) setSessionInfo(data);
         else setSessionError(data.error ?? "Invalid link");
       })
@@ -172,7 +190,7 @@ export default function ScanPage() {
         setScanning(false);
       }
     },
-    [sessionInfo, token]
+    [sessionInfo, token],
   );
 
   // Camera initialization
@@ -196,28 +214,39 @@ export default function ScanPage() {
         const mobile = isMobile();
         scannerRef.current = new Html5Qrcode("qr-reader");
 
-        const constraints = { facingMode: mobile ? "environment" : "environment" };
+        const constraints = {
+          facingMode: mobile ? "environment" : "environment",
+        };
 
         await scannerRef.current.start(
           constraints,
-          { fps: 10, qrbox: mobile ? { width: 200, height: 200 } : { width: 250, height: 250 } },
+          {
+            fps: 10,
+            qrbox: () => {
+              // Dynamically calculate square QR box based on screen width
+              const minDimension =
+                Math.min(window.innerWidth, window.innerHeight) * 0.6;
+              return { width: minDimension, height: minDimension };
+            },
+          },
           (decodedText) => {
             setCameraActive(false);
             setInput(decodedText);
             doScan(decodedText);
           },
-          (error) => console.log("QR scan error:", error)
+          (error) => console.log("QR scan error:", error),
         );
       } catch (error) {
         const isPermissionDenied =
           error instanceof DOMException &&
-          (error.name === "NotAllowedError" || error.name === "PermissionDeniedError");
+          (error.name === "NotAllowedError" ||
+            error.name === "PermissionDeniedError");
 
         setScanResult("invalid");
         setMessage(
           isPermissionDenied
             ? "Camera permission denied. Enable camera in settings and refresh."
-            : `Camera failed: ${error instanceof Error ? error.message : "Unknown error"}.`
+            : `Camera failed: ${error instanceof Error ? error.message : "Unknown error"}.`,
         );
         setCameraActive(false);
         scannerRef.current = null;
@@ -266,7 +295,9 @@ export default function ScanPage() {
   const { station, event } = sessionInfo;
   const expiresIn = Math.max(
     0,
-    Math.round((new Date(sessionInfo.expiresAt).getTime() - Date.now()) / 60000)
+    Math.round(
+      (new Date(sessionInfo.expiresAt).getTime() - Date.now()) / 60000,
+    ),
   );
 
   // ── Main UI ───────────────────────────────────────────────────────────────
@@ -295,10 +326,15 @@ export default function ScanPage() {
             )}
           </div>
           <p className="text-gray-500 text-xs">
-            Expires in {expiresIn >= 60 ? `${Math.floor(expiresIn / 60)}h` : `${expiresIn}m`}
+            Expires in{" "}
+            {expiresIn >= 60
+              ? `${Math.floor(expiresIn / 60)}h`
+              : `${expiresIn}m`}
           </p>
         </div>
-        <p className="text-gray-400 text-sm font-semibold truncate">{event.title}</p>
+        <p className="text-gray-400 text-sm font-semibold truncate">
+          {event.title}
+        </p>
         <p className="text-gray-500 text-xs">
           {sessionInfo.label} · Station {station.order}
         </p>
@@ -364,7 +400,11 @@ export default function ScanPage() {
               disabled={!input.trim() || scanning}
               className="bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white font-bold px-3 sm:px-5 py-3 rounded-xl transition flex items-center gap-2"
             >
-              {scanning ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />}
+              {scanning ? (
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+              ) : (
+                <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />
+              )}
             </button>
           </div>
           <p className="text-gray-600 text-xs text-center">
@@ -386,8 +426,8 @@ export default function ScanPage() {
                     i < station.order
                       ? "bg-green-600 text-white"
                       : i === station.order
-                      ? "bg-purple-600 text-white ring-2 ring-purple-400"
-                      : "bg-gray-700 text-gray-500"
+                        ? "bg-purple-600 text-white ring-2 ring-purple-400"
+                        : "bg-gray-700 text-gray-500"
                   }`}
                 >
                   {i}
@@ -397,7 +437,8 @@ export default function ScanPage() {
           })}
         </div>
         <p className="text-gray-600 text-xs text-center mt-2">
-          Station {station.order} of {station.order + (station.isFinal ? 0 : 1)}+
+          Station {station.order} of {station.order + (station.isFinal ? 0 : 1)}
+          +
         </p>
       </div>
     </div>
