@@ -23,14 +23,14 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  accounts         Account[]
-  sessions         Session[]
-  events           Event[]           @relation("UserEvents")
-  categories       Category[]        @relation("UserCategories")
-  marketProfile    MarketProfile?
-  wallet           VendorWallet?
-  slotApplications SlotApplication[]
-  conversationsAsBuyer Conversation[] @relation("ConversationBuyer")
+  accounts             Account[]
+  sessions             Session[]
+  events               Event[]           @relation("UserEvents")
+  categories           Category[]        @relation("UserCategories")
+  marketProfile        MarketProfile?
+  wallet               VendorWallet?
+  slotApplications     SlotApplication[]
+  conversationsAsBuyer Conversation[]    @relation("ConversationBuyer")
   sentMessages         Message[]
   notifications        Notification[]
 }
@@ -48,7 +48,8 @@ model Account {
   scope             String?
   id_token          String? @db.Text
   session_state     String?
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
 }
 
@@ -57,41 +58,42 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
   identifier String
   token      String   @unique
   expires    DateTime
+
   @@unique([identifier, token])
 }
 
 model Category {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
+  id          Int             @id @default(autoincrement())
+  name        String          @unique
   icon        String?
   iconColor   String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime        @default(now())
   createdById String?
-  createdBy   User?    @relation("UserCategories", fields: [createdById], references: [id], onDelete: SetNull)
-  events EventCategory[]
+  createdBy   User?           @relation("UserCategories", fields: [createdById], references: [id], onDelete: SetNull)
+  events      EventCategory[]
 }
 
 model Event {
-  id          Int      @id @default(autoincrement())
-  image       String
-  title       String
-  date        DateTime
-  time        String
-  location    String
-  description String
-  mapUrl      String?
-  host        String
-  attendees   Int      @default(0)
-  createdAt   DateTime @default(now())
-  createdById String
-  createdBy   User     @relation("UserEvents", fields: [createdById], references: [id], onDelete: Cascade)
+  id                 Int                 @id @default(autoincrement())
+  image              String
+  title              String
+  date               DateTime
+  time               String
+  location           String
+  description        String
+  mapUrl             String?
+  host               String
+  attendees          Int                 @default(0)
+  createdAt          DateTime            @default(now())
+  createdById        String
+  createdBy          User                @relation("UserEvents", fields: [createdById], references: [id], onDelete: Cascade)
   categories         EventCategory[]
   tickets            Ticket[]
   promoCodes         PromoCode[]
@@ -99,14 +101,18 @@ model Event {
   vendorApplications VendorApplication[]
   vendingSlots       VendingSlot[]
   scanStations       ScanStation[]
-  ticketCapacities EventTicketCapacity[]
+  rsvpTierPaid       Boolean             @default(false)
+  rsvpTier           String?
+  rsvpTierPayment    RsvpTierPayment?
+  ticketCapacities   TicketCapacity[]
 }
 
 model EventCategory {
   eventId    Int
   categoryId Int
-  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
   @@id([eventId, categoryId])
 }
 
@@ -119,7 +125,17 @@ model Ticket {
   startsAt DateTime?
   endsAt   DateTime?
   eventId  Int
-  event    Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model TicketCapacity {
+  id          String  @id @default(cuid())
+  ticketType  String
+  maxCapacity Int?
+  laneNote    String?
+
+  eventId Int
+  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
 
 model PromoCode {
@@ -131,93 +147,97 @@ model PromoCode {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   eventId   Int
-  event     Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
   @@unique([eventId, code])
 }
 
 model Order {
-  id          String   @id @default(cuid())
-  email       String
-  phone       String
-  name        String
-  promoCode   String?
-  discount    String?
-  totalAmount Float    @default(0)
-  isRsvp      Boolean  @default(false)
-  status      String   @default("confirmed")
-  createdAt   DateTime @default(now())
-  eventId     Int
-  event       Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  items       OrderItem[]
+  id            String         @id @default(cuid())
+  email         String
+  phone         String
+  name          String
+  promoCode     String?
+  discount      String?
+  totalAmount   Float          @default(0)
+  isRsvp        Boolean        @default(false)
+  status        String         @default("confirmed")
+  createdAt     DateTime       @default(now())
+  eventId       Int
+  event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  items         OrderItem[]
   paymentRecord PaymentRecord?
+
   @@index([eventId])
   @@index([status])
   @@index([email])
 }
 
 model OrderItem {
-  id         String @id @default(cuid())
-  ticketId   Int
-  ticketType String
-  price      String
-  quantity   Int    @default(1)
-  ticketCode String @unique
-  checkedIn  Boolean  @default(false)
+  id          String    @id @default(cuid())
+  ticketId    Int
+  ticketType  String
+  price       String
+  quantity    Int       @default(1)
+  ticketCode  String    @unique
+  checkedIn   Boolean   @default(false)
   checkedInAt DateTime?
-  orderId    String
-  order      Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 model PaymentRecord {
-  id        String   @id @default(cuid())
-  txRef     String   @unique
-  flwRef    String?
-  type      String
-  amount    Float
-  currency  String   @default("KES")
-  phone     String
-  status    String   @default("pending")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String           @id @default(cuid())
+  txRef             String           @unique
+  flwRef            String?
+  type              String
+  amount            Float
+  currency          String           @default("KES")
+  phone             String
+  status            String           @default("pending")
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
   orderId           String?          @unique
   order             Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
   slotApplicationId String?          @unique
   slotApplication   SlotApplication? @relation(fields: [slotApplicationId], references: [id], onDelete: SetNull)
   serviceBookingId  String?          @unique
   serviceBooking    ServiceBooking?  @relation(fields: [serviceBookingId], references: [id], onDelete: SetNull)
+
   @@index([txRef])
   @@index([status])
 }
 
 model VendingSlot {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  price       Float
-  currency    String   @default("KES")
-  totalSlots  Int
-  status      String   @default("open")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String            @id @default(cuid())
+  title        String
+  description  String
+  price        Float
+  currency     String            @default("KES")
+  totalSlots   Int
+  status       String            @default("open")
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
   eventId      Int
-  event        Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event        Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
   applications SlotApplication[]
+
   @@index([eventId])
   @@index([status])
 }
 
 model SlotApplication {
-  id              String   @id @default(cuid())
+  id              String         @id @default(cuid())
   businessName    String
   contactName     String
   contactEmail    String
   contactPhone    String
   description     String
-  hasPriority     Boolean  @default(false)
-  status          String   @default("pending")
+  hasPriority     Boolean        @default(false)
+  status          String         @default("pending")
   ownerNote       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   slotId          String
   slot            VendingSlot    @relation(fields: [slotId], references: [id], onDelete: Cascade)
   userId          String
@@ -225,6 +245,7 @@ model SlotApplication {
   marketProfileId String?
   marketProfile   MarketProfile? @relation(fields: [marketProfileId], references: [id], onDelete: SetNull)
   paymentRecord   PaymentRecord?
+
   @@unique([slotId, userId])
   @@index([slotId])
   @@index([userId])
@@ -232,165 +253,173 @@ model SlotApplication {
 }
 
 model VendorWallet {
-  id             String   @id @default(cuid())
-  balance        Float    @default(0)
-  totalEarned    Float    @default(0)
-  totalWithdrawn Float    @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String              @id @default(cuid())
+  balance            Float               @default(0)
+  totalEarned        Float               @default(0)
+  totalWithdrawn     Float               @default(0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  userId             String              @unique
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions       WalletTransaction[]
   withdrawalRequests WithdrawalRequest[]
 }
 
 model WalletTransaction {
-  id           String   @id @default(cuid())
+  id           String       @id @default(cuid())
   type         String
   amount       Float
   description  String
   balanceAfter Float
-  createdAt    DateTime @default(now())
+  createdAt    DateTime     @default(now())
   walletId     String
   wallet       VendorWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
   paymentTxRef String?
+
   @@index([walletId])
   @@index([createdAt])
 }
 
 model WithdrawalRequest {
-  id                     String   @id @default(cuid())
+  id                     String       @id @default(cuid())
   amount                 Float
   method                 String
-  encryptedPayoutDetails String   @db.Text
-  status                 String   @default("pending")
+  encryptedPayoutDetails String       @db.Text
+  status                 String       @default("pending")
   failureNote            String?
   flwTransferRef         String?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
-  walletId String
-  wallet   VendorWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+  walletId               String
+  wallet                 VendorWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
   @@index([walletId])
   @@index([status])
 }
 
 model MarketProfile {
-  id           String   @id @default(cuid())
-  businessName String
-  tagline      String?
-  description  String
-  category     String
-  subCategory  String?
-  location     String
-  phone        String
-  email        String
-  website      String?
-  instagram    String?
-  twitter      String?
-  facebook     String?
-  tiktok       String?
-  coverImage   String?
-  logoImage    String?
-  isVerified   Boolean  @default(false)
-  isActive     Boolean  @default(true)
-  rating       Float    @default(0)
-  reviewCount  Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String              @id @default(cuid())
+  businessName     String
+  tagline          String?
+  description      String
+  category         String
+  subCategory      String?
+  location         String
+  phone            String
+  email            String
+  website          String?
+  instagram        String?
+  twitter          String?
+  facebook         String?
+  tiktok           String?
+  coverImage       String?
+  logoImage        String?
+  isVerified       Boolean             @default(false)
+  isActive         Boolean             @default(true)
+  rating           Float               @default(0)
+  reviewCount      Int                 @default(0)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  userId           String              @unique
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   listings         MarketListing[]
   applications     VendorApplication[]
   reviews          MarketReview[]
   inquiries        MarketInquiry[]
   slotApplications SlotApplication[]
   conversations    Conversation[]
+
   @@index([category])
   @@index([isActive])
 }
 
 model MarketListing {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  category    String
-  priceType   String
-  price       Float?
-  currency    String   @default("KES")
-  images      String[]
-  tags        String[]
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  profileId String
-  profile   MarketProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  id            String           @id @default(cuid())
+  title         String
+  description   String
+  category      String
+  priceType     String
+  price         Float?
+  currency      String           @default("KES")
+  images        String[]
+  tags          String[]
+  isActive      Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  profileId     String
+  profile       MarketProfile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
   inquiries     MarketInquiry[]
   conversations Conversation[]
   bookings      ServiceBooking[]
+
   @@index([profileId])
   @@index([category])
 }
 
 model VendorApplication {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   message         String
   servicesOffered String
   proposedPrice   Float?
-  currency        String   @default("KES")
-  status          String   @default("pending")
+  currency        String        @default("KES")
+  status          String        @default("pending")
   ownerNote       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  profileId String
-  profile   MarketProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  eventId   Int
-  event     Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  profileId       String
+  profile         MarketProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  eventId         Int
+  event           Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
   @@unique([profileId, eventId])
   @@index([eventId])
   @@index([status])
 }
 
 model MarketInquiry {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   senderName  String
   senderEmail String
   senderPhone String?
   message     String
-  status      String   @default("unread")
+  status      String         @default("unread")
   reply       String?
-  createdAt   DateTime @default(now())
-  profileId String
-  profile   MarketProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  listingId String?
-  listing   MarketListing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  createdAt   DateTime       @default(now())
+  profileId   String
+  profile     MarketProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  listingId   String?
+  listing     MarketListing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
   @@index([profileId])
   @@index([status])
 }
 
 model MarketReview {
-  id            String   @id @default(cuid())
+  id            String        @id @default(cuid())
   reviewerName  String
   reviewerEmail String
   rating        Int
   comment       String?
-  createdAt     DateTime @default(now())
-  profileId String
-  profile   MarketProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+  profileId     String
+  profile       MarketProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
   @@index([profileId])
 }
 
 model Conversation {
-  id            String   @id @default(cuid())
-  lastMessageAt DateTime @default(now())
-  createdAt     DateTime @default(now())
+  id              String           @id @default(cuid())
+  lastMessageAt   DateTime         @default(now())
+  createdAt       DateTime         @default(now())
   buyerId         String
-  buyer           User          @relation("ConversationBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  buyer           User             @relation("ConversationBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
   vendorProfileId String
-  vendorProfile   MarketProfile @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
-  listingId String?
-  listing   MarketListing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
-  messages Message[]
-  bookings ServiceBooking[]
+  vendorProfile   MarketProfile    @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  listingId       String?
+  listing         MarketListing?   @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  messages        Message[]
+  bookings        ServiceBooking[]
+
   @@unique([buyerId, vendorProfileId, listingId])
   @@index([buyerId])
   @@index([vendorProfileId])
@@ -398,36 +427,38 @@ model Conversation {
 }
 
 model Message {
-  id             String    @id @default(cuid())
-  content        String    @db.Text
+  id             String       @id @default(cuid())
+  content        String       @db.Text
   readAt         DateTime?
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime     @default(now())
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  senderId String
-  sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
   @@index([conversationId])
   @@index([senderId])
   @@index([readAt])
 }
 
 model ServiceBooking {
-  id            String    @id @default(cuid())
-  eventDate     DateTime?
-  quantity      Int       @default(1)
-  notes         String?
-  totalAmount   Float
-  currency      String    @default("KES")
-  paymentMethod String    @default("mpesa")
-  status        String    @default("pending")
-  vendorNote    String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id             String         @id @default(cuid())
+  eventDate      DateTime?
+  quantity       Int            @default(1)
+  notes          String?
+  totalAmount    Float
+  currency       String         @default("KES")
+  paymentMethod  String         @default("mpesa")
+  status         String         @default("pending")
+  vendorNote     String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
   conversationId String
-  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  listingId String
-  listing   MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  paymentRecord PaymentRecord?
+  conversation   Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  listingId      String
+  listing        MarketListing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  paymentRecord  PaymentRecord?
+
   @@index([conversationId])
   @@index([listingId])
   @@index([status])
@@ -449,6 +480,7 @@ model Notification {
   createdAt DateTime @default(now())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([isRead])
   @@index([createdAt])
@@ -458,19 +490,20 @@ model Notification {
 
 // A scanning station created by the event owner.
 // Stations are ordered — ticket must pass them in sequence.
-// Stations can be marked as final checkpoints. Multiple stations can be final.
+// The station with the highest `order` number is the final station.
 model ScanStation {
   id        String   @id @default(cuid())
-  name      String                        // e.g. "Gate 1", "Security Check"
-  order     Int                           // 1, 2, 3 — sequence order
+  name      String // e.g. "Gate 1", "Security Check"
+  order     Int // 1, 2, 3 — sequence order
   isActive  Boolean  @default(true)
-  isFinal   Boolean  @default(false)      // Whether this is a final checkpoint
   createdAt DateTime @default(now())
 
-  eventId     Int
-  event       Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  sessions    ScanSession[]
-  logs        ScanLog[]
+  eventId       Int
+  event         Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sessions      ScanSession[]
+  logs          ScanLog[]
+  firstAccessIP String?
+  isFinal       Boolean       @default(false)
 
   @@index([eventId])
   @@index([order])
@@ -480,18 +513,17 @@ model ScanStation {
 // No account required to use it. Token is cryptographically random.
 model ScanSession {
   id        String    @id @default(cuid())
-  token     String    @unique              // the secret URL token
-  label     String                         // e.g. "John at Gate 1"
+  token     String    @unique // the secret URL token
+  label     String // e.g. "John at Gate 1"
   expiresAt DateTime
   isActive  Boolean   @default(true)
-  isEmailed Boolean   @default(false)      // whether this link was sent via email (makes it unsharable)
-  firstAccessIP String?                    // IP address of first access, to prevent sharing
   createdAt DateTime  @default(now())
   lastUsed  DateTime?
 
   stationId String
   station   ScanStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
   logs      ScanLog[]
+  firstAccessIP String?
 
   @@index([token])
   @@index([stationId])
@@ -501,15 +533,15 @@ model ScanSession {
 model ScanLog {
   id         String   @id @default(cuid())
   ticketCode String
-  result     String                        // "success" | "already_scanned" | "invalid" | "wrong_order" | "duplicate_final"
+  result     String // "success" | "already_scanned" | "invalid" | "wrong_order" | "duplicate_final"
   scannedAt  DateTime @default(now())
-  note       String?                       // extra detail e.g. "previously scanned at 14:32"
+  note       String? // extra detail e.g. "previously scanned at 14:32"
 
   stationId String
   station   ScanStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
 
-  sessionId String?
-  session   ScanSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId String
+  session   ScanSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([stationId])
   @@index([sessionId])
@@ -517,13 +549,38 @@ model ScanLog {
   @@index([scannedAt])
 }
 
-model EventTicketCapacity {
-  id          String   @id @default(cuid())
-  eventId     Int
-  ticketType  String   // must match OrderItem.ticketType exactly
-  maxCapacity Int
-  laneNote    String?  // e.g. "VIP → Left entrance, red wristband"
-  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+// ─── WAITLIST ─────────────────────────────────────────────────────────────────
 
-  @@unique([eventId, ticketType])
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("attendee") // "attendee" | "organizer" | "vendor"
+  position  Int
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([createdAt])
+}
+
+// ─── RSVP TIER PAYMENTS ───────────────────────────────────────────────────────
+
+model RsvpTierPayment {
+  id      String @id @default(cuid())
+  eventId Int    @unique
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  tier        String // "starter" | "growth" | "pro" | "enterprise"
+  capacity    Int // how many RSVPs were paid for
+  ratePerRsvp Int // KES 15 / 12 / 9 / 6
+  totalAmount Int // capacity × ratePerRsvp
+
+  txRef  String @unique
+  status String @default("pending") // "pending" | "confirmed" | "failed"
+
+  createdAt   DateTime  @default(now())
+  confirmedAt DateTime?
+
+  @@index([txRef])
+  @@index([eventId])
 }
