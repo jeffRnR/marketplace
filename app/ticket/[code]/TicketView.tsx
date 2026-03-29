@@ -318,6 +318,12 @@ export default function TicketView({
       ctx.fillText(`# ${ticketCode.slice(0, 8).toUpperCase()}`, W / 2, y);
       y += 20;
 
+      ctx.font      = "11px 'Courier New', monospace";
+      ctx.fillStyle = "#475569";
+      ctx.textAlign = "center";
+      ctx.fillText(`Order: ${orderId.slice(0, 8).toUpperCase()}`, W / 2, y);
+      y += 20;
+
       if (logoImg) {
         const maxW  = 80, maxH = 36;
         const ratio = Math.min(maxW / logoImg.width, maxH / logoImg.height);
