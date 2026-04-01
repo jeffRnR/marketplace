@@ -33,94 +33,98 @@ function headers() {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface StkPushParams {
-  phone:       string;   // E.164 e.g. "254712345678" (no leading +)
-  amount:      number;
-  currency:    string;   // "KES"
-  apiRef:      string;   // our idempotency key (UUID) → stored as api_ref
-  narrative:   string;
-  email:       string;
-  firstName:   string;
-  lastName:    string;
+  phone: string; // E.164 e.g. "254712345678" (no leading +)
+  amount: number;
+  currency: string; // "KES"
+  apiRef: string; // our idempotency key (UUID) → stored as api_ref
+  narrative: string;
+  email: string;
+  firstName: string;
+  lastName: string;
 }
 
 export interface StkPushResult {
-  success:    boolean;
-  invoiceId?: string;   // IntaSend's invoice_id — used for status checks
-  message:    string;
-  raw:        unknown;
+  success: boolean;
+  invoiceId?: string; // IntaSend's invoice_id — used for status checks
+  message: string;
+  raw: unknown;
 }
 
 export interface VerifyResult {
-  success:  boolean;
-  state:    "PENDING" | "PROCESSING" | "COMPLETE" | "FAILED";
-  amount:   number;
+  success: boolean;
+  state: "PENDING" | "PROCESSING" | "COMPLETE" | "FAILED";
+  amount: number;
   currency: string;
-  apiRef:   string;
+  apiRef: string;
   invoiceId: string;
   failedReason: string | null;
-  raw:      unknown;
+  raw: unknown;
 }
 
 export interface PayoutParams {
-  phone:     string;   // "254712345678"
-  amount:    number;
-  name:      string;
+  phone: string; // "254712345678"
+  amount: number;
+  name: string;
   narrative: string;
 }
 
 export interface PayoutResult {
-  success:    boolean;
+  success: boolean;
   trackingId?: string;
-  message:    string;
-  raw:        unknown;
+  message: string;
+  raw: unknown;
 }
 
 // ─── STK Push ─────────────────────────────────────────────────────────────────
 // Sends M-Pesa payment prompt to customer's phone.
 // Returns invoice_id which we store for status polling + webhook matching.
 
-export async function initiateStkPush(p: StkPushParams): Promise<StkPushResult> {
+export async function initiateStkPush(
+  p: StkPushParams,
+): Promise<StkPushResult> {
   try {
-    // IntaSend expects phone WITHOUT leading + — just "254..."
-    const phone = p.phone.replace(/^\+/, "").replace(/\s/g, "");
+    let phone = p.phone.replace(/^\+/, "").replace(/\s/g, "");
+    if (phone.startsWith("07")) phone = "254" + phone.slice(1);
+    else if (phone.startsWith("7") && phone.length === 9) phone = "254" + phone;
 
     const res = await fetch(`${BASE()}/api/v1/payment/mpesa-stk-push/`, {
-      method:  "POST",
+      method: "POST",
       headers: headers(),
-      body:    JSON.stringify({
-        first_name:   p.firstName,
-        last_name:    p.lastName,
-        email:        p.email,
-        host:         process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000",
-        amount:       p.amount,
+      body: JSON.stringify({
+        first_name: p.firstName,
+        last_name: p.lastName,
+        email: p.email,
+        host: process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000",
+        amount: p.amount,
         phone_number: phone,
-        api_ref:      p.apiRef,      // our UUID — echoed back in webhook
-        currency:     p.currency,
-        narrative:    p.narrative,
+        api_ref: p.apiRef, // our UUID — echoed back in webhook
+        currency: p.currency,
+        narrative: p.narrative,
       }),
     });
 
     const data = await res.json();
+    console.error("IntaSend STK response:", res.status, JSON.stringify(data));
 
     if (!res.ok) {
       return {
         success: false,
         message: data?.detail ?? data?.error ?? "STK push failed",
-        raw:     data,
+        raw: data,
       };
     }
 
     return {
-      success:   true,
+      success: true,
       invoiceId: data.invoice?.invoice_id ?? data.invoice_id,
-      message:   "STK push sent — customer will receive a payment prompt",
-      raw:       data,
+      message: "STK push sent — customer will receive a payment prompt",
+      raw: data,
     };
   } catch (err: unknown) {
     return {
       success: false,
       message: err instanceof Error ? err.message : "Network error",
-      raw:     err,
+      raw: err,
     };
   }
 }
@@ -129,51 +133,57 @@ export async function initiateStkPush(p: StkPushParams): Promise<StkPushResult> 
 // Called from the webhook handler to re-confirm payment state.
 // IntaSend: POST /api/v1/payment/status/ with { invoice_id }
 
-export async function verifyTransaction(invoiceId: string): Promise<VerifyResult> {
+export async function verifyTransaction(
+  invoiceId: string,
+): Promise<VerifyResult> {
   try {
     const res = await fetch(`${BASE()}/api/v1/payment/status/`, {
-      method:  "POST",
+      method: "POST",
       headers: headers(),
-      body:    JSON.stringify({ invoice_id: invoiceId }),
+      body: JSON.stringify({ invoice_id: invoiceId }),
     });
 
     const data = await res.json();
 
     if (!res.ok) {
       return {
-        success:      false,
-        state:        "FAILED",
-        amount:       0,
-        currency:     "",
-        apiRef:       "",
+        success: false,
+        state: "FAILED",
+        amount: 0,
+        currency: "",
+        apiRef: "",
         invoiceId,
         failedReason: data?.detail ?? "Verification failed",
-        raw:          data,
+        raw: data,
       };
     }
 
-    const state = (data.invoice?.state ?? data.state ?? "FAILED").toUpperCase() as VerifyResult["state"];
+    const state = (
+      data.invoice?.state ??
+      data.state ??
+      "FAILED"
+    ).toUpperCase() as VerifyResult["state"];
 
     return {
-      success:      true,
+      success: true,
       state,
-      amount:       Number(data.invoice?.value ?? data.value ?? 0),
-      currency:     data.invoice?.currency ?? data.currency ?? "KES",
-      apiRef:       data.invoice?.api_ref  ?? data.api_ref  ?? "",
-      invoiceId:    data.invoice?.invoice_id ?? invoiceId,
+      amount: Number(data.invoice?.value ?? data.value ?? 0),
+      currency: data.invoice?.currency ?? data.currency ?? "KES",
+      apiRef: data.invoice?.api_ref ?? data.api_ref ?? "",
+      invoiceId: data.invoice?.invoice_id ?? invoiceId,
       failedReason: data.invoice?.failed_reason ?? data.failed_reason ?? null,
-      raw:          data,
+      raw: data,
     };
   } catch (err: unknown) {
     return {
-      success:      false,
-      state:        "FAILED",
-      amount:       0,
-      currency:     "",
-      apiRef:       "",
+      success: false,
+      state: "FAILED",
+      amount: 0,
+      currency: "",
+      apiRef: "",
       invoiceId,
       failedReason: err instanceof Error ? err.message : "Network error",
-      raw:          err,
+      raw: err,
     };
   }
 }
@@ -186,22 +196,24 @@ export async function verifyTransaction(invoiceId: string): Promise<VerifyResult
 // NOTE: Your IntaSend account must have sufficient balance.
 // Funds from ticket/vending sales settle into your IntaSend wallet automatically.
 
-export async function initiateB2CPayout(p: PayoutParams): Promise<PayoutResult> {
+export async function initiateB2CPayout(
+  p: PayoutParams,
+): Promise<PayoutResult> {
   try {
     const phone = p.phone.replace(/^\+/, "").replace(/\s/g, "");
 
     // Step 1: Initiate
     const initiateRes = await fetch(`${BASE()}/api/v1/send-money/initiate/`, {
-      method:  "POST",
+      method: "POST",
       headers: headers(),
-      body:    JSON.stringify({
-        currency:         "KES",
-        requires_approval: "NO",   // auto-approve — no manual step needed
+      body: JSON.stringify({
+        currency: "KES",
+        requires_approval: "NO", // auto-approve — no manual step needed
         transactions: [
           {
-            name:      p.name,
-            account:   phone,
-            amount:    p.amount,
+            name: p.name,
+            account: phone,
+            amount: p.amount,
             narrative: p.narrative,
           },
         ],
@@ -213,16 +225,19 @@ export async function initiateB2CPayout(p: PayoutParams): Promise<PayoutResult> 
     if (!initiateRes.ok) {
       return {
         success: false,
-        message: initiateData?.detail ?? initiateData?.message ?? "Payout initiation failed",
-        raw:     initiateData,
+        message:
+          initiateData?.detail ??
+          initiateData?.message ??
+          "Payout initiation failed",
+        raw: initiateData,
       };
     }
 
     // Step 2: Approve (required even with requires_approval=NO for the API flow)
     const approveRes = await fetch(`${BASE()}/api/v1/send-money/approve/`, {
-      method:  "POST",
+      method: "POST",
       headers: headers(),
-      body:    JSON.stringify({ tracking_id: initiateData.tracking_id }),
+      body: JSON.stringify({ tracking_id: initiateData.tracking_id }),
     });
 
     const approveData = await approveRes.json();
@@ -231,21 +246,21 @@ export async function initiateB2CPayout(p: PayoutParams): Promise<PayoutResult> 
       return {
         success: false,
         message: approveData?.detail ?? "Payout approval failed",
-        raw:     approveData,
+        raw: approveData,
       };
     }
 
     return {
-      success:    true,
+      success: true,
       trackingId: initiateData.tracking_id,
-      message:    "Payout initiated and approved",
-      raw:        approveData,
+      message: "Payout initiated and approved",
+      raw: approveData,
     };
   } catch (err: unknown) {
     return {
       success: false,
       message: err instanceof Error ? err.message : "Network error",
-      raw:     err,
+      raw: err,
     };
   }
 }
@@ -256,7 +271,9 @@ export async function initiateB2CPayout(p: PayoutParams): Promise<PayoutResult> 
 // Compare it against your INTASEND_WEBHOOK_CHALLENGE env var.
 // Constant-time comparison to prevent timing attacks.
 
-export function verifyWebhookChallenge(payloadChallenge: string | null | undefined): boolean {
+export function verifyWebhookChallenge(
+  payloadChallenge: string | null | undefined,
+): boolean {
   const expected = process.env.INTASEND_WEBHOOK_CHALLENGE;
   if (!expected || !payloadChallenge) return false;
   if (payloadChallenge.length !== expected.length) return false;
