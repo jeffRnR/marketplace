@@ -1,5 +1,5 @@
 "use client";
-// app/scan/[token]/page.tsx
+// app/scan/[token]/_client.tsx
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
@@ -10,9 +10,7 @@ import {
   ShieldAlert, WifiOff as OfflineIcon, ArrowRight,
 } from "lucide-react";
 
-const isMobile = () =>
-  typeof window !== "undefined" &&
-  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface SessionInfo {
   valid:     boolean;
@@ -33,15 +31,19 @@ const QR_SIZE = 260;
 // ─── Offline queue (IndexedDB) ────────────────────────────────────────────────
 
 interface PendingScan {
-  id:         number;
-  token:      string;
+  id:        number;
+  token:     string;
   ticketCode: string;
-  queuedAt:   number;
-  attempts:   number;
+  queuedAt:  number;
+  attempts:  number;
 }
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
+    if (typeof indexedDB === "undefined") {
+      reject(new Error("IndexedDB not available"));
+      return;
+    }
     const req = indexedDB.open("noizy-scanner", 1);
     req.onupgradeneeded = () =>
       req.result.createObjectStore("pending", { keyPath: "id", autoIncrement: true });
@@ -51,29 +53,37 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 async function queueScan(token: string, ticketCode: string): Promise<void> {
-  const db    = await openDB();
-  const store = db.transaction("pending", "readwrite").objectStore("pending");
-  store.add({ token, ticketCode, queuedAt: Date.now(), attempts: 0 } as Omit<PendingScan, "id">);
+  try {
+    const db    = await openDB();
+    const store = db.transaction("pending", "readwrite").objectStore("pending");
+    store.add({ token, ticketCode, queuedAt: Date.now(), attempts: 0 } as Omit<PendingScan, "id">);
+  } catch { /* IndexedDB unavailable — silent fail */ }
 }
 
 async function getPendingScans(): Promise<PendingScan[]> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const req = db.transaction("pending", "readonly").objectStore("pending").getAll();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror   = () => reject(req.error);
-  });
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction("pending", "readonly").objectStore("pending").getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror   = () => reject(req.error);
+    });
+  } catch { return []; }
 }
 
 async function deletePendingScan(id: number): Promise<void> {
-  const db = await openDB();
-  db.transaction("pending", "readwrite").objectStore("pending").delete(id);
+  try {
+    const db = await openDB();
+    db.transaction("pending", "readwrite").objectStore("pending").delete(id);
+  } catch { /* silent fail */ }
 }
 
 async function incrementAttempts(scan: PendingScan): Promise<void> {
-  const db    = await openDB();
-  const store = db.transaction("pending", "readwrite").objectStore("pending");
-  store.put({ ...scan, attempts: scan.attempts + 1 });
+  try {
+    const db    = await openDB();
+    const store = db.transaction("pending", "readwrite").objectStore("pending");
+    store.put({ ...scan, attempts: scan.attempts + 1 });
+  } catch { /* silent fail */ }
 }
 
 // ─── Result overlay ───────────────────────────────────────────────────────────
@@ -81,15 +91,15 @@ async function incrementAttempts(scan: PendingScan): Promise<void> {
 function ResultScreen({
   result, message, ticketType, isFinal, laneNote, onReset,
 }: {
-  result:     ScanResult;
-  message:    string;
+  result:      ScanResult;
+  message:     string;
   ticketType?: string;
-  isFinal?:   boolean;
-  laneNote?:  string | null;
-  onReset:    () => void;
+  isFinal?:    boolean;
+  laneNote?:   string | null;
+  onReset:     () => void;
 }) {
   useEffect(() => {
-    const t = setTimeout(onReset, result === "success" ? 4000 : 4000);
+    const t = setTimeout(onReset, 4000);
     return () => clearTimeout(t);
   }, [result, onReset]);
 
@@ -142,7 +152,6 @@ function ResultScreen({
     </div>
   );
 
-  // Suspicious — amber but different copy, manual verify prompt
   if (result === "suspicious") return (
     <div className={`${base} bg-amber-600`}>
       <ShieldAlert className="w-24 h-24" />
@@ -155,7 +164,6 @@ function ResultScreen({
     </div>
   );
 
-  // Capacity exceeded — red with specific message
   if (result === "capacity_exceeded") return (
     <div className={`${base} bg-red-700`}>
       <XCircle className="w-24 h-24" />
@@ -170,25 +178,43 @@ function ResultScreen({
   return null;
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ScanPage() {
-  const { token } = useParams<{ token: string }>();
+  const params = useParams<{ token: string }>();
+  const token  = params?.token ?? "";
 
-  const [sessionInfo,   setSessionInfo]   = useState<SessionInfo | null>(null);
-  const [sessionError,  setSessionError]  = useState("");
-  const [loading,       setLoading]       = useState(true);
-  const [isOnline,      setIsOnline]      = useState(true);
-  const [pendingCount,  setPendingCount]  = useState(0);
-  const [syncingCount,  setSyncingCount]  = useState(0);
+  // Guard — show clear error instead of crashing if token is missing
+  if (!token) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center p-8">
+        <WifiOff className="w-16 h-16 text-red-400" />
+        <p className="text-white font-black text-2xl">Invalid scanner link</p>
+        <p className="text-gray-400 text-sm">This link appears to be broken. Please request a new one.</p>
+      </div>
+    );
+  }
 
-  const [input,      setInput]      = useState("");
-  const [scanResult, setScanResult] = useState<ScanResult>("idle");
-  const [message,    setMessage]    = useState("");
-  const [ticketType, setTicketType] = useState("");
-  const [isFinal,    setIsFinal]    = useState(false);
-  const [laneNote,   setLaneNote]   = useState<string | null>(null);
-  const [scanning,   setScanning]   = useState(false);
+  return <ScannerInner token={token} />;
+}
+
+// ─── Inner component (only renders when token is confirmed present) ───────────
+
+function ScannerInner({ token }: { token: string }) {
+  const [sessionInfo,  setSessionInfo]  = useState<SessionInfo | null>(null);
+  const [sessionError, setSessionError] = useState("");
+  const [loading,      setLoading]      = useState(true);
+  const [isOnline,     setIsOnline]     = useState(true);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [syncingCount, setSyncingCount] = useState(0);
+
+  const [input,        setInput]        = useState("");
+  const [scanResult,   setScanResult]   = useState<ScanResult>("idle");
+  const [message,      setMessage]      = useState("");
+  const [ticketType,   setTicketType]   = useState("");
+  const [isFinal,      setIsFinal]      = useState(false);
+  const [laneNote,     setLaneNote]     = useState<string | null>(null);
+  const [scanning,     setScanning]     = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
 
   const scannerRef      = useRef<Html5Qrcode | null>(null);
@@ -208,7 +234,7 @@ export default function ScanPage() {
     };
   }, []);
 
-  // Update pending count from IndexedDB
+  // Pending count from IndexedDB
   const refreshPendingCount = useCallback(async () => {
     const scans = await getPendingScans();
     setPendingCount(scans.length);
@@ -230,19 +256,24 @@ export default function ScanPage() {
 
   const resetScan = useCallback(() => {
     setScanResult("idle");
-    setMessage(""); setInput(""); setTicketType(""); setIsFinal(false); setLaneNote(null);
+    setMessage("");
+    setInput("");
+    setTicketType("");
+    setIsFinal(false);
+    setLaneNote(null);
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
-  // Core scan function — queues offline, fires immediately online
   const doScan = useCallback(async (code: string) => {
-    const clean = code.trim().toUpperCase();
+    // IMPORTANT: do NOT toUpperCase() here — camera gives signed base64url
+    // which is case-sensitive. Only trim whitespace.
+    const clean = code.trim();
     if (!clean || !sessionInfo) return;
 
     setScanning(true);
     setScanResult("loading");
 
-    // Offline path — queue to IndexedDB and show optimistic UI
+    // Offline path
     if (!navigator.onLine) {
       await queueScan(token, clean);
       await refreshPendingCount();
@@ -269,7 +300,6 @@ export default function ScanPage() {
       setLaneNote(data.laneNote ?? null);
       if (data.result === "success") setCameraActive(false);
     } catch {
-      // Network error mid-online → queue it
       await queueScan(token, clean);
       await refreshPendingCount();
       setScanResult("success");
@@ -280,7 +310,7 @@ export default function ScanPage() {
     }
   }, [sessionInfo, token, refreshPendingCount]);
 
-  // Sync offline queue when coming back online
+  // Sync offline queue on reconnect
   const syncQueue = useCallback(async () => {
     const pending = await getPendingScans();
     if (pending.length === 0) return;
@@ -288,15 +318,12 @@ export default function ScanPage() {
 
     for (const scan of pending) {
       try {
-        const res  = await fetch("/api/scan/verify", {
+        const res = await fetch("/api/scan/verify", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
           body:    JSON.stringify({ token: scan.token, ticketCode: scan.ticketCode }),
         });
-        if (res.ok) {
-          await deletePendingScan(scan.id);
-        } else if (res.status >= 400 && res.status < 500) {
-          // Client error (invalid ticket etc.) — don't retry, remove it
+        if (res.ok || (res.status >= 400 && res.status < 500)) {
           await deletePendingScan(scan.id);
         } else {
           await incrementAttempts(scan);
@@ -339,11 +366,12 @@ export default function ScanPage() {
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: QR_SIZE, height: QR_SIZE }, aspectRatio: 1.0 },
           (decoded) => {
+            // Camera gives raw decoded string — pass as-is, no case mutation
             setCameraActive(false);
             setInput(decoded);
             doScanRef.current(decoded);
           },
-          () => {},
+          () => {}, // suppress per-frame errors
         );
       } catch (err) {
         const denied =
@@ -371,6 +399,8 @@ export default function ScanPage() {
       }
     };
   }, [cameraActive]);
+
+  // ── Render states ──────────────────────────────────────────────────────────
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -414,13 +444,11 @@ export default function ScanPage() {
                 Final
               </span>
             )}
-            {/* Offline indicator */}
             {!isOnline && (
               <span className="flex items-center gap-1 text-xs bg-amber-900/40 border border-amber-700/40 text-amber-400 px-2.5 py-0.5 rounded-full font-semibold">
                 <OfflineIcon className="w-3 h-3" /> Offline
               </span>
             )}
-            {/* Pending sync indicator */}
             {pendingCount > 0 && (
               <span className="text-xs bg-blue-900/40 border border-blue-700/40 text-blue-400 px-2.5 py-0.5 rounded-full font-semibold">
                 {syncingCount > 0 ? `Syncing ${syncingCount}…` : `${pendingCount} queued`}
@@ -437,12 +465,12 @@ export default function ScanPage() {
         <p className="text-gray-500 text-xs">{sessionInfo.label} · Station {station.order}</p>
       </div>
 
-      {/* Offline notice banner */}
+      {/* Offline banner */}
       {!isOnline && (
         <div className="bg-amber-900/20 border border-amber-700/30 rounded-xl px-4 py-3">
           <p className="text-amber-400 text-sm font-semibold">Scanning offline</p>
           <p className="text-amber-500/80 text-xs mt-0.5">
-            Scans are being saved locally and will sync automatically when you reconnect.
+            Scans are saved locally and will sync when you reconnect.
           </p>
         </div>
       )}
