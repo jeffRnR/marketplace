@@ -26,14 +26,16 @@ type ScanResult =
   | "already_scanned" | "wrong_order" | "duplicate_final"
   | "fraud_detected" | "suspicious" | "capacity_exceeded";
 
+const QR_SIZE = 260;
+
 // ─── Offline queue (IndexedDB) ────────────────────────────────────────────────
 
 interface PendingScan {
-  id:         number;
-  token:      string;
+  id:        number;
+  token:     string;
   ticketCode: string;
-  queuedAt:   number;
-  attempts:   number;
+  queuedAt:  number;
+  attempts:  number;
 }
 
 function openDB(): Promise<IDBDatabase> {
@@ -176,20 +178,19 @@ function ResultScreen({
   return null;
 }
 
-// ─── Token guard wrapper ──────────────────────────────────────────────────────
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ScanPage() {
   const params = useParams<{ token: string }>();
   const token  = params?.token ?? "";
 
+  // Guard — show clear error instead of crashing if token is missing
   if (!token) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center p-8">
         <WifiOff className="w-16 h-16 text-red-400" />
         <p className="text-white font-black text-2xl">Invalid scanner link</p>
-        <p className="text-gray-400 text-sm">
-          This link appears to be broken. Please request a new one.
-        </p>
+        <p className="text-gray-400 text-sm">This link appears to be broken. Please request a new one.</p>
       </div>
     );
   }
@@ -197,7 +198,7 @@ export default function ScanPage() {
   return <ScannerInner token={token} />;
 }
 
-// ─── Main scanner (only renders when token is confirmed) ──────────────────────
+// ─── Inner component (only renders when token is confirmed present) ───────────
 
 function ScannerInner({ token }: { token: string }) {
   const [sessionInfo,  setSessionInfo]  = useState<SessionInfo | null>(null);
@@ -233,7 +234,7 @@ function ScannerInner({ token }: { token: string }) {
     };
   }, []);
 
-  // Pending count
+  // Pending count from IndexedDB
   const refreshPendingCount = useCallback(async () => {
     const scans = await getPendingScans();
     setPendingCount(scans.length);
@@ -263,14 +264,16 @@ function ScannerInner({ token }: { token: string }) {
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
-  // Core scan — do NOT toUpperCase camera input (base64url is case-sensitive)
   const doScan = useCallback(async (code: string) => {
+    // IMPORTANT: do NOT toUpperCase() here — camera gives signed base64url
+    // which is case-sensitive. Only trim whitespace.
     const clean = code.trim();
     if (!clean || !sessionInfo) return;
 
     setScanning(true);
     setScanResult("loading");
 
+    // Offline path
     if (!navigator.onLine) {
       await queueScan(token, clean);
       await refreshPendingCount();
@@ -361,24 +364,14 @@ function ScannerInner({ token }: { token: string }) {
         scannerRef.current = new Html5Qrcode("qr-reader");
         await scannerRef.current.start(
           { facingMode: "environment" },
-          {
-            fps: 15,
-            // Dynamic qrbox — 70% of the smaller camera dimension
-            // Never hardcode pixels — every phone reports different dimensions
-            qrbox: (viewfinderWidth, viewfinderHeight) => {
-              const size = Math.floor(
-                Math.min(viewfinderWidth, viewfinderHeight) * 0.7
-              );
-              return { width: size, height: size };
-            },
-          },
+          { fps: 10, qrbox: { width: QR_SIZE, height: QR_SIZE }, aspectRatio: 1.0 },
           (decoded) => {
-            // Pass decoded string as-is — no case mutation
+            // Camera gives raw decoded string — pass as-is, no case mutation
             setCameraActive(false);
             setInput(decoded);
             doScanRef.current(decoded);
           },
-          () => {}, // suppress per-frame non-errors
+          () => {}, // suppress per-frame errors
         );
       } catch (err) {
         const denied =
@@ -484,13 +477,11 @@ function ScannerInner({ token }: { token: string }) {
 
       {/* Scanner area */}
       <div className="flex-1 flex flex-col items-center justify-center gap-6">
-
-        {/* Camera viewfinder — responsive, never fixed pixels */}
         <div
-          className="relative rounded-2xl overflow-hidden border-2 transition-colors w-full"
+          className="relative rounded-2xl overflow-hidden border-2 transition-colors"
           style={{
-            maxWidth:    "320px",
-            aspectRatio: "1 / 1",
+            width:       QR_SIZE,
+            height:      QR_SIZE,
             borderColor: cameraActive ? "#a855f7" : "#374151",
             borderStyle: cameraActive ? "solid" : "dashed",
           }}
@@ -519,7 +510,6 @@ function ScannerInner({ token }: { token: string }) {
           {cameraActive ? "Stop camera" : "Start camera"}
         </button>
 
-        {/* Manual entry */}
         <div className="w-full max-w-sm flex flex-col gap-3">
           <div className="flex gap-2">
             <div className="relative flex-1">
