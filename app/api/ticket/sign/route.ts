@@ -1,15 +1,11 @@
 // app/api/ticket/sign/route.ts
-// No auth required — the ticketCode itself is the secret.
-// Only someone who knows the ticketCode can get a signed QR for it.
-// The ticketCode is already a UUID (unguessable) so possession = ownership.
-
-import { NextResponse }   from "next/server";
-import prisma             from "@/lib/prisma";
-import { signTicket }     from "@/lib/ticketSigning";
+import { NextResponse } from "next/server";
+import prisma           from "@/lib/prisma";
+import { signTicket }   from "@/lib/ticketSigning";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const code = searchParams.get("code")?.trim().toUpperCase();
+  const code = searchParams.get("code")?.trim();
   if (!code) return NextResponse.json({ error: "code required" }, { status: 400 });
 
   const item = await prisma.orderItem.findUnique({
