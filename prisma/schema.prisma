@@ -502,7 +502,6 @@ model ScanStation {
   event         Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
   sessions      ScanSession[]
   logs          ScanLog[]
-  firstAccessIP String?
   isFinal       Boolean       @default(false)
 
   @@index([eventId])

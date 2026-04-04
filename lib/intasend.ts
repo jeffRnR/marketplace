@@ -83,9 +83,11 @@ export async function initiateStkPush(
   p: StkPushParams,
 ): Promise<StkPushResult> {
   try {
+    console.log("STK 1: starting", { phone: p.phone, amount: p.amount, apiRef: p.apiRef });
     let phone = p.phone.replace(/^\+/, "").replace(/\s/g, "");
     if (phone.startsWith("07")) phone = "254" + phone.slice(1);
     else if (phone.startsWith("7") && phone.length === 9) phone = "254" + phone;
+    console.log("STK 2: phone normalized", phone);
 
     const res = await fetch(`${BASE()}/api/v1/payment/mpesa-stk-push/`, {
       method: "POST",
@@ -102,6 +104,8 @@ export async function initiateStkPush(
         narrative: p.narrative,
       }),
     });
+
+    console.log("STK 4: payload ready", JSON.stringify(res));
 
     const data = await res.json();
     console.error("IntaSend STK response:", res.status, JSON.stringify(data));

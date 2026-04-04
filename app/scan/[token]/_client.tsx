@@ -491,7 +491,7 @@ export default function ScanPage() {
                 value={input}
                 onChange={e => setInput(e.target.value.toUpperCase())}
                 onKeyDown={e => e.key === "Enter" && doScan(input)}
-                placeholder="Ticket code…"
+                placeholder="8-digit code e.g. 1E16624F"
                 autoComplete="off"
                 autoCorrect="off"
                 autoCapitalize="characters"

@@ -318,7 +318,7 @@ function OverviewPanel({ event }: { event: ManagedEvent }) {
             value={event.stats.spotsRemaining === 0 ? "SOLD OUT" : String(event.stats.spotsRemaining)}
             valueColor={event.stats.spotsRemaining === 0 ? "text-red-400" : event.stats.spotsRemaining < 20 ? "text-orange-400" : "text-gray-300"}
           />
-          <MetaRow label="Fill Rate" value={`${event.stats.fillRate}%`} valueColor="text-purple-400" />
+          {/* <MetaRow label="Fill Rate" value={`${event.stats.fillRate}%`} valueColor="text-purple-400" /> */}
           <FillBar rate={event.stats.fillRate} />
         </div>
       </section>

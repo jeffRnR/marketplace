@@ -67,6 +67,7 @@ export default function CheckoutPageContent() {
   const [parseError, setParseError] = useState("");
   const [txRef, setTxRef] = useState<string | null>(null);
   const [pollSeconds, setPollSeconds] = useState(0);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -205,6 +206,10 @@ export default function CheckoutPageContent() {
     }
     if (cartItems.length === 0) {
       setErrorMsg("No tickets selected.");
+      return;
+    }
+    if (!agreedToTerms) {
+      setErrorMsg("Please accept the Terms & Conditions to continue.");
       return;
     }
 
@@ -551,13 +556,13 @@ export default function CheckoutPageContent() {
           </div>
         )}
 
-        {errorMsg && (
+        {/* {errorMsg && (
           <div className="flex items-start gap-2 bg-red-900/20 border border-red-700/40 rounded-xl px-4 py-3 text-red-300 text-sm">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {errorMsg}
           </div>
-        )}
+        )} */}
 
-        <button
+        {/* <button
           onClick={handleSubmit}
           disabled={status === "loading"}
           className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2 text-sm"
@@ -571,6 +576,67 @@ export default function CheckoutPageContent() {
           ) : (
             `Pay KES ${total.toLocaleString()} via M-Pesa →`
           )}
+        </button> */}
+
+        {/* Terms & Conditions checkbox */}
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={agreedToTerms}
+            onChange={(e) => setAgreedToTerms(e.target.checked)}
+            disabled={status === "loading"}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-600 accent-purple-600 cursor-pointer"
+          />
+          <span className="text-sm text-gray-400 leading-snug">
+            I have read and agree to the{" "}
+            <a
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-purple-400 hover:text-purple-300 underline underline-offset-2 transition"
+            >
+              Terms & Conditions
+            </a>{" "}
+            including the{" "}
+            <a
+              href="/terms#payments"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-purple-400 hover:text-purple-300 underline underline-offset-2 transition"
+            >
+              payment and refund policy
+            </a>
+            .
+          </span>
+        </label>
+
+        {errorMsg && (
+          <div className="flex items-start gap-2 bg-red-900/20 border border-red-700/40 rounded-xl px-4 py-3 text-red-300 text-sm">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {errorMsg}
+          </div>
+        )}
+
+        <button
+          onClick={handleSubmit}
+          disabled={status === "loading" || !agreedToTerms}
+          className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2 text-sm"
+        >
+          {status === "loading" ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> Processing…
+            </>
+          ) : isRsvp ? (
+            "Confirm RSVP →"
+          ) : (
+            `Pay KES ${total.toLocaleString()} via M-Pesa →`
+          )}
+        </button>
+
+        <button
+          onClick={() => router.back()}
+          className="text-center text-gray-600 hover:text-gray-400 text-sm transition"
+        >
+          ← Go back
         </button>
 
         <div className="mt-4 flex justify-center">
@@ -587,13 +653,6 @@ export default function CheckoutPageContent() {
             />
           </a>
         </div>
-
-        <button
-          onClick={() => router.back()}
-          className="text-center text-gray-600 hover:text-gray-400 text-sm transition"
-        >
-          ← Go back
-        </button>
       </div>
     </div>
   );
