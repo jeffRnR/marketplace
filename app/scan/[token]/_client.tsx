@@ -441,8 +441,8 @@ function ScannerInner({ token }: { token: string }) {
     const startCamera = async () => {
       setCameraError("");
       try {
-        const { BrowserMultiFormatReader, NotFoundException } =
-          await import("@zxing/browser");
+        const { BrowserMultiFormatReader } = await import("@zxing/browser");
+        const { NotFoundException } = await import("@zxing/library");
 
         // Step 1 — check if getUserMedia exists
         if (!navigator.mediaDevices?.getUserMedia) {
