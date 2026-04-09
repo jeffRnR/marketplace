@@ -3,7 +3,6 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { Html5Qrcode } from "html5-qrcode";
 import {
   QrCode, CheckCircle, XCircle, AlertTriangle,
   Loader2, Keyboard, Camera, Ticket, WifiOff,
@@ -26,16 +25,14 @@ type ScanResult =
   | "already_scanned" | "wrong_order" | "duplicate_final"
   | "fraud_detected" | "suspicious" | "capacity_exceeded";
 
-const QR_SIZE = 260;
-
 // ─── Offline queue (IndexedDB) ────────────────────────────────────────────────
 
 interface PendingScan {
-  id:        number;
-  token:     string;
+  id:         number;
+  token:      string;
   ticketCode: string;
-  queuedAt:  number;
-  attempts:  number;
+  queuedAt:   number;
+  attempts:   number;
 }
 
 function openDB(): Promise<IDBDatabase> {
@@ -57,7 +54,7 @@ async function queueScan(token: string, ticketCode: string): Promise<void> {
     const db    = await openDB();
     const store = db.transaction("pending", "readwrite").objectStore("pending");
     store.add({ token, ticketCode, queuedAt: Date.now(), attempts: 0 } as Omit<PendingScan, "id">);
-  } catch { /* IndexedDB unavailable — silent fail */ }
+  } catch { /* silent fail */ }
 }
 
 async function getPendingScans(): Promise<PendingScan[]> {
@@ -178,19 +175,20 @@ function ResultScreen({
   return null;
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Token guard ──────────────────────────────────────────────────────────────
 
 export default function ScanPage() {
   const params = useParams<{ token: string }>();
   const token  = params?.token ?? "";
 
-  // Guard — show clear error instead of crashing if token is missing
   if (!token) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center p-8">
         <WifiOff className="w-16 h-16 text-red-400" />
         <p className="text-white font-black text-2xl">Invalid scanner link</p>
-        <p className="text-gray-400 text-sm">This link appears to be broken. Please request a new one.</p>
+        <p className="text-gray-400 text-sm">
+          This link appears to be broken. Please request a new one.
+        </p>
       </div>
     );
   }
@@ -198,7 +196,7 @@ export default function ScanPage() {
   return <ScannerInner token={token} />;
 }
 
-// ─── Inner component (only renders when token is confirmed present) ───────────
+// ─── Main scanner ─────────────────────────────────────────────────────────────
 
 function ScannerInner({ token }: { token: string }) {
   const [sessionInfo,  setSessionInfo]  = useState<SessionInfo | null>(null);
@@ -216,12 +214,14 @@ function ScannerInner({ token }: { token: string }) {
   const [laneNote,     setLaneNote]     = useState<string | null>(null);
   const [scanning,     setScanning]     = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError,  setCameraError]  = useState("");
 
-  const scannerRef      = useRef<Html5Qrcode | null>(null);
-  const initializingRef = useRef(false);
+  const videoRef        = useRef<HTMLVideoElement>(null);
+  const controlsRef     = useRef<any>(null);
   const inputRef        = useRef<HTMLInputElement>(null);
+  const processingRef   = useRef(false);
 
-  // Online/offline detection
+  // Online/offline
   useEffect(() => {
     const onOnline  = () => setIsOnline(true);
     const onOffline = () => setIsOnline(false);
@@ -234,7 +234,7 @@ function ScannerInner({ token }: { token: string }) {
     };
   }, []);
 
-  // Pending count from IndexedDB
+  // Pending count
   const refreshPendingCount = useCallback(async () => {
     const scans = await getPendingScans();
     setPendingCount(scans.length);
@@ -261,19 +261,19 @@ function ScannerInner({ token }: { token: string }) {
     setTicketType("");
     setIsFinal(false);
     setLaneNote(null);
+    processingRef.current = false;
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
   const doScan = useCallback(async (code: string) => {
-    // IMPORTANT: do NOT toUpperCase() here — camera gives signed base64url
-    // which is case-sensitive. Only trim whitespace.
+    // Never toUpperCase — camera gives signed base64url (case-sensitive)
     const clean = code.trim();
-    if (!clean || !sessionInfo) return;
+    if (!clean || !sessionInfo || processingRef.current) return;
 
+    processingRef.current = true;
     setScanning(true);
     setScanResult("loading");
 
-    // Offline path
     if (!navigator.onLine) {
       await queueScan(token, clean);
       await refreshPendingCount();
@@ -310,12 +310,11 @@ function ScannerInner({ token }: { token: string }) {
     }
   }, [sessionInfo, token, refreshPendingCount]);
 
-  // Sync offline queue on reconnect
+  // Sync queue on reconnect
   const syncQueue = useCallback(async () => {
     const pending = await getPendingScans();
     if (pending.length === 0) return;
     setSyncingCount(pending.length);
-
     for (const scan of pending) {
       try {
         const res = await fetch("/api/scan/verify", {
@@ -332,7 +331,6 @@ function ScannerInner({ token }: { token: string }) {
         await incrementAttempts(scan);
       }
     }
-
     setSyncingCount(0);
     await refreshPendingCount();
   }, [token, refreshPendingCount]);
@@ -341,66 +339,87 @@ function ScannerInner({ token }: { token: string }) {
     if (isOnline) syncQueue();
   }, [isOnline, syncQueue]);
 
-  // Keep doScan ref fresh for camera callback
+  // Keep doScan ref fresh
   const doScanRef = useRef(doScan);
   useEffect(() => { doScanRef.current = doScan; }, [doScan]);
 
-  // Camera lifecycle
+  // ── Camera using @zxing/browser ───────────────────────────────────────────
   useEffect(() => {
     if (!cameraActive) {
-      if (scannerRef.current && !initializingRef.current) {
-        scannerRef.current.stop().catch(() => {}).finally(() => {
-          scannerRef.current?.clear();
-          scannerRef.current = null;
-        });
+      // Stop stream
+      if (controlsRef.current) {
+        try { controlsRef.current.stop(); } catch { /* ignore */ }
+        controlsRef.current = null;
+      }
+      // Stop video tracks directly
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(t => t.stop());
+        videoRef.current.srcObject = null;
       }
       return;
     }
 
-    const initCamera = async () => {
-      if (initializingRef.current || scannerRef.current) return;
-      initializingRef.current = true;
+    let cancelled = false;
+
+    const startCamera = async () => {
+      setCameraError("");
       try {
-        scannerRef.current = new Html5Qrcode("qr-reader");
-        await scannerRef.current.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: QR_SIZE, height: QR_SIZE }, aspectRatio: 1.0 },
-          (decoded) => {
-            // Camera gives raw decoded string — pass as-is, no case mutation
-            setCameraActive(false);
-            setInput(decoded);
-            doScanRef.current(decoded);
-          },
-          () => {}, // suppress per-frame errors
+        // Dynamically import to avoid SSR issues
+        const { BrowserMultiFormatReader, NotFoundException } = await import("@zxing/browser");
+
+        const codeReader = new BrowserMultiFormatReader();
+
+        // Get back camera — prefer environment facing
+        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+        const backCamera = devices.find(d =>
+          d.label.toLowerCase().includes("back") ||
+          d.label.toLowerCase().includes("rear") ||
+          d.label.toLowerCase().includes("environment")
+        ) ?? devices[devices.length - 1]; // fallback to last device (usually back on mobile)
+
+        if (!backCamera) throw new Error("No camera found on this device.");
+        if (cancelled) return;
+
+        controlsRef.current = await codeReader.decodeFromVideoDevice(
+          backCamera.deviceId,
+          videoRef.current!,
+          (result, error) => {
+            if (result && !processingRef.current) {
+              const text = result.getText();
+              setInput(text);
+              doScanRef.current(text);
+            }
+            // Suppress NotFoundException — it fires every frame when no QR visible
+            if (error && !(error instanceof NotFoundException)) {
+              console.warn("ZXing scan error:", error);
+            }
+          }
         );
-      } catch (err) {
-        const denied =
-          err instanceof DOMException &&
-          (err.name === "NotAllowedError" || err.name === "PermissionDeniedError");
-        setScanResult("invalid");
-        setMessage(denied
+      } catch (err: any) {
+        if (cancelled) return;
+        const msg = err?.message ?? "Unknown camera error";
+        const denied = msg.includes("Permission") || msg.includes("NotAllowed") || msg.includes("denied");
+        setCameraError(denied
           ? "Camera permission denied. Enable camera access in settings and refresh."
-          : `Camera failed: ${err instanceof Error ? err.message : "unknown error"}.`);
+          : `Camera failed: ${msg}`
+        );
         setCameraActive(false);
-        scannerRef.current = null;
-      } finally {
-        initializingRef.current = false;
       }
     };
 
-    initCamera();
+    startCamera();
 
     return () => {
-      if (scannerRef.current && !initializingRef.current) {
-        scannerRef.current.stop().catch(() => {}).finally(() => {
-          scannerRef.current?.clear();
-          scannerRef.current = null;
-        });
+      cancelled = true;
+      if (controlsRef.current) {
+        try { controlsRef.current.stop(); } catch { /* ignore */ }
+        controlsRef.current = null;
       }
     };
   }, [cameraActive]);
 
-  // ── Render states ──────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -477,18 +496,42 @@ function ScannerInner({ token }: { token: string }) {
 
       {/* Scanner area */}
       <div className="flex-1 flex flex-col items-center justify-center gap-6">
+
+        {/* Video viewfinder */}
         <div
-          className="relative rounded-2xl overflow-hidden border-2 transition-colors"
+          className="relative rounded-2xl overflow-hidden border-2 transition-colors w-full"
           style={{
-            width:       QR_SIZE,
-            height:      QR_SIZE,
+            maxWidth:    "320px",
+            aspectRatio: "1 / 1",
             borderColor: cameraActive ? "#a855f7" : "#374151",
             borderStyle: cameraActive ? "solid" : "dashed",
+            backgroundColor: "#111",
           }}
         >
-          <div id="qr-reader" className="w-full h-full" />
+          {/* ZXing uses a plain <video> element */}
+          <video
+            ref={videoRef}
+            className="w-full h-full object-cover"
+            style={{ display: cameraActive ? "block" : "none" }}
+            muted
+            playsInline
+            autoPlay
+          />
+
+          {/* Scanning overlay — crosshair guide */}
+          {cameraActive && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-48 h-48 relative">
+                <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-purple-400 rounded-tl" />
+                <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-purple-400 rounded-tr" />
+                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-purple-400 rounded-bl" />
+                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-purple-400 rounded-br" />
+              </div>
+            </div>
+          )}
+
           {!cameraActive && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-gray-600 bg-gray-800/50">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-gray-600">
               <QrCode className="w-16 h-16" />
               <p className="text-xs text-center px-4">
                 Point camera at QR code<br />or type ticket code below
@@ -497,8 +540,18 @@ function ScannerInner({ token }: { token: string }) {
           )}
         </div>
 
+        {/* Camera error */}
+        {cameraError && (
+          <div className="w-full max-w-sm bg-red-900/20 border border-red-700/30 rounded-xl px-4 py-3">
+            <p className="text-red-400 text-xs text-center">{cameraError}</p>
+          </div>
+        )}
+
         <button
-          onClick={() => setCameraActive(v => !v)}
+          onClick={() => {
+            setCameraError("");
+            setCameraActive(v => !v);
+          }}
           disabled={scanning}
           className={`px-5 py-2.5 rounded-xl font-bold transition flex items-center gap-2 text-sm disabled:opacity-50 ${
             cameraActive
@@ -510,6 +563,7 @@ function ScannerInner({ token }: { token: string }) {
           {cameraActive ? "Stop camera" : "Start camera"}
         </button>
 
+        {/* Manual entry */}
         <div className="w-full max-w-sm flex flex-col gap-3">
           <div className="flex gap-2">
             <div className="relative flex-1">
