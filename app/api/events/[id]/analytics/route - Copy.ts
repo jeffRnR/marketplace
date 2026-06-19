@@ -15,13 +15,14 @@ export async function GET(
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userEmail: string = session.user.email;
     const eventId = id;
     if (!eventId || !eventId.trim()) {
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { email: userEmail },
       select: { id: true },
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
