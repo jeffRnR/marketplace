@@ -12,9 +12,9 @@ export async function GET(
   try {
     const session = await getServerSession(authOptions);
     const { id } = await context.params;
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+      if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
     const userEmail: string = session.user.email;
     const eventId = id;
     if (!eventId || !eventId.trim()) {
