@@ -22,8 +22,8 @@ async function getEvent(id: number) {
 
 export default async function EventDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const eventId = Number(id);
-  if (isNaN(eventId)) notFound();
+  const eventId = id;
+  if (!eventId) notFound();
 
   const event = await getEvent(eventId);
   if (!event) notFound();

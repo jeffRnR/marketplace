@@ -537,7 +537,7 @@ function StationCard({
   onRefresh,
 }: {
   station: Station;
-  eventId: number;
+  eventId: string;
   event: ManagedEvent;
   onRefresh: () => void;
 }) {

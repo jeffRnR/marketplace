@@ -13,7 +13,7 @@ async function getOwner(email: string) {
   return prisma.user.findUnique({ where: { email }, select: { id: true } });
 }
 
-async function assertOwner(userId: string, eventId: number) {
+async function assertOwner(userId: string, eventId: string) {
   const event = await prisma.event.findUnique({
     where: { id: eventId }, select: { createdById: true },
   });
@@ -25,8 +25,8 @@ export async function GET(req: Request) {
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const eventId = Number(searchParams.get("eventId"));
-  if (!eventId) return NextResponse.json({ error: "eventId required" }, { status: 400 });
+  const eventId = searchParams.get("eventId");
+  if (!eventId || !eventId.trim()) return NextResponse.json({ error: "eventId required" }, { status: 400 });
 
   const user = await getOwner(session.user.email);
   if (!user || !await assertOwner(user.id, eventId))
@@ -55,18 +55,18 @@ export async function POST(req: Request) {
   if (!eventId || !name?.trim())
     return NextResponse.json({ error: "eventId and name required" }, { status: 400 });
 
-  if (!await assertOwner(user.id, Number(eventId)))
+  if (!await assertOwner(user.id, eventId))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   // Next order number
   const max = await prisma.scanStation.aggregate({
-    where: { eventId: Number(eventId) },
+    where: { eventId: eventId },
     _max:  { order: true },
   });
   const nextOrder = (max._max.order ?? 0) + 1;
 
   const station = await prisma.scanStation.create({
-    data: { eventId: Number(eventId), name: name.trim(), order: nextOrder },
+    data: { eventId: eventId, name: name.trim(), order: nextOrder },
   });
 
   return NextResponse.json(station, { status: 201 });

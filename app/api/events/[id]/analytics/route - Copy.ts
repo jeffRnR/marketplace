@@ -15,9 +15,8 @@ export async function GET(
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    // const { params } = context;
-    const eventId = Number(id);
-    if (isNaN(eventId)) {
+    const eventId = id;
+    if (!eventId || !eventId.trim()) {
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
     }
 
@@ -75,7 +74,7 @@ export async function GET(
     // ── Simulated real-time stats ─────────────────────────────────────────
     // Replace with real tracking (e.g. Plausible, PostHog, or a custom views table)
     // seeded deterministically from eventId so they're stable per event
-    const seed = eventId * 7;
+    const seed = eventId.split("").reduce((s, c) => s + c.charCodeAt(0), 0) * 7;
     const viewsLast24h = Math.floor((seed % 80) + 20 + event.attendees * 0.4);
     const avgTimeOnPageSeconds = Math.floor(45 + (seed % 90));
     const uniqueVisitorsTotal = Math.floor(viewsLast24h * 4.2 + event.attendees * 2.1);

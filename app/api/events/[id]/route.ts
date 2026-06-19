@@ -20,7 +20,7 @@ async function sendUpdateEmail({
 }: {
   to: string; name: string; eventTitle: string;
   changes: { field: string; from: string; to: string }[];
-  eventId: number; baseUrl: string;
+  eventId: string; baseUrl: string;
 }) {
   const transporter = getTransporter();
   if (!transporter) return;
@@ -96,7 +96,7 @@ export async function PATCH(
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const { id: idParam } = await params;
-    const eventId = Number(idParam);
+    const eventId = String(idParam);
 
     // Verify ownership
     const existing = await prisma.event.findUnique({
@@ -191,7 +191,7 @@ export async function PATCH(
           name:       order.name,
           eventTitle: updated.title,
           changes,
-          eventId,
+          eventId: String(eventId),
           baseUrl,
         })
       ));

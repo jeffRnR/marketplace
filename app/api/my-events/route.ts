@@ -137,8 +137,8 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const eventId = Number(searchParams.get("eventId"));
-    if (!eventId)
+    const eventId = searchParams.get("eventId");
+    if (!eventId || !eventId.trim())
       return NextResponse.json({ error: "Event ID required" }, { status: 400 });
 
     const user = await prisma.user.findUnique({

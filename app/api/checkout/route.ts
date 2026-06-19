@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     }
 
     const event = await prisma.event.findUnique({
-      where:  { id: Number(eventId) },
+      where:  { id: eventId },
       select: { title: true, date: true, location: true, time: true, attendees: true, createdById: true },
     });
     if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
 
     if (isRsvp) {
       const existing = await prisma.order.findFirst({
-        where: { eventId: Number(eventId), email: email.trim().toLowerCase() },
+        where: { eventId: eventId, email: email.trim().toLowerCase() },
       });
       if (existing) {
         return NextResponse.json({ error: "You have already RSVP'd for this event." }, { status: 409 });
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
     if (promoCode?.trim()) {
       promoRecord = await prisma.promoCode.findFirst({
-        where: { eventId: Number(eventId), code: promoCode.trim().toUpperCase(), active: true },
+        where: { eventId: eventId, code: promoCode.trim().toUpperCase(), active: true },
       });
       if (!promoRecord) {
         return NextResponse.json({ error: "Invalid or inactive promo code." }, { status: 400 });
@@ -93,7 +93,7 @@ export async function POST(req: Request) {
         prisma.order.create({
           data: {
             id:          orderId,
-            eventId:     Number(eventId),
+            eventId:     eventId,
             email:       email.trim().toLowerCase(),
             phone:       phone.trim(),
             name:        name.trim(),
@@ -109,7 +109,7 @@ export async function POST(req: Request) {
           prisma.promoCode.update({ where: { id: promoRecord.id }, data: { uses: { increment: 1 } } }),
         ] : []),
         prisma.event.update({
-          where: { id: Number(eventId) },
+          where: { id: eventId },
           data:  { attendees: { increment: cartItems.reduce((s: number, i: any) => s + i.quantity, 0) } },
         }),
       ]);
@@ -153,7 +153,7 @@ export async function POST(req: Request) {
       prisma.order.create({
         data: {
           id:          orderId,
-          eventId:     Number(eventId),
+          eventId:     eventId,
           email:       email.trim().toLowerCase(),
           phone:       phone.trim(),
           name:        name.trim(),
@@ -180,7 +180,7 @@ export async function POST(req: Request) {
         prisma.promoCode.update({ where: { id: promoRecord.id }, data: { uses: { increment: 1 } } }),
       ] : []),
       prisma.event.update({
-        where: { id: Number(eventId) },
+        where: { id: eventId },
         data:  { attendees: { increment: cartItems.reduce((s: number, i: any) => s + i.quantity, 0) } },
       }),
     ]);

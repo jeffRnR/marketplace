@@ -117,7 +117,7 @@ function StatusBadge({ status }: { status: string }) {
 // ─── Slot Form ────────────────────────────────────────────────────────────────
 
 function SlotForm({ eventId, initial, onSaved, onCancel }: {
-  eventId:  number;
+  eventId:  string;
   initial?: Partial<VendingSlot>;
   onSaved:  () => void;
   onCancel: () => void;
@@ -334,7 +334,7 @@ function AppCard({ app, onDecision }: {
 
 function SlotCard({ slot, eventId, onRefresh }: {
   slot:      VendingSlot;
-  eventId:   number;
+  eventId:   string;
   onRefresh: () => void;
 }) {
   const vendingUrl = typeof window !== "undefined"
@@ -504,7 +504,7 @@ function SlotCard({ slot, eventId, onRefresh }: {
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
-export default function VendorsPanel({ eventId }: { eventId: number }) {
+export default function VendorsPanel({ eventId }: { eventId: string }) {
   const [slots,    setSlots]    = useState<VendingSlot[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [showForm, setShowForm] = useState(false);

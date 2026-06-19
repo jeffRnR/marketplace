@@ -13,13 +13,13 @@ if (!SECRET && process.env.NODE_ENV === "production") {
 
 export interface SignedPayload {
   code:      string; // ticketCode
-  eventId:   number;
+  eventId:   string;
   issuedAt:  number; // unix ms
   signature: string;
 }
 
 /** Encode a signed payload into a compact string for QR encoding */
-export function signTicket(ticketCode: string, eventId: number): string {
+export function signTicket(ticketCode: string, eventId: string): string {
   const issuedAt = Date.now();
   const data     = `${ticketCode}:${eventId}:${issuedAt}`;
   const sig      = createHmac("sha256", SECRET).update(data).digest("hex");
@@ -31,7 +31,7 @@ export function signTicket(ticketCode: string, eventId: number): string {
 /** Verify a scanned QR string. Returns ticketCode + eventId or throws. */
 export function verifyTicketSignature(
   raw: string,
-): { ticketCode: string; eventId: number } {
+): { ticketCode: string; eventId: string } {
   let payload: SignedPayload;
   try {
     payload = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));

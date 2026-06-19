@@ -49,7 +49,7 @@ export function notifyTicketOrder(params: {
 }
 
 export function notifyVendingApplication(params: {
-  ownerId: string; businessName: string; slotTitle: string; eventTitle: string; eventId: number;
+  ownerId: string; businessName: string; slotTitle: string; eventTitle: string; eventId: string;
 }) {
   createNotification({
     userId:  params.ownerId,

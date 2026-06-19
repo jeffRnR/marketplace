@@ -33,7 +33,7 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
-export default function EventVendors({ eventId }: { eventId: number }) {
+export default function EventVendors({ eventId }: { eventId: string }) {
   const [vendors, setVendors]   = useState<VendorProfile[]>([]);
   const [loading, setLoading]   = useState(true);
 

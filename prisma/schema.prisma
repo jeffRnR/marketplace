@@ -70,7 +70,7 @@ model VerificationToken {
 }
 
 model Category {
-  id          Int             @id @default(autoincrement())
+  id          String          @id @default(cuid())
   name        String          @unique
   icon        String?
   iconColor   String?
@@ -81,7 +81,7 @@ model Category {
 }
 
 model Event {
-  id                 Int                 @id @default(autoincrement())
+  id                 String              @id @default(cuid())
   image              String
   title              String
   date               DateTime
@@ -108,8 +108,8 @@ model Event {
 }
 
 model EventCategory {
-  eventId    Int
-  categoryId Int
+  eventId    String
+  categoryId String
   event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
@@ -117,14 +117,14 @@ model EventCategory {
 }
 
 model Ticket {
-  id       Int       @id @default(autoincrement())
+  id       String    @id @default(cuid())
   type     String
   price    String
   link     String
   isActive Boolean   @default(true)
   startsAt DateTime?
   endsAt   DateTime?
-  eventId  Int
+  eventId  String
   event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
 
@@ -134,8 +134,8 @@ model TicketCapacity {
   maxCapacity Int?
   laneNote    String?
 
-  eventId Int
-  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
 
 model PromoCode {
@@ -146,7 +146,7 @@ model PromoCode {
   uses      Int      @default(0)
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
-  eventId   Int
+  eventId   String
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, code])
@@ -163,7 +163,7 @@ model Order {
   isRsvp        Boolean        @default(false)
   status        String         @default("confirmed")
   createdAt     DateTime       @default(now())
-  eventId       Int
+  eventId       String
   event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
   items         OrderItem[]
   paymentRecord PaymentRecord?
@@ -218,7 +218,7 @@ model VendingSlot {
   status       String            @default("open")
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
-  eventId      Int
+  eventId      String
   event        Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
   applications SlotApplication[]
 
@@ -368,7 +368,7 @@ model VendorApplication {
   updatedAt       DateTime      @updatedAt
   profileId       String
   profile         MarketProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  eventId         Int
+  eventId         String
   event           Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([profileId, eventId])
@@ -488,9 +488,6 @@ model Notification {
 
 // ─── TICKET SCANNING ──────────────────────────────────────────────────────────
 
-// A scanning station created by the event owner.
-// Stations are ordered — ticket must pass them in sequence.
-// The station with the highest `order` number is the final station.
 model ScanStation {
   id        String   @id @default(cuid())
   name      String // e.g. "Gate 1", "Security Check"
@@ -498,11 +495,11 @@ model ScanStation {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  eventId       Int
-  event         Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  sessions      ScanSession[]
-  logs          ScanLog[]
-  isFinal       Boolean       @default(false)
+  eventId  String
+  event    Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sessions ScanSession[]
+  logs     ScanLog[]
+  isFinal  Boolean       @default(false)
 
   @@index([eventId])
   @@index([order])
@@ -519,9 +516,9 @@ model ScanSession {
   createdAt DateTime  @default(now())
   lastUsed  DateTime?
 
-  stationId String
-  station   ScanStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
-  logs      ScanLog[]
+  stationId     String
+  station       ScanStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  logs          ScanLog[]
   firstAccessIP String?
 
   @@index([token])
@@ -566,7 +563,7 @@ model WaitlistEntry {
 
 model RsvpTierPayment {
   id      String @id @default(cuid())
-  eventId Int    @unique
+  eventId String @unique
   event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   tier        String // "starter" | "growth" | "pro" | "enterprise"

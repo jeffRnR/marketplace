@@ -10,8 +10,6 @@ import {
 import Link from "next/link";
 import SignInModal from "@/components/SignInModal";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 interface Event {
   id: number; title: string; image: string; date: string; location: string;
   tickets: { type: string; price: string }[];
@@ -26,7 +24,6 @@ interface VendorProfile {
   _count: { listings: number; reviews: number };
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-KE", {
@@ -43,8 +40,6 @@ function eventPrice(tickets: { type: string; price: string }[]) {
   if (!prices.length) return "Free";
   return `From KES ${Math.min(...prices).toLocaleString()}`;
 }
-
-// ─── Banner slider ────────────────────────────────────────────────────────────
 
 function BannerSlider({
   events, vendors, loading,

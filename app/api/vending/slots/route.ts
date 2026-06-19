@@ -20,8 +20,8 @@ async function getSessionUserId(email: string) {
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const eventId = Number(searchParams.get("eventId"));
-    if (!eventId) return NextResponse.json({ error: "eventId required" }, { status: 400 });
+    const eventId = searchParams.get("eventId");
+    if (!eventId || !eventId.trim()) return NextResponse.json({ error: "eventId required" }, { status: 400 });
 
     const session = await getServerSession(authOptions);
     const userId  = session?.user?.email ? await getSessionUserId(session.user.email) : null;
@@ -118,7 +118,7 @@ export async function POST(req: Request) {
     }
 
     const event = await prisma.event.findUnique({
-      where:  { id: Number(eventId) },
+      where:  { id: eventId },
       select: { createdById: true },
     });
     if (!event)                    return NextResponse.json({ error: "Event not found" }, { status: 404 });
@@ -126,7 +126,7 @@ export async function POST(req: Request) {
 
     const slot = await prisma.vendingSlot.create({
       data: {
-        eventId:    Number(eventId),
+        eventId:    eventId,
         title:      title.trim(),
         description: description?.trim() || null,
         price:      Number(price),

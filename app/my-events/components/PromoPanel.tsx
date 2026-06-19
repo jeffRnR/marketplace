@@ -9,7 +9,7 @@ interface PromoCode {
   uses: number; maxUses: number; active: boolean;
 }
 
-export function PromoPanel({ eventId }: { eventId: number }) {
+export function PromoPanel({ eventId }: { eventId: string }) {
   const [promos,       setPromos]       = useState<PromoCode[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [newCode,      setNewCode]      = useState("");

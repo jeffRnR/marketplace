@@ -151,7 +151,7 @@ export default function ManageVendingPage() {
         const res  = await fetch("/api/vending/slots", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ eventId: Number(eventId), ...form, price: Number(form.price), totalSlots: Number(form.totalSlots) }),
+          body:    JSON.stringify({ eventId: eventId, ...form, price: Number(form.price), totalSlots: Number(form.totalSlots) }),
         });
         const data = await res.json();
         if (!res.ok) { setModalError(data.error ?? "Failed to create slot."); return; }

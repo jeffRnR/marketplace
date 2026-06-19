@@ -44,7 +44,7 @@ export default function MyEventsPage() {
     if (status === "authenticated") fetchEvents();
   }, [status, fetchEvents]);
 
-  const handleDelete = async (eventId: number) => {
+  const handleDelete = async (eventId: string) => {
     const res = await fetch(`/api/my-events?eventId=${eventId}`, { method: "DELETE" });
     if (!res.ok) return;
     setEvents((p) => p.filter((e) => e.id !== eventId));

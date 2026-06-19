@@ -8,7 +8,7 @@ async function getAuthUser(email: string) {
   return prisma.user.findUnique({ where: { email }, select: { id: true } });
 }
 
-async function verifyEventOwner(eventId: number, userId: string) {
+async function verifyEventOwner(eventId: string, userId: string) {
   const event = await prisma.event.findUnique({ where: { id: eventId }, select: { createdById: true } });
   if (!event) return { ok: false, status: 404, error: "Event not found" };
   if (event.createdById !== userId) return { ok: false, status: 403, error: "Forbidden" };
@@ -19,8 +19,8 @@ async function verifyEventOwner(eventId: number, userId: string) {
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const eventId = Number(searchParams.get("eventId"));
-    if (!eventId) return NextResponse.json({ error: "eventId required" }, { status: 400 });
+    const eventId = searchParams.get("eventId");
+    if (!eventId || !eventId.trim()) return NextResponse.json({ error: "eventId required" }, { status: 400 });
 
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -48,11 +48,11 @@ export async function POST(req: Request) {
     const { eventId, code, discount, maxUses } = await req.json();
     if (!eventId || !code || !discount) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
 
-    const ownership = await verifyEventOwner(Number(eventId), user.id);
+    const ownership = await verifyEventOwner(eventId, user.id);
     if (!ownership.ok) return NextResponse.json({ error: (ownership as any).error }, { status: (ownership as any).status });
 
     const promo = await prisma.promoCode.create({
-      data: { eventId: Number(eventId), code: code.toUpperCase().trim(), discount, maxUses: Number(maxUses) || 50 },
+      data: { eventId: eventId, code: code.toUpperCase().trim(), discount, maxUses: Number(maxUses) || 50 },
     });
     return NextResponse.json(promo, { status: 201 });
   } catch (err: any) {

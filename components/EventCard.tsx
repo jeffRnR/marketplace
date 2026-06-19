@@ -42,7 +42,7 @@ interface EventCategory {
 }
 
 interface EventCardProps {
-  eventId:     number;
+  eventId:     string;
   createdById: string;
   image:       string;
   title:       string;
