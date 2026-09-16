@@ -6,11 +6,14 @@ import prisma from "@/lib/prisma";
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const eventId = searchParams.get("eventId");
+    const eventIdParam = searchParams.get("eventId");
     const code    = searchParams.get("code")?.trim().toUpperCase();
 
-    if (!eventId || !eventId.trim() || !code)
+    if (!eventIdParam || !eventIdParam.trim() || !code)
       return NextResponse.json({ error: "eventId and code required" }, { status: 400 });
+    const eventId = Number(eventIdParam);
+    if (!Number.isInteger(eventId))
+      return NextResponse.json({ error: "Invalid eventId" }, { status: 400 });
 
     const promo = await prisma.promoCode.findFirst({
       where: { eventId, code, active: true },

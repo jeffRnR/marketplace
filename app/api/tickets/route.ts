@@ -8,7 +8,7 @@ async function getAuthUser(email: string) {
   return prisma.user.findUnique({ where: { email }, select: { id: true } });
 }
 
-async function verifyEventOwner(eventId: string, userId: string) {
+async function verifyEventOwner(eventId: number, userId: string) {
   const event = await prisma.event.findUnique({
     where: { id: eventId },
     select: { createdById: true },
@@ -28,9 +28,10 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const body = await req.json();
-    const { eventId, type, price, capacity, startsAt, endsAt, isActive } = body;
+    const { eventId: eventIdValue, type, price, capacity, startsAt, endsAt, isActive } = body;
+    const eventId = Number(eventIdValue);
 
-    if (!eventId || !type || price === undefined || capacity === undefined)
+    if (!Number.isInteger(eventId) || !type || price === undefined || capacity === undefined)
       return NextResponse.json({ error: "Missing required fields: eventId, type, price, capacity" }, { status: 400 });
 
     const ownership = await verifyEventOwner(eventId, user.id);

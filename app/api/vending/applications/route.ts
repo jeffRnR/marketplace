@@ -130,7 +130,7 @@ export async function POST(req: Request) {
         businessName: businessName.trim(),
         slotTitle:  slot.title,
         eventTitle: slotWithEvent.event.title,
-        eventId:    slotWithEvent.event.id,
+        eventId:    String(slotWithEvent.event.id),
       });
     }
 

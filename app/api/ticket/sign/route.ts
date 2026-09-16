@@ -16,6 +16,6 @@ export async function GET(req: Request) {
   if (!item || item.order.status !== "confirmed")
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
 
-  const signed = signTicket(code, item.order.eventId);
+  const signed = signTicket(code, String(item.order.eventId));
   return NextResponse.json({ signed });
 }

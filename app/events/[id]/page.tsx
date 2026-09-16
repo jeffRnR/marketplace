@@ -22,8 +22,8 @@ async function getEvent(id: number) {
 
 export default async function EventDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const eventId = id;
-  if (!eventId) notFound();
+  const eventId = Number(id);
+  if (!Number.isInteger(eventId)) notFound();
 
   const event = await getEvent(eventId);
   if (!event) notFound();
@@ -41,7 +41,7 @@ export default async function EventDetailPage({ params }: PageProps) {
   return (
     <div className="p-4 lg:w-[70%] min-h-screen mt-14 w-full mx-auto">
       <EventCard
-        eventId={event.id}
+        eventId={String(event.id)}
         createdById={event.createdById}
         image={event.image}
         title={event.title}
@@ -69,7 +69,7 @@ export default async function EventDetailPage({ params }: PageProps) {
         }}
       />
 
-      <EventVendors eventId={event.id} />
+      <EventVendors eventId={String(event.id)} />
     </div>
   );
 }

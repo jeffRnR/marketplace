@@ -12,10 +12,16 @@ export async function GET(
   try {
     const session = await getServerSession(authOptions);
     const { id } = await context.params;
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     if (!id || !id.trim()) {
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
     }
-    const eventId = id;
+    const eventId = Number(id);
+    if (!Number.isInteger(eventId)) {
+      return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
+    }
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
@@ -71,7 +77,7 @@ export async function GET(
     // ── Simulated real-time stats ─────────────────────────────────────────
     // Replace with real tracking (e.g. Plausible, PostHog, or a custom views table)
     // seeded deterministically from eventId so they're stable per event
-    const seed = eventId.split("").reduce((s, c) => s + c.charCodeAt(0), 0) * 7;
+    const seed = String(eventId).split("").reduce((s, c) => s + c.charCodeAt(0), 0) * 7;
     const viewsLast24h = Math.floor((seed % 80) + 20 + event.attendees * 0.4);
     const avgTimeOnPageSeconds = Math.floor(45 + (seed % 90));
     const uniqueVisitorsTotal = Math.floor(viewsLast24h * 4.2 + event.attendees * 2.1);

@@ -21,8 +21,10 @@ async function getSessionUserId(email: string) {
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const eventId = searchParams.get("eventId");
-    if (!eventId || !eventId.trim()) return NextResponse.json({ error: "eventId required" }, { status: 400 });
+    const eventIdParam = searchParams.get("eventId");
+    if (!eventIdParam || !eventIdParam.trim()) return NextResponse.json({ error: "eventId required" }, { status: 400 });
+    const eventId = Number(eventIdParam);
+    if (!Number.isInteger(eventId)) return NextResponse.json({ error: "Invalid eventId" }, { status: 400 });
 
     const session = await getServerSession(authOptions);
     const userId  = session?.user?.email ? await getSessionUserId(session.user.email) : null;
@@ -109,9 +111,10 @@ export async function POST(req: Request) {
     if (!userId) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const body = await req.json();
-    const { eventId, title, description, price, currency, totalSlots, applicationId } = body;
+    const { eventId: eventIdValue, title, description, price, currency, totalSlots, applicationId } = body;
+    const eventId = Number(eventIdValue);
 
-    if (!eventId || !title?.trim() || !price || !totalSlots) {
+    if (!Number.isInteger(eventId) || !title?.trim() || !price || !totalSlots) {
       return NextResponse.json(
         { error: "Required: eventId, title, price, totalSlots" },
         { status: 400 }

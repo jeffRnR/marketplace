@@ -1041,7 +1041,7 @@ export function ScanPanel({ event }: { event: ManagedEvent }) {
             <StationCard
               key={station.id}
               station={station}
-              eventId={event.id}
+              eventId={String(event.id)}
               event={event}
               onRefresh={fetchStations}
             />

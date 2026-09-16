@@ -1,7 +1,7 @@
 // app/my-events/types.ts
 
 export interface TicketStat {
-  id:       string;
+  id:       number;
   type:     string;
   price:    string;
   capacity: number;
@@ -23,7 +23,7 @@ export interface EventStats {
 }
 
 export interface ManagedEvent {
-  id:          string;
+  id:          number;
   title:       string;
   image:       string;
   date:        string;

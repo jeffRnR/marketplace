@@ -265,10 +265,10 @@ export function EventRow({
               {tab === "overview"  && <OverviewPanel event={event} />}
               {tab === "revenue"   && <RevenuePanel event={event} />}
               {tab === "tickets"   && <TicketsPanel event={event} onTicketsChanged={handleTicketsChanged} />}
-              {tab === "promos"    && <PromoPanel eventId={event.id} />}
+              {tab === "promos"    && <PromoPanel eventId={String(event.id)} />}
               {tab === "analytics" && <AnalyticsPanel event={event} />}
               {tab === "attendees" && <AttendeePanel event={event} />}
-              {tab === "vendors"   && <VendorsPanel eventId={event.id} />}
+              {tab === "vendors"   && <VendorsPanel eventId={String(event.id)} />}
               {tab === "scan" && <ScanPanel event={event} />}
             </div>
           </div>
