@@ -30,6 +30,12 @@ function headers() {
   };
 }
 
+function publicHost(): string | undefined {
+  const host = process.env.NEXT_PUBLIC_BASE_URL?.trim();
+  if (!host || /localhost|127\.0\.0\.1/.test(host)) return undefined;
+  return host.replace(/\/$/, "");
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface StkPushParams {
@@ -89,20 +95,31 @@ export async function initiateStkPush(
     else if (phone.startsWith("7") && phone.length === 9) phone = "254" + phone;
     console.log("STK 2: phone normalized", phone);
 
+    const host = publicHost();
+    const payload = {
+      first_name: p.firstName,
+      last_name: p.lastName,
+      email: p.email,
+      amount: p.amount,
+      phone_number: phone,
+      api_ref: p.apiRef,
+      currency: p.currency,
+      narrative: p.narrative,
+      ...(host ? { host } : {}),
+    };
+
+    if (process.env.INTASEND_TEST_MODE !== "true" && !host) {
+      return {
+        success: false,
+        message: "NEXT_PUBLIC_BASE_URL must be a public HTTPS URL when IntaSend live mode is enabled",
+        raw: null,
+      };
+    }
+
     const res = await fetch(`${BASE()}/api/v1/payment/mpesa-stk-push/`, {
       method: "POST",
       headers: headers(),
-      body: JSON.stringify({
-        first_name: p.firstName,
-        last_name: p.lastName,
-        email: p.email,
-        host: process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000",
-        amount: p.amount,
-        phone_number: phone,
-        api_ref: p.apiRef, // our UUID — echoed back in webhook
-        currency: p.currency,
-        narrative: p.narrative,
-      }),
+      body: JSON.stringify(payload),
     });
 
     console.log("STK 4: payload ready", JSON.stringify(res));
@@ -113,7 +130,7 @@ export async function initiateStkPush(
     if (!res.ok) {
       return {
         success: false,
-        message: data?.detail ?? data?.error ?? "STK push failed",
+        message: data?.detail ?? data?.error ?? data?.message ?? `STK push failed (HTTP ${res.status})`,
         raw: data,
       };
     }
