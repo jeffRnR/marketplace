@@ -5,6 +5,7 @@
 import puppeteer from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
 import nodemailer from "nodemailer";
+export { sendSMS } from "@/lib/at-sms";
 
 // ─── Gmail transporter ────────────────────────────────────────────────────────
 
@@ -21,50 +22,6 @@ function getTransporter() {
     service: "gmail",
     auth: { user, pass },
   });
-}
-
-// ─── SMS via Africa's Talking ─────────────────────────────────────────────────
-
-export async function sendSMS(phone: string, message: string): Promise<void> {
-  const username = process.env.AT_USERNAME;
-  const apiKey = process.env.AT_API_KEY;
-  const from = process.env.AT_SENDER_ID ?? "PLATFORM";
-
-  if (!username || !apiKey) {
-    console.warn("⚠️  SMS skipped: AT_USERNAME or AT_API_KEY not set");
-    return;
-  }
-
-  try {
-    const res = await fetch(
-      "https://api.africastalking.com/version1/messaging",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          apiKey: apiKey,
-          Accept: "application/json",
-        },
-        body: new URLSearchParams({
-          username,
-          to: phone,
-          message,
-          from,
-        }).toString(),
-      },
-    );
-    const data = await res.json();
-    if (!res.ok) {
-      console.error("❌ SMS API error:", JSON.stringify(data));
-    } else {
-      console.log(
-        "✅ SMS sent:",
-        JSON.stringify(data?.SMSMessageData?.Recipients ?? data),
-      );
-    }
-  } catch (err) {
-    console.error("❌ SMS exception:", err);
-  }
 }
 
 // ─── Generate ticket PDF ────────────────────────────────────────────────────

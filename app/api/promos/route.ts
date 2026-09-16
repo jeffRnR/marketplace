@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { sendSMS } from "@/lib/at-sms";
 
 async function getAuthUser(email: string) {
   return prisma.user.findUnique({ where: { email }, select: { id: true } });
@@ -45,15 +46,34 @@ export async function POST(req: Request) {
     const user = await getAuthUser(session.user.email);
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const { eventId, code, discount, maxUses } = await req.json();
+    const { eventId, code, discount, maxUses, expiresAt, orderId, phone } = await req.json();
     if (!eventId || !code || !discount) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
 
     const ownership = await verifyEventOwner(eventId, user.id);
     if (!ownership.ok) return NextResponse.json({ error: (ownership as any).error }, { status: (ownership as any).status });
 
     const promo = await prisma.promoCode.create({
-      data: { eventId: eventId, code: code.toUpperCase().trim(), discount, maxUses: Number(maxUses) || 50 },
+      data: {
+        eventId,
+        code: code.toUpperCase().trim(),
+        discount,
+        maxUses: Number(maxUses) || 50,
+        ...(expiresAt ? { expiresAt: new Date(expiresAt) } : {}),
+      },
     });
+
+    let recipient = typeof phone === "string" ? phone.trim() : "";
+    let recipientName = "there";
+    if (orderId) {
+      const order = await prisma.order.findUnique({ where: { id: orderId }, select: { phone: true, name: true } });
+      recipient = order?.phone ?? recipient;
+      recipientName = order?.name ?? recipientName;
+    }
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { title: true } });
+    const expiry = promo.expiresAt ? ` Expires ${promo.expiresAt.toLocaleDateString("en-KE")}.` : "";
+    if (recipient) {
+      void sendSMS(recipient, `Hi ${recipientName}, your promo code for ${event?.title ?? "your event"} is ${promo.code} for ${promo.discount} off.${expiry}`);
+    }
     return NextResponse.json(promo, { status: 201 });
   } catch (err: any) {
     if (err.code === "P2002") return NextResponse.json({ error: "Promo code already exists for this event" }, { status: 409 });

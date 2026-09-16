@@ -10,6 +10,7 @@ import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
 import { initiateStkPush } from "@/lib/intasend";
 import { notifyVendingApplication } from "@/lib/createNotification";
+import { sendSMS } from "@/lib/at-sms";
 
 async function getSessionUser(email: string) {
   return prisma.user.findUnique({
@@ -179,6 +180,12 @@ export async function PATCH(req: Request) {
           ownerNote: ownerNote?.trim() ?? null,
         },
       });
+      void sendSMS(
+        application.contactPhone,
+        action === "approve"
+          ? `Your vending application for ${application.slot.event.title} was approved. Complete payment to reserve your slot.`
+          : `Your vending application for ${application.slot.event.title} was rejected.${ownerNote ? ` Reason: ${ownerNote.trim()}` : ""}`,
+      );
       return NextResponse.json({ application: updated });
     }
 

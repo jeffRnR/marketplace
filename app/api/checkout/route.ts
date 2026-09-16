@@ -125,7 +125,7 @@ export async function POST(req: Request) {
       });
 
       const smsText = `Hi ${name.trim()}! Your RSVP for ${event.title} on ${eventDate} is confirmed. View your ticket: ${baseUrl}/ticket/${orderItems[0].ticketCode}`;
-      await sendSMS(phone.trim(), smsText);
+      void sendSMS(phone.trim(), smsText);
 
       // In-app notification for event owner
       notifyTicketOrder({

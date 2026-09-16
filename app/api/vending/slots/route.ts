@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { sendSMS } from "@/lib/at-sms";
 
 async function getSessionUserId(email: string) {
   const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
@@ -28,7 +29,7 @@ export async function GET(req: Request) {
 
     const event = await prisma.event.findUnique({
       where:  { id: eventId },
-      select: { createdById: true },
+      select: { createdById: true, title: true, date: true, location: true },
     });
     if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
@@ -108,7 +109,7 @@ export async function POST(req: Request) {
     if (!userId) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const body = await req.json();
-    const { eventId, title, description, price, currency, totalSlots } = body;
+    const { eventId, title, description, price, currency, totalSlots, applicationId } = body;
 
     if (!eventId || !title?.trim() || !price || !totalSlots) {
       return NextResponse.json(
@@ -119,7 +120,7 @@ export async function POST(req: Request) {
 
     const event = await prisma.event.findUnique({
       where:  { id: eventId },
-      select: { createdById: true },
+      select: { createdById: true, title: true, date: true, location: true },
     });
     if (!event)                    return NextResponse.json({ error: "Event not found" }, { status: 404 });
     if (event.createdById !== userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -135,6 +136,19 @@ export async function POST(req: Request) {
         status:     "open",
       },
     });
+
+    if (applicationId) {
+      const application = await prisma.slotApplication.findUnique({
+        where: { id: applicationId },
+        select: { contactPhone: true, contactName: true },
+      });
+      if (application) {
+        void sendSMS(
+          application.contactPhone,
+          `Hi ${application.contactName}, slot ${slot.title} at ${event.title} is assigned. ${event.location}, ${new Date(event.date).toLocaleDateString("en-KE")}.`,
+        );
+      }
+    }
 
     return NextResponse.json({ slot }, { status: 201 });
   } catch (err: any) {

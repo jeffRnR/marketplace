@@ -179,7 +179,7 @@ async function handleTicketPayment(
   });
 
   const smsText = `Hi ${order.name}! Tickets for ${order.event.title} (${eventDate}) confirmed. KES ${order.totalAmount.toLocaleString()} paid. View: ${baseUrl}/ticket/${order.items[0]?.ticketCode}`;
-  await sendSMS(order.phone, smsText);
+  void sendSMS(order.phone, smsText);
 
   // In-app notification for event owner
   const firstItem = order.items[0];
@@ -272,7 +272,7 @@ async function handleVendingPayment(
   });
 
   const smsText = `Hi ${application.contactName}! Vending slot (${application.slot.title}) at ${application.slot.event.title} on ${eventDate} confirmed. KES ${record.amount.toLocaleString()} paid. Ref: ${application.id.slice(0, 8).toUpperCase()}`;
-  await sendSMS(application.contactPhone, smsText);
+  void sendSMS(application.contactPhone, smsText);
 
   // In-app notification for event owner
   notifyVendingConfirmed({

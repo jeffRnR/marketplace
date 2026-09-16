@@ -3,6 +3,7 @@
 import { NextResponse }          from "next/server";
 import prisma                    from "@/lib/prisma";
 import { verifyTicketSignature } from "@/lib/ticketSigning";
+import { sendSMS }               from "@/lib/at-sms";
 
 export async function POST(req: Request) {
   const body = await req.json();
@@ -106,7 +107,7 @@ export async function POST(req: Request) {
   try {
     orderItem = await prisma.orderItem.findUnique({
       where:   { ticketCode: cleanCode },
-      include: { order: { select: { eventId: true, status: true } } },
+      include: { order: { select: { eventId: true, status: true, phone: true, name: true } } },
     });
   } catch (err) {
     console.error("VERIFY: orderItem lookup failed:", err);
@@ -247,6 +248,14 @@ export async function POST(req: Request) {
     where: { id: scanSession.id },
     data:  { lastUsed: new Date() },
   });
+
+  if (station.isFinal) {
+    const checkedInAt = new Date();
+    void sendSMS(
+      orderItem.order.phone,
+      `Welcome ${orderItem.order.name}! You checked in to ${station.event.title} at ${checkedInAt.toLocaleString("en-KE", { timeZone: "Africa/Nairobi" })}.`,
+    );
+  }
 
   return NextResponse.json({
     result:     "success",

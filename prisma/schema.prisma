@@ -70,7 +70,7 @@ model VerificationToken {
 }
 
 model Category {
-  id          String          @id @default(cuid())
+  id          Int             @id @default(autoincrement())
   name        String          @unique
   icon        String?
   iconColor   String?
@@ -81,7 +81,7 @@ model Category {
 }
 
 model Event {
-  id                 String              @id @default(cuid())
+  id                 Int                 @id @default(autoincrement())
   image              String
   title              String
   date               DateTime
@@ -98,6 +98,7 @@ model Event {
   tickets            Ticket[]
   promoCodes         PromoCode[]
   orders             Order[]
+  reminderDeliveries EventReminder[]
   vendorApplications VendorApplication[]
   vendingSlots       VendingSlot[]
   scanStations       ScanStation[]
@@ -108,8 +109,8 @@ model Event {
 }
 
 model EventCategory {
-  eventId    String
-  categoryId String
+  eventId    Int
+  categoryId Int
   event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
@@ -117,14 +118,14 @@ model EventCategory {
 }
 
 model Ticket {
-  id       String    @id @default(cuid())
+  id       Int       @id @default(autoincrement())
   type     String
   price    String
   link     String
   isActive Boolean   @default(true)
   startsAt DateTime?
   endsAt   DateTime?
-  eventId  String
+  eventId  Int
   event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
 
@@ -134,43 +135,57 @@ model TicketCapacity {
   maxCapacity Int?
   laneNote    String?
 
-  eventId String
-  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId Int
+  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
 
 model PromoCode {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   code      String
   discount  String
-  maxUses   Int      @default(50)
-  uses      Int      @default(0)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  eventId   String
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  maxUses   Int       @default(50)
+  uses      Int       @default(0)
+  active    Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  eventId   Int
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, code])
 }
 
 model Order {
-  id            String         @id @default(cuid())
-  email         String
-  phone         String
-  name          String
-  promoCode     String?
-  discount      String?
-  totalAmount   Float          @default(0)
-  isRsvp        Boolean        @default(false)
-  status        String         @default("confirmed")
-  createdAt     DateTime       @default(now())
-  eventId       String
-  event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  items         OrderItem[]
-  paymentRecord PaymentRecord?
+  id                 String          @id @default(cuid())
+  email              String
+  phone              String
+  name               String
+  promoCode          String?
+  discount           String?
+  totalAmount        Float           @default(0)
+  isRsvp             Boolean         @default(false)
+  status             String          @default("confirmed")
+  createdAt          DateTime        @default(now())
+  eventId            Int
+  event              Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  items              OrderItem[]
+  paymentRecord      PaymentRecord?
+  reminderDeliveries EventReminder[]
 
   @@index([eventId])
   @@index([status])
   @@index([email])
+}
+
+model EventReminder {
+  id      String   @id @default(cuid())
+  sentAt  DateTime @default(now())
+  eventId Int
+  orderId String
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, orderId])
+  @@index([eventId])
 }
 
 model OrderItem {
@@ -218,7 +233,7 @@ model VendingSlot {
   status       String            @default("open")
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
-  eventId      String
+  eventId      Int
   event        Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
   applications SlotApplication[]
 
@@ -368,7 +383,7 @@ model VendorApplication {
   updatedAt       DateTime      @updatedAt
   profileId       String
   profile         MarketProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  eventId         String
+  eventId         Int
   event           Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([profileId, eventId])
@@ -495,7 +510,7 @@ model ScanStation {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  eventId  String
+  eventId  Int
   event    Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
   sessions ScanSession[]
   logs     ScanLog[]
@@ -563,7 +578,7 @@ model WaitlistEntry {
 
 model RsvpTierPayment {
   id      String @id @default(cuid())
-  eventId String @unique
+  eventId Int    @unique
   event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   tier        String // "starter" | "growth" | "pro" | "enterprise"
