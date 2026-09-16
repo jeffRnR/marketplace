@@ -21,9 +21,10 @@ function applyDiscount(price: number, discount: string): number {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { eventId, name, email, phone, tickets: cartItems, promoCode } = body;
+    const { eventId: eventIdValue, name, email, phone, tickets: cartItems, promoCode } = body;
+    const eventId = Number(eventIdValue);
 
-    if (!eventId || !name?.trim() || !email?.trim() || !phone?.trim() || !cartItems?.length) {
+    if (!Number.isInteger(eventId) || !name?.trim() || !email?.trim() || !phone?.trim() || !cartItems?.length) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
