@@ -639,7 +639,7 @@ export default function CheckoutPageContent() {
           ← Go back
         </button>
 
-        <div className="mt-4 flex justify-center">
+        {/* <div className="mt-4 flex justify-center">
           <a
             href="https://intasend.com/security"
             target="_blank"
@@ -652,7 +652,7 @@ export default function CheckoutPageContent() {
               className="opacity-80 hover:opacity-100 transition"
             />
           </a>
-        </div>
+        </div> */}
       </div>
     </div>
   );
