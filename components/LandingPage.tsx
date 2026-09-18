@@ -174,7 +174,7 @@ function BannerSlider({
                       : <div className="w-full h-full bg-gradient-to-br from-purple-900/60 to-gray-800" />}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end gap-4">
-                      <div className="w-14 h-14 rounded-2xl border-2 border-white/20 bg-gray-800 overflow-hidden flex items-center justify-center shrink-0 shadow-lg">
+                      <div className="w-14 h-14 rounded-2xl border-[0.5px] border-white/20 bg-gray-800 overflow-hidden flex items-center justify-center shrink-0 shadow-lg">
                         {currentVendor.logoImage
                           ? <img src={currentVendor.logoImage} alt="" className="w-full h-full object-cover" />
                           : <Store className="w-7 h-7 text-purple-400" />}

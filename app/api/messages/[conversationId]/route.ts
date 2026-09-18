@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { broadcastMessage } from "@/app/api/messages/route";
+import { broadcastMessage } from "@/lib/messageSse";
 import { notifyNewMessage } from "@/lib/createNotification";
 
 async function getUser(email: string) {

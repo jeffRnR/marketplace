@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Ticket, AlertCircle, Loader2, ArrowRight } from "lucide-react";
+import { Plus, Ticket, AlertCircle, Loader2 } from "lucide-react";
 import { ManagedEvent, Summary, Tab } from "./types";
 import { SummaryCards } from "./components/SummaryCards";
 import { EventRow } from "./components/EventRow";
@@ -33,8 +33,8 @@ export default function MyEventsPage() {
       const data = await res.json();
       setEvents(data.events ?? []);
       setSummary(data.summary ?? null);
-    } catch (err: any) {
-      setError(err.message ?? "Something went wrong");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -66,12 +66,12 @@ export default function MyEventsPage() {
   }
 
   return (
-    <div className="p-4 lg:w-[70%] mt-14 mx-auto w-full min-h-screen flex flex-col gap-4 overflow-y-auto scrollbar-hide">
+    <div className="p-4 lg:w-[70%] mt-0 mx-auto w-full min-h-screen flex flex-col gap-4 overflow-y-auto scrollbar-hide">
 
       {/* Header */}
       <div className="w-full">
         <h1 className="text-gray-300 font-bold text-[2.5rem]">My Events</h1>
-        <p className="text-gray-400 text-md">Manage every event you've created — track attendance, revenue and more.</p>
+        <p className="text-gray-400 text-md">Manage every event you&apos;ve created — track attendance, revenue and more.</p>
       </div>
 
       {/* Summary stats */}

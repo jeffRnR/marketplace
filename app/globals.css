@@ -1,31 +1,77 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4f6f1;
+  --foreground: #1d2d28;
+  --surface: #ffffff;
+  --surface-muted: #e9f1eb;
+  --border: #d5dfd7;
+  --muted: #6d7c75;
+  --brand-green: #247653;
+  --brand-purple: #6246a6;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-space-grotesk);
   --font-mono: var(--font-geist-mono);
 }
 
+html[data-theme="dark"] {
+  --background: #111918;
+  --foreground: #eef5ef;
+  --surface: #1b2925;
+  --surface-muted: #22352e;
+  --border: #365047;
+  --muted: #a9bcb3;
+  --brand-green: #64c5a6;
+  --brand-purple: #b9a8f0;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  html:not([data-theme="light"]) {
+    --background: #111918;
+    --foreground: #eef5ef;
+    --surface: #1b2925;
+    --surface-muted: #22352e;
+    --border: #365047;
+    --muted: #a9bcb3;
+    --brand-green: #64c5a6;
+    --brand-purple: #b9a8f0;
   }
 }
 
 body {
-  background: linear-gradient(to bottom,#203a4e, #121c28, #000000);
-  /* background: linear-gradient(to bottom,#141d25, #0d151e, #000000); */
-  /* background: linear-gradient(to bottom,#1d0229,#07000a, #000000); */
+  background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-space-grotesk), sans-serif;
+  transition: background-color 180ms ease, color 180ms ease;
 }
+
+button, a, input, select, textarea { font-family: inherit; }
+
+button, input, select, textarea { border-radius: 4px; }
+.border { border-width: 0.5px; }
+.rounded-full, .rounded-xl, .rounded-2xl, .rounded-3xl, .rounded-\[2rem\] { border-radius: 4px; }
+.rounded-lg, .rounded-md { border-radius: 4px; }
+.border:not(.border-t):not(.border-b) { box-shadow: 0 8px 24px rgba(68, 45, 112, 0.07); }
+:focus-visible { outline: 1px solid color-mix(in srgb, var(--brand-purple) 65%, transparent); outline-offset: 1px; }
+
+/* Legacy utility bridge: older pages inherit the same theme without rewrites. */
+.bg-gray-950, .bg-gray-900 { background-color: var(--surface); }
+.bg-gray-800 { background-color: var(--surface-muted); }
+.bg-gray-700 { background-color: color-mix(in srgb, var(--surface-muted) 78%, var(--brand-purple)); }
+.text-gray-100, .text-gray-200, .text-gray-300 { color: var(--foreground); }
+.text-gray-400, .text-gray-500, .text-gray-600 { color: var(--muted); }
+.border-gray-800, .border-gray-700, .border-gray-600, .border-gray-400 { border-color: color-mix(in srgb, var(--brand-purple) 35%, var(--border)); }
+.text-purple-300, .text-purple-400, .text-purple-500 { color: var(--brand-purple); }
+.bg-purple-600, .bg-purple-700, .bg-purple-800, .bg-purple-900 { background-color: var(--brand-purple); }
+.border-purple-600, .border-purple-700, .border-purple-800 { border-color: var(--brand-purple); }
+.hover\:text-purple-300:hover, .hover\:text-purple-400:hover { color: var(--brand-purple); }
+.hover\:border-purple-500:hover, .hover\:border-purple-600:hover { border-color: var(--brand-purple); }
+
+main { min-width: 0; }
 
 /* ── Hide scrollbars everywhere ── */
 * {
@@ -49,4 +95,31 @@ body {
 
 .animate-slideDown {
   animation: slideDown 0.3s ease-out;
+}
+
+@keyframes pageReveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cardReveal {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-reveal { animation: pageReveal 420ms ease-out both; }
+.event-grid > a { animation: cardReveal 420ms ease-out both; }
+.event-grid > a:nth-child(2) { animation-delay: 45ms; }
+.event-grid > a:nth-child(3) { animation-delay: 90ms; }
+.event-grid > a:nth-child(4) { animation-delay: 135ms; }
+.event-grid > a:nth-child(5) { animation-delay: 180ms; }
+.event-grid > a:nth-child(6) { animation-delay: 225ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
 }

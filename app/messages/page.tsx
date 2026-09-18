@@ -63,7 +63,7 @@ function MessagesPageInner() {
 
   useEffect(() => {
     if (!session?.user?.email) return;
-    fetch("/api/auth/session").then(r => r.json()).then(s => setMyId((s as any)?.user?.id ?? null));
+    fetch("/api/auth/session").then(r => r.json()).then((s: { user?: { id?: string } }) => setMyId(s.user?.id ?? null));
   }, [session]);
 
   const loadConversations = useCallback(async () => {
@@ -151,8 +151,8 @@ function MessagesPageInner() {
   );
 
   return (
-    <div className="min-h-screen pt-16 flex flex-col">
-      <div className="flex-1 flex overflow-hidden mx-auto w-full lg:w-[70%]" style={{ height: "calc(100vh - 64px)" }}>
+    <div className="min-h-screen pt-0 flex flex-col">
+      <div className="flex-1 flex overflow-hidden mx-auto w-full lg:w-[70%]" style={{ height: "calc(100vh - 96px)" }}>
 
         {/* ── Sidebar ── */}
         <div className={`w-full md:w-64 lg:w-72 border-r border-gray-600 flex flex-col shrink-0 ${activeId ? "hidden md:flex" : "flex"}`}>

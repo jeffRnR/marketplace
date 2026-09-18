@@ -143,7 +143,7 @@ function ProfileCard({
 
   return (
     <Link href={`/marketplace/${profile.id}`} className="group block">
-      <div className="relative bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-purple-700/60 transition-all duration-300 hover:shadow-xl hover:shadow-purple-900/20 hover:-translate-y-0.5">
+      <div className="relative bg-[var(--surface)] border-[0.5px] border-[var(--brand-purple)]/30 rounded-xl overflow-hidden hover:border-[var(--brand-purple)] transition-all duration-300 hover:shadow-[0_18px_36px_rgba(68,45,112,0.16)] hover:-translate-y-0.5">
         {/* Cover */}
         <div className="relative h-36 bg-gradient-to-br from-gray-800 to-gray-900 overflow-hidden">
           {profile.coverImage ? (
@@ -161,7 +161,7 @@ function ProfileCard({
 
           <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5">
             {profile.isVerified && (
-              <div className="flex items-center gap-1 bg-purple-600/90 text-white text-xs px-2 py-1 rounded-full font-semibold">
+              <div className="flex items-center gap-1 bg-[var(--brand-purple)] text-white text-xs px-2 py-1 rounded-md font-semibold">
                 <BadgeCheck className="w-3 h-3" /> Verified
               </div>
             )}
@@ -172,7 +172,7 @@ function ProfileCard({
             )}
           </div>
 
-          <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm text-gray-300 text-xs px-2.5 py-1 rounded-full">
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-md">
             <Icon className="w-3 h-3" />
             <span>{profile.category}</span>
           </div>
@@ -180,7 +180,7 @@ function ProfileCard({
 
         {/* Logo */}
         <div className="relative px-4 -mt-6">
-          <div className="w-12 h-12 rounded-xl border-2 border-gray-800 bg-gray-800 overflow-hidden shadow-lg flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl border-[0.5px] border-gray-800 bg-gray-800 overflow-hidden shadow-lg flex items-center justify-center">
             {profile.logoImage ? (
               <img
                 src={profile.logoImage}
@@ -195,7 +195,7 @@ function ProfileCard({
 
         {/* Body */}
         <div className="px-4 pt-2 pb-4">
-          <h3 className="font-bold text-gray-100 text-base leading-tight group-hover:text-purple-300 transition-colors mb-1">
+          <h3 className="font-bold text-[var(--foreground)] text-base leading-tight group-hover:text-[var(--brand-purple)] transition-colors mb-1">
             {profile.businessName}
           </h3>
 
@@ -236,7 +236,7 @@ function ProfileCard({
                 ? "s"
                 : ""}
             </span>
-            <span className="text-purple-400 text-xs font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
+            <span className="text-[var(--brand-purple)] text-xs font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
               View profile <ChevronRight className="w-3 h-3" />
             </span>
           </div>
@@ -291,7 +291,7 @@ export default function MarketplacePage() {
 
   return (
     // ↓ removed bg-gray-950 — inherits system default background
-    <div className="min-h-screen pt-20">
+    <div className="min-h-screen pt-4">
       {/* Hero — no absolute background overlays, no decorative grid */}
       <div className="border-b border-gray-800">
         <div className="max-w-6xl mx-auto px-4 py-14">
@@ -429,7 +429,7 @@ export default function MarketplacePage() {
             )}
             {debouncedSearch && (
               <span className="flex items-center gap-1 bg-gray-800 border border-gray-700 text-gray-300 text-xs px-3 py-1 rounded-full">
-                "{debouncedSearch}"
+                &quot;{debouncedSearch}&quot;
                 <button onClick={() => setSearch("")}>
                   <X className="w-3 h-3 ml-1" />
                 </button>

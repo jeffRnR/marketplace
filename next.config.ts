@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
   },
 
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  transpilePackages: ['mapbox-gl'],
 };
 
 export default nextConfig;

@@ -627,7 +627,7 @@ function ScannerInner({ token }: { token: string }) {
       <div className="flex-1 flex flex-col items-center justify-center gap-6">
         {/* Video viewfinder */}
         <div
-          className="relative rounded-2xl overflow-hidden border-2 transition-colors w-full"
+          className="relative rounded-2xl overflow-hidden border-[0.5px] transition-colors w-full"
           style={{
             maxWidth: "320px",
             aspectRatio: "1 / 1",

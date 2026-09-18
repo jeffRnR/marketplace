@@ -150,7 +150,7 @@ function ImageUploader({
           onClick={() => inputRef.current?.click()}
           onDrop={handleDrop}
           onDragOver={e => e.preventDefault()}
-          className={`relative flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-700 rounded-xl cursor-pointer hover:border-purple-600 hover:bg-purple-900/10 transition-all ${
+          className={`relative flex flex-col items-center justify-center gap-2 border-[0.5px] border-dashed border-gray-700 rounded-xl cursor-pointer hover:border-purple-600 hover:bg-purple-900/10 transition-all ${
             isCover ? "h-36" : "h-24"
           } ${uploading ? "pointer-events-none opacity-60" : ""}`}
         >
@@ -288,7 +288,7 @@ export default function CreateProfilePage() {
               <div className={`flex items-center gap-2 text-sm font-semibold transition-colors ${
                 i === step ? "text-purple-400" : i < step ? "text-green-400" : "text-gray-600"
               }`}>
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-[0.5px] transition-all ${
                   i === step ? "border-purple-500 bg-purple-900/50 text-purple-300"
                   : i < step  ? "border-green-500 bg-green-900/30 text-green-400"
                   :             "border-gray-700 text-gray-600"
@@ -320,7 +320,7 @@ export default function CreateProfilePage() {
                     <button
                       key={cat.label}
                       onClick={() => set("category", cat.label)}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-sm font-semibold ${
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-[0.5px] transition-all text-sm font-semibold ${
                         active
                           ? "border-purple-500 bg-purple-900/30 text-purple-300"
                           : "border-gray-800 text-gray-500 hover:border-gray-700 hover:text-gray-300"

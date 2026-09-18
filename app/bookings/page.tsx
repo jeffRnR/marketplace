@@ -242,7 +242,7 @@ function BookingsPageInner() {
 
   useEffect(() => {
     if (!session?.user?.email) return;
-    fetch("/api/auth/session").then(r => r.json()).then(s => setMyId((s as any)?.user?.id ?? null));
+    fetch("/api/auth/session").then(r => r.json()).then((s: { user?: { id?: string } }) => setMyId(s.user?.id ?? null));
   }, [session]);
 
   const fetchBookings = useCallback(async () => {
@@ -282,7 +282,7 @@ function BookingsPageInner() {
   );
 
   return (
-    <div className="min-h-screen pt-20 pb-16">
+    <div className="min-h-screen pt-4 pb-16">
       <div className="max-w-2xl mx-auto px-4">
 
         {/* Header */}

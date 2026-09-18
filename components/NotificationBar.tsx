@@ -189,7 +189,7 @@ export default function NotificationBar() {
     if (!session?.user) return;
     fetch("/api/auth/session")
       .then(r => r.json())
-      .then(s => setMyId((s as any)?.user?.id ?? null));
+      .then((s: { user?: { id?: string } }) => setMyId(s.user?.id ?? null));
   }, [session]);
 
   // ── Fetch notifications ──────────────────────────────────────────────────────
@@ -312,7 +312,7 @@ export default function NotificationBar() {
       {/* ── Bell button ── */}
       <button
         onClick={() => setOpen(v => !v)}
-        className="relative flex items-center text-gray-300 hover:text-gray-100 transition"
+        className="relative flex h-9 w-9 items-center justify-center rounded-md bg-transparent text-[var(--foreground)] hover:bg-[var(--surface-muted)] hover:text-[var(--brand-purple)] transition"
         title="Notifications & Messages"
         aria-label={`Notifications${totalUnread > 0 ? ` — ${totalUnread} unread` : ""}`}
       >
@@ -331,9 +331,9 @@ export default function NotificationBar() {
           fixed top-16 left-1/2 -translate-x-1/2
           w-[92vw] max-w-sm
           sm:absolute sm:left-auto sm:translate-x-0 sm:right-0 sm:top-10 sm:w-96
-          bg-gray-900 border border-gray-700
-          rounded-2xl shadow-2xl shadow-black/60 z-50 overflow-hidden
-          animate-in slide-in-from-top-2 duration-150
+          bg-[var(--surface)] border-[0.5px] border-[var(--brand-purple)]/35
+          rounded-md shadow-[0_18px_45px_rgba(68,45,112,0.2)] z-50 overflow-hidden
+          animate-slideDown
         ">
 
           {/* ── Tab bar ── */}

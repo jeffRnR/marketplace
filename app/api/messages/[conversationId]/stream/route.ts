@@ -6,7 +6,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { sseClients } from "@/app/api/messages/route";
+import { sseClients } from "@/lib/messageSse";
 
 export const dynamic = "force-dynamic";
 

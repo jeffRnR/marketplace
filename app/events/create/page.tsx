@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import {
   Ticket, Plus, Trash2, Upload, CheckCircle, Loader2, MapPin, X,
 } from "lucide-react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 
 interface Category {
   id: string;
@@ -21,12 +23,18 @@ interface TicketEntry {
   capacity: number;
 }
 
-type EventType   = "rsvp" | "paid";
+interface VenueSuggestion {
+  place_name: string;
+  place_type?: string[];
+  center: [number, number]; // [lng, lat]
+}
+
+type EventType = "rsvp" | "paid";
 type SubmitStatus = "idle" | "loading" | "success" | "error";
 
 const COUNTRIES = ["Kenya", "Tanzania", "Uganda"];
 
-const INPUT = "bg-gray-300 w-full rounded-lg border border-purple-800 p-3 text-gray-800 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-800/50 transition placeholder-gray-500";
+const INPUT = "w-full rounded border-[0.5px] border-[var(--brand-purple)]/30 bg-[var(--surface)] p-3 text-[var(--foreground)] outline-none shadow-sm focus:border-[var(--brand-purple)] focus:ring-2 focus:ring-[var(--brand-purple)]/20 transition placeholder:text-[var(--muted)]";
 
 export default function CreateEvent() {
   const { data: session, status: sessionStatus } = useSession();
@@ -34,38 +42,38 @@ export default function CreateEvent() {
 
   // ── Form state ──
   const [formData, setFormData] = useState({
-    image:           "",
-    title:           "",
-    host:            "",
-    startDate:       "",
-    startTime:       "",
-    endDate:         "",
-    endTime:         "",
-    country:         "",
-    location:        "",
-    description:     "",
+    image: "",
+    title: "",
+    host: "",
+    startDate: "",
+    startTime: "",
+    endDate: "",
+    endTime: "",
+    country: "",
+    location: "",
+    description: "",
     requireApproval: false,
-    eventType:       "rsvp" as EventType,
-    capacity:        100,
-    tickets:         [] as TicketEntry[],
-    lat:             null as number | null,
-    lng:             null as number | null,
+    eventType: "rsvp" as EventType,
+    capacity: 100,
+    tickets: [] as TicketEntry[],
+    lat: null as number | null,
+    lng: null as number | null,
   });
 
   // ── Multi-category state ──
-  const [categories,         setCategories]         = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
 
   // ── Location state ──
-  const [query,           setQuery]           = useState("");
-  const [suggestions,     setSuggestions]     = useState<any[]>([]);
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<VenueSuggestion[]>([]);
   const [locationLoading, setLocationLoading] = useState(false);
-  const [manualLocation,  setManualLocation]  = useState(false); // free-text fallback
+  const [manualLocation, setManualLocation] = useState(false); // free-text fallback
 
   // ── UI state ──
-  const [submitStatus,  setSubmitStatus]  = useState<SubmitStatus>("idle");
-  const [submitError,   setSubmitError]   = useState("");
-  const [imagePreview,  setImagePreview]  = useState<string | null>(null);
+  const [submitStatus, setSubmitStatus] = useState<SubmitStatus>("idle");
+  const [submitError, setSubmitError] = useState("");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
   const blobUrlRef = useRef<string | null>(null);
 
@@ -155,34 +163,35 @@ export default function CreateEvent() {
   const handleVenueSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const q = e.target.value;
     setQuery(q);
-    setFormData((p) => ({ ...p, location: q, lat: null, lng: null }));
-    if (q.length > 2 && formData.country) {
-      setLocationLoading(true);
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(`${q}, ${formData.country}`)}&addressdetails=1&limit=5`
-        );
-        setSuggestions(await res.json());
-      } catch { /* silent */ }
-      finally { setLocationLoading(false); }
-    } else {
-      setSuggestions([]);
-    }
+    setFormData(p => ({ ...p, location: q, lat: null, lng: null }));
+    setSuggestions([]);
+    if (q.length < 3 || !formData.country) return;
+
+    setLocationLoading(true);
+    try {
+      const country = formData.country === "Kenya" ? "KE"
+        : formData.country === "Tanzania" ? "TZ" : "UG";
+      const res = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json` +
+        `?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}` +
+        `&country=${country}&language=en&limit=5&types=poi,address,place`
+      );
+      const data = await res.json();
+      setSuggestions(data.features ?? []);
+    } catch { /* silent */ }
+    finally { setLocationLoading(false); }
   };
 
-  const selectVenue = (place: any) => {
-    setFormData((p) => ({
-      ...p,
-      location: place.display_name,
-      lat: parseFloat(place.lat),
-      lng: parseFloat(place.lon),
-    }));
-    setQuery(place.display_name);
+  const selectVenue = (place: VenueSuggestion) => {
+    const [lng, lat] = place.center;
+    setFormData(p => ({ ...p, location: place.place_name, lat, lng }));
+    setQuery(place.place_name);
     setSuggestions([]);
+    setManualLocation(false);
   };
 
   // ── Tickets ──
-  const addTicket    = () => setFormData((p) => ({ ...p, tickets: [...p.tickets, { name: "", price: "", capacity: 50 }] }));
+  const addTicket = () => setFormData((p) => ({ ...p, tickets: [...p.tickets, { name: "", price: "", capacity: 50 }] }));
   const removeTicket = (i: number) => setFormData((p) => ({ ...p, tickets: p.tickets.filter((_, idx) => idx !== i) }));
   const handleTicketChange = (i: number, field: keyof TicketEntry, value: string | number) =>
     setFormData((p) => { const t = [...p.tickets]; t[i] = { ...t[i], [field]: value }; return { ...p, tickets: t }; });
@@ -211,11 +220,11 @@ export default function CreateEvent() {
     setSubmitStatus("loading");
     try {
       const res = await fetch("/api/events", {
-        method:  "POST",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          isRsvp:      formData.eventType === "rsvp",
+          isRsvp: formData.eventType === "rsvp",
           categoryIds: selectedCategoryIds, // array of ids
         }),
       });
@@ -223,8 +232,8 @@ export default function CreateEvent() {
       if (!res.ok) throw new Error(data.error ?? "Failed to create event");
       setSubmitStatus("success");
       setTimeout(() => router.push(`/events/${data.event.id}`), 1500);
-    } catch (err: any) {
-      setSubmitError(err.message ?? "Something went wrong. Please try again.");
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       setSubmitStatus("error");
     }
   };
@@ -233,16 +242,16 @@ export default function CreateEvent() {
     return <div className="min-h-screen flex items-center justify-center text-gray-400"><Loader2 className="animate-spin w-8 h-8" /></div>;
   }
 
-  const isRsvp      = formData.eventType === "rsvp";
+  const isRsvp = formData.eventType === "rsvp";
   const isSubmitting = submitStatus === "loading";
 
   return (
-    <div className="min-h-screen mt-10 text-gray-200 flex justify-center py-10 px-4">
-      <div className="flex flex-col lg:flex-row w-full max-w-5xl overflow-hidden">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex justify-center py-4 px-4">
+      <div className="flex flex-col lg:flex-row w-full max-w-5xl overflow-hidden border-[0.5px] border-[var(--brand-purple)]/25 bg-[var(--surface-muted)] rounded-md shadow-[0_18px_40px_rgba(68,45,112,0.1)]">
 
         {/* ── Left: image upload ── */}
-        <div className="lg:w-1/2 flex flex-col items-center justify-start pt-8 pr-0 lg:pr-8">
-          <div className="w-full">
+        <div className="lg:w-1/2 flex flex-col items-center justify-start p-6 sm:p-8 lg:p-10 lg:pr-8">
+          <div className="w-full max-w-xl">
             {imagePreview ? (
               <div className="relative w-full">
                 <img src={imagePreview} alt="Event preview" className="w-full max-h-80 object-cover rounded-xl shadow-lg" />
@@ -254,10 +263,10 @@ export default function CreateEvent() {
                 )}
               </div>
             ) : (
-              <label htmlFor="image-upload" className="flex flex-col items-center justify-center w-full h-72 border-2 border-dashed border-purple-700 rounded-xl cursor-pointer hover:border-purple-500 transition-colors">
-                <Upload className="w-12 h-12 text-purple-500 mb-3" />
-                <p className="text-gray-400 text-sm font-medium">Click to upload event image</p>
-                <p className="text-gray-600 text-xs mt-1">PNG, JPG, WEBP supported</p>
+              <label htmlFor="image-upload" className="flex flex-col items-center justify-center w-full h-72 border-[0.5px] border-dashed border-[var(--brand-purple)]/45 rounded cursor-pointer hover:border-[var(--brand-purple)] transition-colors">
+                <Upload className="w-12 h-12 text-[var(--brand-purple)] mb-3" />
+                <p className="text-[var(--foreground)] text-sm font-medium">Click to upload event image</p>
+                <p className="text-[var(--muted)] text-xs mt-1">PNG, JPG, WEBP supported</p>
               </label>
             )}
             <input id="image-upload" type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
@@ -302,11 +311,10 @@ export default function CreateEvent() {
                       key={cat.id}
                       type="button"
                       onClick={() => toggleCategory(cat.id)}
-                      className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition duration-300 ${
-                        selected
-                          ? "bg-purple-900/50 border-purple-500 text-purple-300"
-                          : "bg-gray-800/40 border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200"
-                      }`}
+                      className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition duration-300 ${selected
+                        ? "bg-[var(--brand-purple)]/15 border-[var(--brand-purple)] text-[var(--brand-purple)]"
+                        : "bg-[var(--surface)] border-[var(--brand-purple)]/30 text-[var(--muted)] hover:border-[var(--brand-purple)] hover:text-[var(--foreground)]"
+                        }`}
                     >
                       {selected && <CheckCircle className="w-3 h-3" />}
                       {cat.name}
@@ -316,7 +324,7 @@ export default function CreateEvent() {
               </div>
             )}
             {selectedCategoryIds.length > 0 && (
-              <p className="text-xs text-purple-400 mt-2">
+              <p className="text-xs text-[var(--brand-purple)] mt-2">
                 {selectedCategoryIds.length} categor{selectedCategoryIds.length === 1 ? "y" : "ies"} selected
               </p>
             )}
@@ -339,109 +347,89 @@ export default function CreateEvent() {
           {/* ── Venue ── */}
           <div>
             <label className="block text-xs text-gray-400 mb-1 font-medium">Event Venue *</label>
-            <div className="relative space-y-2">
+            <div className="space-y-2">
 
               {/* Country selector */}
-              <select name="country" value={formData.country} onChange={(e) =>
-                setFormData((p) => ({ ...p, country: e.target.value, location: "", lat: null, lng: null }))}
-                required className={INPUT}>
+              <select
+                name="country"
+                value={formData.country}
+                onChange={e => setFormData(p => ({ ...p, country: e.target.value, location: "", lat: null, lng: null }))}
+                required
+                className={INPUT}
+              >
                 <option value="">Select Country *</option>
-                {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
 
-              {/* Search or manual toggle */}
-              {!manualLocation ? (
-                <>
-                  <input
-                    type="text"
-                    placeholder={formData.country ? "Search for a venue..." : "Select a country first"}
-                    value={query}
-                    onChange={handleVenueSearch}
-                    disabled={!formData.country}
-                    className={`${INPUT} disabled:opacity-50 disabled:cursor-not-allowed`}
-                  />
+              {/* Mapbox search input */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder={formData.country ? "Search for a venue..." : "Select a country first"}
+                  value={query}
+                  onChange={handleVenueSearch}
+                  disabled={!formData.country}
+                  className={`${INPUT} disabled:opacity-50 disabled:cursor-not-allowed`}
+                />
 
-                  {/* Suggestions dropdown */}
-                  {query.length > 2 && (
-                    <ul className="absolute z-50 bg-gray-900 border border-gray-700 rounded-lg mt-1 w-full shadow-xl max-h-48 overflow-y-auto">
-                      {locationLoading ? (
-                        <li className="p-3 text-sm text-gray-400 flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 animate-spin" /> Searching...
-                        </li>
-                      ) : suggestions.length > 0 ? (
-                        <>
-                          {suggestions.map((place, idx) => (
-                            <li key={idx} onClick={() => selectVenue(place)}
-                              className="p-3 text-sm text-gray-300 hover:bg-gray-700 cursor-pointer transition-colors border-b border-gray-800 last:border-none">
-                              {place.display_name}
-                            </li>
-                          ))}
-                          {/* Manual entry option at bottom of dropdown */}
-                          <li
-                            onClick={() => { setManualLocation(true); setSuggestions([]); setFormData((p) => ({ ...p, location: query })); }}
-                            className="p-3 text-sm text-purple-400 hover:bg-gray-700 cursor-pointer transition-colors flex items-center gap-2 border-t border-gray-700"
-                          >
-                            <MapPin className="w-3.5 h-3.5" /> Use "{query}" as-is (venue not on map)
-                          </li>
-                        </>
-                      ) : (
-                        <li className="p-3 text-sm text-gray-500 italic flex flex-col gap-2">
-                          <span>No results found.</span>
-                          <button
-                            type="button"
-                            onClick={() => { setManualLocation(true); setSuggestions([]); setFormData((p) => ({ ...p, location: query })); }}
-                            className="text-purple-400 hover:text-purple-300 text-left text-xs transition"
-                          >
-                            → Use "{query}" as a custom venue instead
-                          </button>
-                        </li>
-                      )}
-                    </ul>
-                  )}
+                {/* Suggestions dropdown */}
+                {suggestions.length > 0 && (
+                  <ul className="absolute z-50 w-full mt-1 bg-gray-900 border border-gray-700 rounded-xl shadow-xl max-h-52 overflow-y-auto">
+                    {suggestions.map((place, idx) => (
+                      <li
+                        key={idx}
+                        onClick={() => selectVenue(place)}
+                        className="px-4 py-3 text-sm text-gray-300 hover:bg-gray-700 cursor-pointer border-b border-gray-800 last:border-none"
+                      >
+                        <p className="font-medium text-gray-200 truncate">{place.place_name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{place.place_type?.[0]}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
-                  {/* Coordinates confirmed */}
-                  {formData.lat && formData.lng && (
-                    <p className="text-xs text-green-400 flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" />
-                      Coordinates captured: {formData.lat.toFixed(4)}, {formData.lng.toFixed(4)}
-                    </p>
-                  )}
-
-                  {/* Manual fallback link */}
-                  {!formData.lat && formData.country && (
-                    <button type="button" onClick={() => setManualLocation(true)}
-                      className="text-xs text-gray-500 hover:text-purple-400 transition text-left">
-                      Venue not showing up? Enter it manually →
-                    </button>
-                  )}
-                </>
-              ) : (
-                /* ── Manual location entry ── */
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-purple-400 font-medium flex items-center gap-1">
-                      <MapPin className="w-3 h-3" /> Manual venue entry
-                    </p>
-                    <button type="button" onClick={() => {
-                      setManualLocation(false);
-                      setQuery("");
-                      setFormData((p) => ({ ...p, location: "", lat: null, lng: null }));
-                    }} className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition">
-                      <X className="w-3 h-3" /> Back to search
-                    </button>
+                {locationLoading && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
                   </div>
-                  <input
-                    type="text"
-                    placeholder="e.g. The Alchemist Rooftop, Westlands, Nairobi"
-                    value={formData.location}
-                    onChange={(e) => setFormData((p) => ({ ...p, location: e.target.value }))}
-                    required
-                    className={INPUT}
-                  />
-                  <p className="text-xs text-gray-600">
-                    No map pin will be shown for this venue — attendees will see the name as typed.
-                  </p>
-                </div>
+                )}
+              </div>
+
+              {/* Coordinates confirmed */}
+              {formData.lat && formData.lng && (
+                <p className="text-xs text-green-400 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  Coordinates captured: {formData.lat.toFixed(4)}, {formData.lng.toFixed(4)}
+                </p>
+              )}
+
+              {/* Mini map with draggable pin */}
+              {formData.lat && formData.lng && (
+                <VenueMap
+                  lat={formData.lat}
+                  lng={formData.lng}
+                  onMove={(lat, lng) => setFormData(p => ({ ...p, lat, lng }))}
+                />
+              )}
+
+              {/* Manual fallback */}
+              {!formData.lat && formData.country && query.length > 2 && suggestions.length === 0 && !locationLoading && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData(p => ({ ...p, location: query }));
+                    setManualLocation(true);
+                  }}
+                  className="text-xs text-gray-500 hover:text-purple-400 transition text-left"
+                >
+                  Venue not found? Save name as-is →
+                </button>
+              )}
+
+              {manualLocation && (
+                <p className="text-xs text-purple-400 flex items-center gap-1">
+                  <MapPin className="w-3 h-3" /> Saved as custom venue — no map pin will be shown.
+                </p>
               )}
             </div>
           </div>
@@ -461,11 +449,10 @@ export default function CreateEvent() {
               {(["rsvp", "paid"] as EventType[]).map((type) => (
                 <button key={type} type="button"
                   onClick={() => setFormData((p) => ({ ...p, eventType: type, tickets: type === "rsvp" ? [] : p.tickets }))}
-                  className={`py-3 rounded-lg border-2 text-sm font-semibold transition-all ${
-                    formData.eventType === type
-                      ? "border-purple-500 bg-purple-900/40 text-purple-300"
-                      : "border-gray-600 bg-gray-800/30 text-gray-400 hover:border-gray-500"
-                  }`}
+                  className={`py-3 rounded-lg border-[0.5px] text-sm font-semibold transition-all ${formData.eventType === type
+                    ? "border-[var(--brand-purple)] bg-[var(--brand-purple)]/15 text-[var(--brand-purple)]"
+                    : "border-[var(--brand-purple)]/30 bg-[var(--surface)] text-[var(--muted)] hover:border-[var(--brand-purple)]"
+                    }`}
                 >
                   {type === "rsvp" ? "RSVP" : "Paid Tickets"}
                 </button>
@@ -475,8 +462,8 @@ export default function CreateEvent() {
 
           {/* RSVP settings */}
           {isRsvp && (
-            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 space-y-3">
-              <p className="text-sm text-purple-300 font-medium">RSVP Settings</p>
+            <div className="bg-[var(--surface)] border-[0.5px] border-[var(--brand-purple)]/25 rounded p-4 space-y-3">
+              <p className="text-sm text-[var(--brand-purple)] font-medium">RSVP Settings</p>
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Total Capacity *</label>
                 <input type="number" name="capacity" min={1} value={formData.capacity}
@@ -488,9 +475,9 @@ export default function CreateEvent() {
 
           {/* Paid tickets */}
           {!isRsvp && (
-            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
+            <div className="bg-[var(--surface)] border-[0.5px] border-[var(--brand-purple)]/25 rounded p-4">
               <div className="flex justify-between items-center mb-3">
-                <span className="flex items-center gap-2 text-sm text-purple-300 font-medium">
+                <span className="flex items-center gap-2 text-sm text-[var(--brand-purple)] font-medium">
                   <Ticket className="h-4 w-4" /> Ticket Types
                 </span>
                 <button type="button" onClick={addTicket}
@@ -499,7 +486,7 @@ export default function CreateEvent() {
                 </button>
               </div>
               {formData.tickets.length === 0 && (
-                <p className="text-xs text-gray-500 italic text-center py-3">No tickets yet. Click "Add Ticket" to get started.</p>
+                <p className="text-xs text-gray-500 italic text-center py-3">No tickets yet. Click &quot;Add Ticket&quot; to get started.</p>
               )}
               <div className="space-y-3">
                 {formData.tickets.map((ticket, index) => (
@@ -558,11 +545,50 @@ export default function CreateEvent() {
 
           {/* Submit */}
           <button type="submit" disabled={isSubmitting || submitStatus === "success"}
-            className="w-full bg-purple-800 text-gray-100 rounded-lg px-4 py-3 text-sm font-bold hover:bg-purple-600 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition duration-300 flex items-center justify-center gap-2">
+            className="w-full bg-[var(--brand-purple)] text-white rounded px-4 py-3 text-sm font-bold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition duration-300 flex items-center justify-center gap-2 shadow-[0_10px_24px_rgba(68,45,112,0.18)]">
             {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating Event...</> : "Create Event"}
           </button>
         </form>
       </div>
     </div>
+  );
+}
+
+function VenueMap({ lat, lng, onMove }: { lat: number; lng: number; onMove: (lat: number, lng: number) => void }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const markerRef = useRef<mapboxgl.Marker | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
+
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: "mapbox://styles/mapbox/dark-v11",
+      center: [lng, lat],
+      zoom: 15,
+      scrollZoom: false,
+    });
+
+    const marker = new mapboxgl.Marker({ draggable: true, color: "#7c3aed" })
+      .setLngLat([lng, lat])
+      .addTo(map);
+
+    marker.on("dragend", () => {
+      const { lat: newLat, lng: newLng } = marker.getLngLat();
+      onMove(newLat, newLng);
+    });
+
+    markerRef.current = marker;
+
+    return () => { map.remove(); };
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full h-48 rounded-xl overflow-hidden border border-gray-700 mt-1"
+    />
   );
 }

@@ -183,7 +183,7 @@ export default function EventsBannerSlider({ events, vendors, loading }: Props) 
                       : <div className="w-full h-full bg-gradient-to-br from-purple-900/60 to-gray-800" />}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 flex items-end gap-3">
-                      <div className="w-10 h-10 rounded-xl border-2 border-white/20 bg-gray-800
+                      <div className="w-10 h-10 rounded-xl border-[0.5px] border-white/20 bg-gray-800
                                       overflow-hidden flex items-center justify-center shrink-0 shadow-lg">
                         {currentVendor.logoImage
                           ? <img src={currentVendor.logoImage} alt="" className="w-full h-full object-cover" />

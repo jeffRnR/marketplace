@@ -96,7 +96,7 @@ export default function ImageGallery({ images, title }: Props) {
               <button
                 key={i}
                 onClick={() => setActive(i)}
-                className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition ${
+                className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-[0.5px] transition ${
                   i === active
                     ? "border-purple-500 opacity-100"
                     : "border-gray-700 opacity-60 hover:opacity-90 hover:border-gray-500"
@@ -164,7 +164,7 @@ export default function ImageGallery({ images, title }: Props) {
                 <button
                   key={i}
                   onClick={e => { e.stopPropagation(); setActive(i); }}
-                  className={`shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition ${
+                  className={`shrink-0 w-12 h-12 rounded-lg overflow-hidden border-[0.5px] transition ${
                     i === active ? "border-purple-400 opacity-100" : "border-white/20 opacity-50 hover:opacity-80"
                   }`}
                 >

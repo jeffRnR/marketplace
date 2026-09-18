@@ -136,7 +136,7 @@ export function MultiImageUpload({
           ))}
           {images.length < max && (
             <button type="button" onClick={() => inputRef.current?.click()}
-              className="aspect-square rounded-xl border-2 border-dashed border-gray-700 hover:border-purple-600 flex items-center justify-center text-gray-600 hover:text-purple-400 transition">
+              className="aspect-square rounded-xl border-[0.5px] border-dashed border-gray-700 hover:border-purple-600 flex items-center justify-center text-gray-600 hover:text-purple-400 transition">
               <Plus className="w-5 h-5" />
             </button>
           )}
@@ -144,7 +144,7 @@ export function MultiImageUpload({
       )}
       {images.length === 0 && (
         <button type="button" onClick={() => inputRef.current?.click()}
-          className="w-full h-28 rounded-xl border-2 border-dashed border-gray-700 hover:border-purple-600 flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-purple-400 transition">
+          className="w-full h-28 rounded-xl border-[0.5px] border-dashed border-gray-700 hover:border-purple-600 flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-purple-400 transition">
           <Upload className="w-6 h-6" />
           <p className="text-xs">Click to upload photos</p>
           <p className="text-gray-700 text-xs">PNG, JPG, WEBP · max {max} photos</p>

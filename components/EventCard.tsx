@@ -95,7 +95,7 @@ function EventCard({
   const { data: session } = useSession();
 
   const CategoryIcon = ICON_MAP[category.iconName] ?? Sparkles;
-  const isOwner = !!session?.user && (session.user as any).id === createdById;
+  const isOwner = !!session?.user && (session.user as { id?: string }).id === createdById;
 
   const increase = (idx: number) => {
     setQuantities((prev) => prev.map((q, i) => (i === idx ? Math.min(q + 1, 10) : q)));
@@ -131,21 +131,21 @@ function EventCard({
 
   const CategoryMeta = () => (
     <>
-      <div className="text-gray-300 text-md flex gap-2 items-center">
-        <User className="w-4 h-4 text-[#915f13]" />
+      <div className="text-[var(--foreground)] text-md flex gap-2 items-center">
+        <User className="w-4 h-4 text-[var(--brand-purple)]" />
         <span className="font-medium">Hosted by {host}</span>
       </div>
-      <div className="text-gray-300 text-md flex gap-2 items-center">
-        <Users className="w-4 h-4 text-[#915f13]" />
+      <div className="text-[var(--foreground)] text-md flex gap-2 items-center">
+        <Users className="w-4 h-4 text-[var(--brand-green)]" />
         <span className="font-medium">{attendees} attending</span>
       </div>
-      <div className="text-gray-300 text-md border-b pb-4 border-gray-400/20 flex items-center gap-2">
+      <div className="text-[var(--foreground)] text-md border-b-2 pb-4 border-[var(--brand-purple)]/25 flex items-center gap-2">
         <CategoryIcon className="h-4 w-4" style={{ color: category.iconColor }} />
         <span className="font-medium">{category.name}</span>
       </div>
-      <div className="text-gray-400 flex flex-col gap-4 text-sm my-4">
-        <Link href="" className="font-medium hover:text-gray-200 transition">Contact Host</Link>
-        <Link href="" className="font-medium hover:text-gray-200 transition">Report Event</Link>
+      <div className="text-[var(--muted)] flex flex-col gap-4 text-sm my-4">
+        <Link href="" className="font-medium hover:text-[var(--brand-purple)] transition">Contact Host</Link>
+        <Link href="" className="font-medium hover:text-[var(--brand-purple)] transition">Report Event</Link>
       </div>
     </>
   );
@@ -168,10 +168,10 @@ function EventCard({
 
       {/* Right */}
       <div className="lg:w-1/2 w-full flex flex-col gap-4">
-        <h2 className="text-[2.5rem] font-bold text-gray-100">{title}</h2>
+        <h2 className="text-[2.5rem] font-bold text-[var(--foreground)]">{title}</h2>
 
-        <div className="text-md text-gray-400 flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-red-300" />
+        <div className="text-md text-[var(--muted)] flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-[var(--brand-purple)]" />
           <span className="font-semibold">{location}</span>
         </div>
 

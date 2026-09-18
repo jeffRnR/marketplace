@@ -51,7 +51,7 @@ export default function CategoryBrowser({ categories }: Props) {
 
   return (
     <div className="w-full">
-      <h2 className="text-gray-300 font-bold text-[1.5rem] mb-4">Browse by Category</h2>
+      <h2 className="text-[var(--foreground)] font-bold text-[1.5rem] mb-4">Browse by Category</h2>
 
       {/* Category cards */}
       <div className="flex gap-4 overflow-x-auto pb-4 lg:grid lg:grid-cols-3 lg:gap-6 lg:overflow-visible">
@@ -64,6 +64,7 @@ export default function CategoryBrowser({ categories }: Props) {
             iconColor={category.iconColor}
             selected={selectedCategoryId === category.id}
             onClick={() => handleCategoryClick(category.id)}
+            className="border-[0.5px] border-[var(--brand-purple)]/35 bg-[var(--surface)] transition duration-300 hover:-translate-y-1 hover:border-[var(--brand-purple)]"
           />
         ))}
       </div>
@@ -81,14 +82,14 @@ export default function CategoryBrowser({ categories }: Props) {
                   />
                 </span>
               )}
-              <h3 className="text-gray-300 font-bold text-[1.5rem]">
+              <h3 className="text-[var(--foreground)] font-bold text-[1.5rem]">
                 {selectedCategory?.name ?? "Category"}
               </h3>
             </div>
             <button
               onClick={() => { setSelectedCategoryId(null); setCategoryEvents([]); }}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-300
-                         border border-gray-700 hover:border-gray-500 rounded-lg px-3 py-1.5
+                className="flex items-center gap-1.5 text-sm text-[var(--muted)] hover:text-[var(--foreground)]
+                         border-[0.5px] border-[var(--brand-purple)]/30 hover:border-[var(--brand-purple)] rounded-lg px-3 py-1.5
                          transition duration-300"
             >
               <X className="w-3.5 h-3.5" /> Clear
@@ -96,19 +97,19 @@ export default function CategoryBrowser({ categories }: Props) {
           </div>
 
           {categoryLoading && (
-            <div className="flex items-center justify-center py-16 gap-3 text-gray-400">
+            <div className="flex items-center justify-center py-16 gap-3 text-[var(--muted)]">
               <Loader2 className="w-6 h-6 animate-spin" />
               <span className="text-sm">Loading {selectedCategory?.name} events...</span>
             </div>
           )}
 
           {!categoryLoading && categoryEvents.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-gray-500 gap-2">
+            <div className="flex flex-col items-center justify-center py-16 text-[var(--muted)] gap-2">
               <MapPin className="w-8 h-8 opacity-40" />
               <p className="text-sm">No upcoming events in this category.</p>
               <Link
                 href="/events/create"
-                className="mt-2 text-purple-400 hover:text-purple-300 text-sm font-medium transition"
+                className="mt-2 text-[#8ce0c1] hover:text-white text-sm font-medium transition"
               >
                 Create one →
               </Link>
@@ -117,7 +118,7 @@ export default function CategoryBrowser({ categories }: Props) {
 
           {!categoryLoading && categoryEvents.length > 0 && (
             <>
-              <p className="text-gray-500 text-sm mb-4">
+              <p className="text-[#6d7c75] text-sm mb-4">
                 {categoryEvents.length} upcoming event{categoryEvents.length !== 1 ? "s" : ""}
               </p>
               <div className="grid grid-cols-1 lg:grid-cols-2 w-full gap-4">

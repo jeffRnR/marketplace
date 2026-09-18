@@ -36,17 +36,17 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 export default function LocationBrowser({ events, loading }: Props) {
   const [locationSearch, setLocationSearch] = useState("");
-  const [locationState,  setLocationState]  = useState<LocationState>({ status: "idle" });
-  const [showDropdown,   setShowDropdown]   = useState(false);
-  const [showMap,        setShowMap]        = useState(false);
-  const [sortedEvents,   setSortedEvents]   = useState<EventWithDistance[]>(events);
+  const [locationState, setLocationState] = useState<LocationState>({ status: "idle" });
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [sortedEvents, setSortedEvents] = useState<EventWithDistance[]>(events);
   const [filteredEvents, setFilteredEvents] = useState<EventWithDistance[]>(events);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -114,15 +114,14 @@ export default function LocationBrowser({ events, loading }: Props) {
   return (
     <div className="w-full" ref={dropdownRef}>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-gray-300 font-bold text-[1.5rem]">Browse by Location</h2>
+        <h2 className="text-[var(--foreground)] font-bold text-[1.5rem]">Browse by Location</h2>
         <button
           onClick={() => setShowMap(v => !v)}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium
-                      border transition duration-300 ${
-            showMap
-              ? "bg-purple-600 border-purple-500 text-white hover:bg-purple-700"
-              : "border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200"
-          }`}
+                      border transition duration-300 ${showMap
+              ? "bg-[#64c5a6] border-[#64c5a6] text-[#09251e] hover:bg-[#8ce0c1]"
+              : "border-[0.5px] border-[var(--brand-purple)]/30 bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--brand-purple)] hover:text-[var(--foreground)]"
+            }`}
         >
           {showMap ? <MapPinOff className="h-4 w-4" /> : <Map className="h-4 w-4" />}
           {showMap ? "Hide Map" : "Show Map"}
@@ -131,34 +130,33 @@ export default function LocationBrowser({ events, loading }: Props) {
 
       {/* Search bar */}
       <div className="relative mb-3">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-20" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#6d7c75] z-20" />
         <input
           type="text"
           placeholder="Search events by name or location..."
           value={locationSearch}
           onChange={e => setLocationSearch(e.target.value)}
-          className="w-full bg-gray-800 text-gray-300 rounded-lg pl-10 pr-4 py-3
-                     focus:ring-2 focus:ring-purple-500 outline-none border border-gray-700"
+          className="w-full bg-[var(--surface)] text-[var(--foreground)] rounded-xl pl-10 pr-4 py-3
+                     focus:ring-2 focus:ring-[var(--brand-green)] outline-none border-[0.5px] border-[var(--brand-purple)]/25 placeholder:text-[var(--muted)] shadow-[0_8px_24px_rgba(68,45,112,0.06)]"
         />
         {showDropdown && filteredEvents.length > 0 && (
-          <div className="absolute w-full mt-2 bg-gray-900 border border-gray-700 rounded-lg
-                          shadow-lg z-50 max-h-96 overflow-y-auto">
+          <div className="absolute w-full mt-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg z-50 max-h-96 overflow-y-auto">
             {filteredEvents.map(event => (
               <Link
                 key={event.id}
                 href={`/events/${event.id}`}
                 onClick={() => setShowDropdown(false)}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition"
+                className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--background)] transition"
               >
                 <img src={event.image} alt={event.title} className="w-10 h-10 rounded-md object-cover" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-gray-200 font-medium text-sm truncate">{event.title}</p>
-                  <p className="text-gray-400 text-xs flex items-center gap-1">
+                  <p className="text-[var(--foreground)] font-medium text-sm truncate">{event.title}</p>
+                  <p className="text-[#6d7c75] text-xs flex items-center gap-1">
                     <MapPin className="h-3 w-3 shrink-0" />{event.location}
                   </p>
                 </div>
                 {event.distance !== undefined && (
-                  <span className="text-purple-400 text-xs font-semibold shrink-0">
+                  <span className="text-[#8ce0c1] text-xs font-semibold shrink-0">
                     {event.distance.toFixed(1)} km
                   </span>
                 )}
@@ -170,13 +168,12 @@ export default function LocationBrowser({ events, loading }: Props) {
 
       {/* Location status banners */}
       {locationState.status === "idle" && (
-        <div className="flex items-center gap-3 bg-gray-800/60 border border-gray-700
-                        rounded-lg px-4 py-3 mb-4">
-          <LocateFixed className="h-5 w-5 text-purple-400 shrink-0" />
-          <p className="text-gray-400 text-sm flex-1">Want to see events sorted by distance?</p>
+        <div className="flex items-center gap-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-4 py-3 mb-4">
+          <LocateFixed className="h-5 w-5 text-[#64c5a6] shrink-0" />
+          <p className="text-[#6d7c75] text-sm flex-1">Want to see events sorted by distance?</p>
           <button
             onClick={requestLocation}
-            className="text-sm font-semibold text-purple-400 hover:text-purple-300
+            className="text-sm font-semibold text-[#247653] hover:text-[#1d2d28]
                        transition whitespace-nowrap"
           >
             Use my location
@@ -184,18 +181,18 @@ export default function LocationBrowser({ events, loading }: Props) {
         </div>
       )}
       {locationState.status === "requesting" && (
-        <div className="flex items-center gap-3 bg-gray-800/60 border border-gray-700
+        <div className="flex items-center gap-3 bg-white border border-[#d5dfd7]
                         rounded-lg px-4 py-3 mb-4">
-          <div className="h-4 w-4 rounded-full border-2 border-purple-500
+          <div className="h-4 w-4 rounded-full border-[0.5px] border-[#64c5a6]
                           border-t-transparent animate-spin shrink-0" />
-          <p className="text-gray-400 text-sm">Requesting your location…</p>
+          <p className="text-[#6d7c75] text-sm">Requesting your location…</p>
         </div>
       )}
       {locationState.status === "granted" && (
-        <div className="flex items-center gap-3 bg-purple-900/30 border border-purple-700/50
+        <div className="flex items-center gap-3 bg-[#64c5a6]/10 border border-[#64c5a6]/30
                         rounded-lg px-4 py-3 mb-4">
-          <LocateFixed className="h-4 w-4 text-purple-400 shrink-0" />
-          <p className="text-purple-300 text-sm flex-1">
+          <LocateFixed className="h-4 w-4 text-[#64c5a6] shrink-0" />
+          <p className="text-[#b8f0dc] text-sm flex-1">
             Showing events sorted by distance from your location.
           </p>
           <button
@@ -221,13 +218,13 @@ export default function LocationBrowser({ events, loading }: Props) {
       )}
 
       {showMap && (
-        <div className="rounded-lg overflow-hidden border border-gray-700 z-10 mb-4">
+        <div className="rounded-lg overflow-hidden border border-[var(--border)] z-10 mb-4">
           <EventsMap events={filteredEvents} userLocation={userCoords} />
         </div>
       )}
 
       {!loading && (
-        <div className="flex items-center gap-2 text-gray-500 text-sm">
+        <div className="flex items-center gap-2 text-[var(--muted)] text-sm">
           <MapPin className="h-4 w-4" />
           <span>
             {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""} found

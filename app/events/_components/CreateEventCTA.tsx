@@ -17,10 +17,9 @@ export default function CreateEventCTA({ isAuthenticated, isLoading, isEventOwne
   if (isLoading || isEventOwner) return null;
 
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl
-                    border border-dashed border-gray-700 bg-gray-900/40
+    <div className="flex items-center justify-between gap-3 rounded-2xl border border-dashed border-[#b9cbbd] bg-white px-5 py-4
                     hover:border-gray-600 transition duration-200">
-      <p className="text-gray-400 text-xs">
+      <p className="text-[#6d7c75] text-sm">
         {isAuthenticated
           ? "Create your first event"
           : "Sign in to host an event"}
@@ -28,7 +27,7 @@ export default function CreateEventCTA({ isAuthenticated, isLoading, isEventOwne
 
       {isAuthenticated ? (
         <Link href="/events/create">
-          <button className="flex items-center gap-1.5 text-purple-400 hover:text-purple-300
+          <button className="flex items-center gap-1.5 text-[#247653] hover:text-[#1d2d28]
                              text-xs font-semibold transition duration-200 whitespace-nowrap">
             <CalendarPlus className="w-3.5 h-3.5" />
             Create Event
@@ -38,7 +37,7 @@ export default function CreateEventCTA({ isAuthenticated, isLoading, isEventOwne
       ) : (
         <button
           onClick={onSignIn}
-          className="flex items-center gap-1.5 text-purple-400 hover:text-purple-300
+          className="flex items-center gap-1.5 text-[#247653] hover:text-[#1d2d28]
                      text-xs font-semibold transition duration-200 whitespace-nowrap"
         >
           <LogIn className="w-3.5 h-3.5" />

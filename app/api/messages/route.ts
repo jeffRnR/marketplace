@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { broadcastMessage } from "@/lib/messageSse";
 
 async function getUser(email: string) {
   return prisma.user.findUnique({
@@ -13,7 +14,6 @@ async function getUser(email: string) {
     select: { id: true, marketProfile: { select: { id: true } } },
   });
 }
-
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email)
@@ -77,7 +77,6 @@ export async function GET() {
     asBuyer: buyerConvs,
   });
 }
-
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email)
@@ -152,19 +151,3 @@ export async function POST(req: Request) {
   return NextResponse.json({ conversation, message }, { status: 201 });
 }
 
-// Simple in-process emitter — works for single-instance deployments
-// For multi-instance production, replace with Redis pub/sub
-export const sseClients = new Map<string, Set<(data: string) => void>>();
-
-export function broadcastMessage(conversationId: string, payload: object) {
-  const clients = sseClients.get(conversationId);
-  if (!clients) return;
-  const data = `data: ${JSON.stringify(payload)}\n\n`;
-  for (const send of clients) {
-    try {
-      send(data);
-    } catch {
-      /* client disconnected */
-    }
-  }
-}

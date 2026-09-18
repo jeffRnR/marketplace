@@ -1,0 +1,3 @@
+-- This migration is already applied in the shared database.
+-- The original migration file was missing from this checkout; this placeholder
+-- preserves Prisma migration history without re-running its DDL.
