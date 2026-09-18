@@ -9,7 +9,7 @@ async function getAuthUser(email: string) {
   return prisma.user.findUnique({ where: { email }, select: { id: true } });
 }
 
-async function verifyEventOwner(eventId: number, userId: string) {
+async function verifyEventOwner(eventId: string, userId: string) {
   const event = await prisma.event.findUnique({ where: { id: eventId }, select: { createdById: true } });
   if (!event) return { ok: false, status: 404, error: "Event not found" };
   if (event.createdById !== userId) return { ok: false, status: 403, error: "Forbidden" };
@@ -22,8 +22,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const eventIdParam = searchParams.get("eventId");
     if (!eventIdParam || !eventIdParam.trim()) return NextResponse.json({ error: "eventId required" }, { status: 400 });
-    const eventId = Number(eventIdParam);
-    if (!Number.isInteger(eventId)) return NextResponse.json({ error: "Invalid eventId" }, { status: 400 });
+    const eventId = eventIdParam;
 
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -49,8 +48,8 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const { eventId: eventIdValue, code, discount, maxUses, expiresAt, orderId, phone } = await req.json();
-    const eventId = Number(eventIdValue);
-    if (!Number.isInteger(eventId) || !code || !discount) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    const eventId = String(eventIdValue ?? "");
+    if (!eventId || !code || !discount) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
 
     const ownership = await verifyEventOwner(eventId, user.id);
     if (!ownership.ok) return NextResponse.json({ error: (ownership as any).error }, { status: (ownership as any).status });

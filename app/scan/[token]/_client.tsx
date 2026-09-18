@@ -27,7 +27,7 @@ interface SessionInfo {
   expiresAt: string;
   station: { id: string; name: string; order: number; isFinal: boolean };
   event: {
-    id: number;
+    id: string;
     title: string;
     date: string;
     location: string;

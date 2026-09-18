@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 export interface Category {
-  id: number;
+  id: string;
   name: string;
   eventsCount: number;
   iconComponent: React.ElementType;
@@ -24,7 +24,7 @@ export interface Category {
 
 export const categories: Category[] = [
   {
-    id: 1,
+    id: "cmcategorymusic",
     name: "Music & Entertainment",
     eventsCount: 30,
     iconComponent: Music,
@@ -32,7 +32,7 @@ export const categories: Category[] = [
     iconColor: "#099409",
   },
   {
-    id: 2,
+    id: "cmcategoryarts",
     name: "Arts & Culture",
     eventsCount: 130,
     iconComponent: Palette,
@@ -40,7 +40,7 @@ export const categories: Category[] = [
     iconColor: "#946809",
   },
   {
-    id: 3,
+    id: "cmcategoryconference",
     name: "Conferences & Networking",
     eventsCount: 210,
     iconComponent: Users,
@@ -48,7 +48,7 @@ export const categories: Category[] = [
     iconColor: "#093c94",
   },
   {
-    id: 4,
+    id: "cmcategoryfood",
     name: "Food & Drink",
     eventsCount: 67,
     iconComponent: Utensils,
@@ -56,7 +56,7 @@ export const categories: Category[] = [
     iconColor: "#366b33",
   },
   {
-    id: 5,
+    id: "cmcategorysports",
     name: "Sports & Fitness",
     eventsCount: 400,
     iconComponent: Dumbbell,
@@ -64,7 +64,7 @@ export const categories: Category[] = [
     iconColor: "#6a701a",
   },
   {
-    id: 6,
+    id: "cmcategorycommunity",
     name: "Community & Lifestyle",
     eventsCount: 20,
     iconComponent: Group,
@@ -72,7 +72,7 @@ export const categories: Category[] = [
     iconColor: "#6e4f1e",
   },
   {
-    id: 7,
+    id: "cmcategoryhealth",
     name: "Health & Wellness",
     eventsCount: 23,
     iconComponent: Heart,
@@ -80,7 +80,7 @@ export const categories: Category[] = [
     iconColor: "#821515",
   },
   {
-    id: 8,
+    id: "cmcategoryoccasions",
     name: "Special Occasions",
     eventsCount: 110,
     iconComponent: Gift,
@@ -88,7 +88,7 @@ export const categories: Category[] = [
     iconColor: "#6e1582",
   },
   {
-    id: 9,
+    id: "cmcategorytechnology",
     name: "Technology & Education",
     eventsCount: 89,
     iconComponent: Cpu,
@@ -96,7 +96,7 @@ export const categories: Category[] = [
     iconColor: "#153282",
   },
   {
-    id: 10,
+    id: "cmcategoryniche",
     name: "Niche / Emerging",
     eventsCount: 10,
     iconComponent: Sparkles,

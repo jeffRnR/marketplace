@@ -140,7 +140,7 @@ export async function DELETE(req: Request) {
     const eventIdParam = searchParams.get("eventId");
     if (!eventIdParam || !eventIdParam.trim())
       return NextResponse.json({ error: "Event ID required" }, { status: 400 });
-    const eventId = Number(eventIdParam);
+    const eventId = eventIdParam;
     if (!Number.isInteger(eventId))
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
 

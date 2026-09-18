@@ -11,7 +11,7 @@ export async function GET(req: Request) {
 
     if (!eventIdParam || !eventIdParam.trim() || !code)
       return NextResponse.json({ error: "eventId and code required" }, { status: 400 });
-    const eventId = Number(eventIdParam);
+    const eventId = eventIdParam;
     if (!Number.isInteger(eventId))
       return NextResponse.json({ error: "Invalid eventId" }, { status: 400 });
 

@@ -16,8 +16,8 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
     const userEmail: string = session.user.email;
-    const eventId = Number(id);
-    if (!Number.isInteger(eventId)) {
+    const eventId = id;
+    if (!eventId) {
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
     }
 

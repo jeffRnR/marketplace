@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 interface CartItem {
-  ticketId: number;
+  ticketId: string;
   ticketType: string;
   price: string;
   quantity: number;

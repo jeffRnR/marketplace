@@ -8,7 +8,7 @@ async function getAuthUser(email: string) {
   return prisma.user.findUnique({ where: { email }, select: { id: true } });
 }
 
-async function verifyEventOwner(eventId: number, userId: string) {
+async function verifyEventOwner(eventId: string, userId: string) {
   const event = await prisma.event.findUnique({
     where: { id: eventId },
     select: { createdById: true },
@@ -29,9 +29,9 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const { eventId: eventIdValue, type, price, capacity, startsAt, endsAt, isActive } = body;
-    const eventId = Number(eventIdValue);
+    const eventId = String(eventIdValue ?? "");
 
-    if (!Number.isInteger(eventId) || !type || price === undefined || capacity === undefined)
+    if (!eventId || !type || price === undefined || capacity === undefined)
       return NextResponse.json({ error: "Missing required fields: eventId, type, price, capacity" }, { status: 400 });
 
     const ownership = await verifyEventOwner(eventId, user.id);
@@ -73,7 +73,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "ticketId required" }, { status: 400 });
 
     const existing = await prisma.ticket.findUnique({
-      where: { id: Number(ticketId) },
+      where: { id: String(ticketId) },
       select: { eventId: true },
     });
     if (!existing)
@@ -84,7 +84,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: ownership.error }, { status: (ownership as any).status });
 
     const ticket = await prisma.ticket.update({
-      where: { id: Number(ticketId) },
+      where: { id: String(ticketId) },
       data: {
         ...(type     !== undefined && { type }),
         ...(price    !== undefined && { price: String(price) }),
@@ -112,7 +112,7 @@ export async function DELETE(req: Request) {
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const { searchParams } = new URL(req.url);
-    const ticketId = Number(searchParams.get("ticketId"));
+    const ticketId = searchParams.get("ticketId");
     if (!ticketId)
       return NextResponse.json({ error: "ticketId required" }, { status: 400 });
 

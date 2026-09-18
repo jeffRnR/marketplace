@@ -18,8 +18,8 @@ export async function GET(
     if (!id || !id.trim()) {
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
     }
-    const eventId = Number(id);
-    if (!Number.isInteger(eventId)) {
+    const eventId = id;
+    if (!eventId) {
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
     }
 

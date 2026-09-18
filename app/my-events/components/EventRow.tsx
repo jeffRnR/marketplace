@@ -38,7 +38,7 @@ export function EventRow({
   onDelete,
 }: {
   event: ManagedEvent;
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
 }) {
   const [event, setEvent]             = useState(initialEvent);
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");

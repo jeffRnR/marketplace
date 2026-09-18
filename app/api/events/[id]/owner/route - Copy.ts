@@ -12,7 +12,7 @@ export async function GET(
   try {
     const { id } = await params;
     const event = await prisma.event.findUnique({
-      where:  { id: Number(id) },
+      where:  { id },
       select: { createdBy: { select: { email: true } } },
     });
 

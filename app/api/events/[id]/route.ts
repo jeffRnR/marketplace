@@ -96,8 +96,8 @@ export async function PATCH(
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const { id: idParam } = await params;
-    const eventId = Number(idParam);
-    if (!Number.isInteger(eventId)) {
+    const eventId = idParam;
+    if (!eventId) {
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
     }
 

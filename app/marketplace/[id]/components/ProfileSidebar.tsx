@@ -15,7 +15,7 @@ interface Profile {
   facebook: string | null; tiktok: string | null;
   coverImage: string | null; logoImage: string | null;
   isVerified: boolean; rating: number; reviewCount: number;
-  applications: { event: { id: number; title: string; date: string; location: string; image: string }; status: string }[];
+  applications: { event: { id: string; title: string; date: string; location: string; image: string }; status: string }[];
 }
 
 function Stars({ rating }: { rating: number }) {

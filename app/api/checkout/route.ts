@@ -22,9 +22,9 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { eventId: eventIdValue, name, email, phone, tickets: cartItems, promoCode } = body;
-    const eventId = Number(eventIdValue);
+    const eventId = String(eventIdValue ?? "");
 
-    if (!Number.isInteger(eventId) || !name?.trim() || !email?.trim() || !phone?.trim() || !cartItems?.length) {
+    if (!eventId || !name?.trim() || !email?.trim() || !phone?.trim() || !cartItems?.length) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     });
     if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
-    const ticketIds = cartItems.map((i: any) => Number(i.ticketId));
+    const ticketIds = cartItems.map((i: any) => String(i.ticketId));
     const dbTickets = await prisma.ticket.findMany({ where: { id: { in: ticketIds } } });
     const isRsvp    = dbTickets.every((t) => t.type === "RSVP");
 
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     const orderId    = randomUUID();
     const orderItems = cartItems.map((item: any) => ({
       id:         randomUUID(),
-      ticketId:   Number(item.ticketId),
+      ticketId:   String(item.ticketId),
       ticketType: item.ticketType,
       price:      item.price,
       quantity:   item.quantity,

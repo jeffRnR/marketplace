@@ -70,7 +70,7 @@ model VerificationToken {
 }
 
 model Category {
-  id          Int             @id @default(autoincrement())
+  id          String          @id @default(cuid())
   name        String          @unique
   icon        String?
   iconColor   String?
@@ -81,7 +81,7 @@ model Category {
 }
 
 model Event {
-  id                 Int                 @id @default(autoincrement())
+  id                 String              @id @default(cuid())
   image              String
   title              String
   date               DateTime
@@ -109,8 +109,8 @@ model Event {
 }
 
 model EventCategory {
-  eventId    Int
-  categoryId Int
+  eventId    String
+  categoryId String
   event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
@@ -118,14 +118,14 @@ model EventCategory {
 }
 
 model Ticket {
-  id       Int       @id @default(autoincrement())
+  id       String    @id @default(cuid())
   type     String
   price    String
   link     String
   isActive Boolean   @default(true)
   startsAt DateTime?
   endsAt   DateTime?
-  eventId  Int
+  eventId  String
   event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
 
@@ -135,8 +135,8 @@ model TicketCapacity {
   maxCapacity Int?
   laneNote    String?
 
-  eventId Int
-  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
 
 model PromoCode {
@@ -148,7 +148,7 @@ model PromoCode {
   active    Boolean   @default(true)
   expiresAt DateTime?
   createdAt DateTime  @default(now())
-  eventId   Int
+  eventId   String
   event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, code])
@@ -165,7 +165,7 @@ model Order {
   isRsvp             Boolean         @default(false)
   status             String          @default("confirmed")
   createdAt          DateTime        @default(now())
-  eventId            Int
+  eventId            String
   event              Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
   items              OrderItem[]
   paymentRecord      PaymentRecord?
@@ -179,7 +179,7 @@ model Order {
 model EventReminder {
   id      String   @id @default(cuid())
   sentAt  DateTime @default(now())
-  eventId Int
+  eventId String
   orderId String
   event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -190,7 +190,7 @@ model EventReminder {
 
 model OrderItem {
   id          String    @id @default(cuid())
-  ticketId    Int
+  ticketId    String
   ticketType  String
   price       String
   quantity    Int       @default(1)
@@ -233,7 +233,7 @@ model VendingSlot {
   status       String            @default("open")
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
-  eventId      Int
+  eventId      String
   event        Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
   applications SlotApplication[]
 
@@ -383,7 +383,7 @@ model VendorApplication {
   updatedAt       DateTime      @updatedAt
   profileId       String
   profile         MarketProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  eventId         Int
+  eventId         String
   event           Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([profileId, eventId])
@@ -510,7 +510,7 @@ model ScanStation {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  eventId  Int
+  eventId  String
   event    Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
   sessions ScanSession[]
   logs     ScanLog[]
@@ -578,7 +578,7 @@ model WaitlistEntry {
 
 model RsvpTierPayment {
   id      String @id @default(cuid())
-  eventId Int    @unique
+  eventId String @unique
   event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   tier        String // "starter" | "growth" | "pro" | "enterprise"

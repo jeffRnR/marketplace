@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       isRsvp,
       capacity,
       tickets,
-      categoryIds, // number[] — replaces categoryId
+      categoryIds,
       lat,
       lng,
     } = body;
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
           },
           // Create one EventCategory row per selected category
           categories: {
-            create: (categoryIds as number[]).map((id) => ({
+            create: (categoryIds as string[]).map((id) => ({
               category: { connect: { id } },
             })),
           },
@@ -119,7 +119,7 @@ export async function GET(req: Request) {
       where: {
         // Filter via join table instead of direct field
         ...(categoryId ? {
-          categories: { some: { categoryId: Number(categoryId) } },
+          categories: { some: { categoryId } },
         } : {}),
         ...(userId ? { createdById: userId } : {}),
       },

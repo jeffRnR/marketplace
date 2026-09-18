@@ -13,7 +13,7 @@ async function getOwner(email: string) {
   return prisma.user.findUnique({ where: { email }, select: { id: true } });
 }
 
-async function assertOwner(userId: string, eventId: number) {
+async function assertOwner(userId: string, eventId: string) {
   const event = await prisma.event.findUnique({
     where: { id: eventId }, select: { createdById: true },
   });
@@ -27,8 +27,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const eventIdParam = searchParams.get("eventId");
   if (!eventIdParam || !eventIdParam.trim()) return NextResponse.json({ error: "eventId required" }, { status: 400 });
-  const eventId = Number(eventIdParam);
-  if (!Number.isInteger(eventId)) return NextResponse.json({ error: "Invalid eventId" }, { status: 400 });
+  const eventId = eventIdParam;
 
   const user = await getOwner(session.user.email);
   if (!user || !await assertOwner(user.id, eventId))
@@ -54,8 +53,8 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { eventId: eventIdValue, name } = await req.json();
-  const eventId = Number(eventIdValue);
-  if (!Number.isInteger(eventId) || !name?.trim())
+  const eventId = String(eventIdValue ?? "");
+  if (!eventId || !name?.trim())
     return NextResponse.json({ error: "eventId and name required" }, { status: 400 });
 
   if (!await assertOwner(user.id, eventId))

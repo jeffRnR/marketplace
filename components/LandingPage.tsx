@@ -11,7 +11,7 @@ import Link from "next/link";
 import SignInModal from "@/components/SignInModal";
 
 interface Event {
-  id: number; title: string; image: string; date: string; location: string;
+  id: string; title: string; image: string; date: string; location: string;
   tickets: { type: string; price: string }[];
   categories: { category: { name: string } }[];
 }

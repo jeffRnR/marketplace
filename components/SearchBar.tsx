@@ -36,14 +36,14 @@ function SearchBar() {
 
         const combined: SearchItem[] = [
           ...(Array.isArray(eventsData) ? eventsData : []).map(
-            (e: { id: number; title: string }) => ({
+            (e: { id: string; title: string }) => ({
               type: "event" as const,
               title: e.title,
               id: e.id,
             })
           ),
           ...(Array.isArray(categoriesData) ? categoriesData : []).map(
-            (c: { id: number; name: string }) => ({
+            (c: { id: string; name: string }) => ({
               type: "category" as const,
               title: c.name,
               id: c.id,

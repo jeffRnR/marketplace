@@ -25,7 +25,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
 };
 
 interface TicketOption {
-  id:         number;
+  id:         string;
   type:     string;
   price:    string;
   link:     string;
@@ -35,7 +35,7 @@ interface TicketOption {
 }
 
 interface EventCategory {
-  id:        number;
+  id:        string;
   name:      string;
   iconName:  string;
   iconColor: string;

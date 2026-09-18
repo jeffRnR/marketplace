@@ -23,8 +23,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const eventIdParam = searchParams.get("eventId");
     if (!eventIdParam || !eventIdParam.trim()) return NextResponse.json({ error: "eventId required" }, { status: 400 });
-    const eventId = Number(eventIdParam);
-    if (!Number.isInteger(eventId)) return NextResponse.json({ error: "Invalid eventId" }, { status: 400 });
+    const eventId = eventIdParam;
 
     const session = await getServerSession(authOptions);
     const userId  = session?.user?.email ? await getSessionUserId(session.user.email) : null;
@@ -112,7 +111,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const { eventId: eventIdValue, title, description, price, currency, totalSlots, applicationId } = body;
-    const eventId = Number(eventIdValue);
+    const eventId = String(eventIdValue ?? "");
 
     if (!Number.isInteger(eventId) || !title?.trim() || !price || !totalSlots) {
       return NextResponse.json(

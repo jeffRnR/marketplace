@@ -7,7 +7,7 @@ import { categories as staticCategories } from "@/data/categories";
 
 interface PageProps { params: Promise<{ id: string }> }
 
-async function getEvent(id: number) {
+async function getEvent(id: string) {
   try {
     return await prisma.event.findUnique({
       where: { id },
@@ -22,10 +22,7 @@ async function getEvent(id: number) {
 
 export default async function EventDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const eventId = Number(id);
-  if (!Number.isInteger(eventId)) notFound();
-
-  const event = await getEvent(eventId);
+  const event = await getEvent(id);
   if (!event) notFound();
 
   const eventCategories = event.categories.map((ec) => ec.category);

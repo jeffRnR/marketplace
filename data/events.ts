@@ -7,14 +7,14 @@ export interface TicketOption {
 }
 
 export interface EventCategory {
-  id: number;
+  id: string;
   name: string;
   icon?: string;
   iconColor?: string;
 }
 
 export interface Event {
-  id: number;
+  id: string;
   image: string;
   title: string;
   date: string;

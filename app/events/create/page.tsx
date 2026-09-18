@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 interface Category {
-  id: number;
+  id: string;
   name: string;
   icon?: string;
   iconColor?: string;
@@ -54,7 +54,7 @@ export default function CreateEvent() {
 
   // ── Multi-category state ──
   const [categories,         setCategories]         = useState<Category[]>([]);
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
 
   // ── Location state ──
   const [query,           setQuery]           = useState("");
@@ -98,7 +98,7 @@ export default function CreateEvent() {
     }
   };
 
-  const toggleCategory = (id: number) => {
+  const toggleCategory = (id: string) => {
     setSelectedCategoryIds((prev) =>
       prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
     );

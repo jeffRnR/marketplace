@@ -78,7 +78,7 @@ export default function EventsPage() {
       try {
         const res = await fetch("/api/categories");
         if (!res.ok) return;
-        const live: { id: number; name: string; eventsCount: number }[] = await res.json();
+        const live: { id: string; name: string; eventsCount: number }[] = await res.json();
         setCategories(prev =>
           prev.map(cat => {
             const match = live.find(l => l.id === cat.id);
@@ -98,13 +98,6 @@ export default function EventsPage() {
         loading={loading}
       /> */}
 
-      <CreateEventCTA
-        isAuthenticated={isAuthenticated}
-        isLoading={isLoading}
-        isEventOwner={isEventOwner}
-        onSignIn={() => setShowSignInModal(true)}
-      />
-
       <div className="w-full">
         <h1 className="text-gray-300 font-bold text-[2.5rem]">Discover Events</h1>
         <p className="text-gray-400 text-md">
@@ -122,6 +115,12 @@ export default function EventsPage() {
 
       <CategoryBrowser categories={categories} />
       <LocationBrowser events={events} loading={loading} />
+      <CreateEventCTA
+        isAuthenticated={isAuthenticated}
+        isLoading={isLoading}
+        isEventOwner={isEventOwner}
+        onSignIn={() => setShowSignInModal(true)}
+      />
 
       {showSignInModal && <SignInModal onClose={() => setShowSignInModal(false)} />}
     </div>

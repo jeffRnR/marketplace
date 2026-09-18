@@ -16,14 +16,14 @@ interface Props {
 }
 
 export default function CategoryBrowser({ categories }: Props) {
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [categoryEvents,     setCategoryEvents]     = useState<EventWithDistance[]>([]);
   const [categoryLoading,    setCategoryLoading]    = useState(false);
   const categoryResultsRef = useRef<HTMLDivElement>(null);
 
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
 
-  const handleCategoryClick = useCallback(async (categoryId: number) => {
+  const handleCategoryClick = useCallback(async (categoryId: string) => {
     if (selectedCategoryId === categoryId) {
       setSelectedCategoryId(null);
       setCategoryEvents([]);

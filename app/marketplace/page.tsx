@@ -304,7 +304,7 @@ export default function MarketplacePage() {
               </h1>
               <p className="text-gray-400 text-lg max-w-lg">
                 Find venues, sound engineers, caterers, DJs, photographers and
-                every service your event needs — all in one place.
+                every service your event needs all in one place.
               </p>
             </div>
 

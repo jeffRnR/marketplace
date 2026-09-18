@@ -15,7 +15,7 @@ interface Analytics {
   grossRevenue: number; commission: number; netRevenue: number;
   projectedFullRevenue: number; projectedNet: number; commissionRate: number;
   ticketBreakdown: {
-    id: number; type: string; price: string;
+    id: string; type: string; price: string;
     capacity: number; sold: number; revenue: number; net: number; fillRate: number;
   }[];
   viewsLast24h: number; uniqueVisitorsTotal: number; avgTimeOnPageSeconds: number;

@@ -11,7 +11,7 @@ import { ManagedEvent, TicketStat } from "../types";
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 interface EditingTicket {
-  id:       number | null; // null = new
+  id:       string | null; // null = new
   type:     string;
   price:    string;
   capacity: number;
@@ -82,9 +82,9 @@ export function TicketsPanel({
 }) {
   const [tickets,    setTickets]    = useState<TicketStat[]>(event.tickets);
   const [editing,    setEditing]    = useState<EditingTicket | null>(null);
-  const [deleteId,   setDeleteId]   = useState<number | null>(null);
-  const [deleting,   setDeleting]   = useState<number | null>(null);
-  const [toggling,   setToggling]   = useState<number | null>(null);
+  const [deleteId,   setDeleteId]   = useState<string | null>(null);
+  const [deleting,   setDeleting]   = useState<string | null>(null);
+  const [toggling,   setToggling]   = useState<string | null>(null);
   const [saveState,  setSaveState]  = useState<SaveState>("idle");
   const [errorMsg,   setErrorMsg]   = useState("");
 
@@ -191,7 +191,7 @@ export function TicketsPanel({
 
   // ── Delete ────────────────────────────────────────────────────────────
 
-  const handleDelete = async (ticketId: number) => {
+  const handleDelete = async (ticketId: string) => {
     if (deleteId !== ticketId) { setDeleteId(ticketId); return; }
     setDeleting(ticketId);
     try {
