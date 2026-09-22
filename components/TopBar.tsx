@@ -201,7 +201,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
 
                   <button
                     onClick={handleSignOut}
-                    className="rounded-xl px-3 py-2 text-sm font-semibold transition bg-red-600/50 hover:bg-red-700/50 hover:text-white"
+                    className="rounded-xl px-3 py-2 text-sm font-semibold transition bg-red-600/50 hover:bg-red-700/50 text-white"
                   >
                     Sign Out
                   </button>
