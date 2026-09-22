@@ -54,9 +54,14 @@ export async function POST(req: Request) {
     }
 
     // 5. Build fields
-    const eventDate       = new Date(`${startDate}T${startTime}`);
-    const timeLabel       = `${startTime}${endDate && endTime ? ` – ${endTime} (${endDate})` : ""}`;
-    const mapUrl          = hasCoordinates
+    const eventDate = new Date(`${startDate}T${startTime}`);
+    const timeLabel =
+      endDate && endTime
+        ? endDate === startDate
+          ? `${startTime} - ${endTime}`
+          : `${startTime} - ${endTime} (${endDate})`
+        : startTime;
+    const mapUrl = hasCoordinates
       ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`
       : null;
     const fullDescription = requireApproval
@@ -72,9 +77,9 @@ export async function POST(req: Request) {
         image,
         title,
         host,
-        date:        eventDate,
-        time:        timeLabel,
-        location:    `${location}${country ? `, ${country}` : ""}`,
+        date: eventDate,
+        time: timeLabel,
+        location: `${location}${country ? `, ${country}` : ""}`,
         description: fullDescription,
         mapUrl,
         createdById: user.id,
@@ -82,10 +87,10 @@ export async function POST(req: Request) {
           create: isRsvp
             ? [{ type: "RSVP", price: "Free", link: `capacity:${capacity ?? 0}` }]
             : (tickets ?? []).map((t: { name: string; price: string; capacity: number }) => ({
-                type:  t.name || "General",
-                price: String(t.price),
-                link:  `capacity:${t.capacity ?? 0}`,
-              })),
+              type: t.name || "General",
+              price: String(t.price),
+              link: `capacity:${t.capacity ?? 0}`,
+            })),
         },
         categories: {
           create: (categoryIds as string[]).map((id) => ({
@@ -94,7 +99,7 @@ export async function POST(req: Request) {
         },
       },
       include: {
-        tickets:    true,
+        tickets: true,
         categories: { include: { category: true } },
       },
     });
@@ -113,7 +118,7 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const categoryId = searchParams.get("categoryId");
-    const userId     = searchParams.get("userId");
+    const userId = searchParams.get("userId");
 
     const events = await prisma.event.findMany({
       where: {
@@ -125,8 +130,8 @@ export async function GET(req: Request) {
       orderBy: { date: "asc" },
       include: {
         categories: { include: { category: true } },
-        tickets:    true,
-        createdBy:  { select: { id: true, name: true, email: true } },
+        tickets: true,
+        createdBy: { select: { id: true, name: true, email: true } },
       },
     });
 

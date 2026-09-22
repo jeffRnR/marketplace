@@ -157,9 +157,6 @@ function EventCard({
       <div className="lg:w-1/2 flex flex-col gap-4">
         <div className="relative">
           <img src={image} alt={title} className="w-full h-100 object-cover rounded-lg" />
-          <span className="absolute bottom-2 font-bold right-2 bg-green-800/50 text-gray-100 px-3 py-1 text-md rounded-full">
-            {date} • {time}
-          </span>
         </div>
         <div className="hidden lg:flex flex-col gap-4">
           <CategoryMeta />
