@@ -56,9 +56,6 @@ export default function AllEventsPage() {
         {/* Header */}
         <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-green)]">
-              Noizy events
-            </p>
             <h1 className="mt-2 text-4xl font-semibold tracking-tight text-[var(--foreground)] sm:text-5xl">
               All Events
             </h1>
