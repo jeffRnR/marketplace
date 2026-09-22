@@ -619,7 +619,7 @@ export default function CheckoutPageContent() {
         <button
           onClick={handleSubmit}
           disabled={status === "loading" || !agreedToTerms}
-          className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2 text-sm"
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-3 rounded-lg transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {status === "loading" ? (
             <>

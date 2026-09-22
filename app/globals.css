@@ -26,7 +26,7 @@ html[data-theme="dark"] {
   --border: #365047;
   --muted: #a9bcb3;
   --brand-green: #64c5a6;
-  --brand-purple: #b9a8f0;
+  --brand-purple: #6246a6;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -38,7 +38,7 @@ html[data-theme="dark"] {
     --border: #365047;
     --muted: #a9bcb3;
     --brand-green: #64c5a6;
-    --brand-purple: #b9a8f0;
+    --brand-purple: #6246a6;
   }
 }
 

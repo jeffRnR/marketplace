@@ -20,50 +20,55 @@ export default function UpcomingEvents({ events, loading, error }: Props) {
 
   return (
     <div className="flex flex-col w-full">
+
+      {/* Header */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-gray-300 font-bold text-[1.5rem]">Upcoming Events</h2>
+        <h2 className="text-[var(--foreground)] font-bold text-2xl">Upcoming Events</h2>
         <Link
           href="/events/all"
-          className="text-gray-300 font-bold px-2 py-1 lg:text-md text-sm rounded-lg
-                     hover:bg-gray-200 hover:cursor-pointer hover:text-gray-800 transition
-                     duration-300 border border-gray-400 gap-2 flex items-center"
+          className="inline-flex items-center gap-2 px-4 h-10 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold transition duration-300"
         >
-          <span>See All</span>
-          <ArrowRight className="h-4 w-4" />
+          See All <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
 
+      {/* Loading */}
       {loading && (
-        <div className="flex items-center justify-center py-16 gap-3 text-gray-400">
-          <Loader2 className="w-6 h-6 animate-spin" />
+        <div className="flex items-center justify-center py-16 gap-3 text-[var(--muted)]">
+          <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
           <span className="text-sm">Loading events...</span>
         </div>
       )}
 
+      {/* Error */}
       {!loading && error && (
-        <div className="flex items-center justify-center py-16 text-red-400 text-sm">
-          {error}
+        <div className="flex items-center justify-center py-16">
+          <div className="text-sm text-red-400 bg-red-900/20 border border-red-800/50 rounded-xl px-4 py-3">
+            {error}
+          </div>
         </div>
       )}
 
+      {/* Empty state */}
       {!loading && !error && displayed.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-gray-500 gap-2">
-          <MapPin className="w-8 h-8 opacity-40" />
-          <p className="text-sm">No upcoming events yet.</p>
+        <div className="flex flex-col items-center justify-center py-16 bg-gray-900 border border-gray-400/20 rounded-2xl gap-3">
+          <MapPin className="w-8 h-8 text-[var(--muted)] opacity-40" />
+          <p className="text-[var(--muted)] text-sm">No upcoming events yet.</p>
           <Link
             href="/events/create"
-            className="mt-2 text-purple-400 hover:text-purple-300 text-sm font-medium transition"
+            className="text-purple-600 hover:opacity-80 text-sm font-semibold transition"
           >
             Create the first one →
           </Link>
         </div>
       )}
 
+      {/* Grid */}
       {!loading && !error && displayed.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 w-full gap-4">
           {displayed.map(event => (
             <Link key={event.id} href={`/events/${event.id}`}>
-              <div className="shadow-md shadow-black p-2 rounded-2xl">
+              <div className="rounded-2xl border border-gray-400/20 hover:border-[var(--brand-purple)]/40 transition duration-300 overflow-hidden">
                 <EventPreviewCard {...event} />
               </div>
             </Link>

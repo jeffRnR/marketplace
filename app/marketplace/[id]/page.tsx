@@ -1,14 +1,13 @@
 "use client";
 // app/marketplace/[id]/page.tsx
-// Slim orchestrator — all UI lives in ./components/
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Loader2, ChevronLeft, UserCheck } from "lucide-react";
-import ProfileSidebar  from "./components/ProfileSidebar";
-import ListingsGrid    from "./components/ListingsGrid";
-import ReviewsSection  from "./components/ReviewsSection";
+import ProfileSidebar from "./components/ProfileSidebar";
+import ListingsGrid   from "./components/ListingsGrid";
+import ReviewsSection from "./components/ReviewsSection";
 
 interface Profile {
   id: string; businessName: string; tagline: string | null;
@@ -23,9 +22,9 @@ interface Profile {
 }
 
 export default function ProfilePage() {
-  const { id }        = useParams<{ id: string }>();
-  const router        = useRouter();
-  const { data: session } = useSession();
+  const { id }             = useParams<{ id: string }>();
+  const router             = useRouter();
+  const { data: session }  = useSession();
 
   const [profile,     setProfile]     = useState<Profile | null>(null);
   const [loading,     setLoading]     = useState(true);
@@ -76,13 +75,13 @@ export default function ProfilePage() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+      <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
     </div>
   );
 
   if (!profile) return (
     <div className="min-h-screen flex items-center justify-center">
-      <p className="text-gray-400">Vendor not found</p>
+      <p className="text-[var(--muted)]">Vendor not found</p>
     </div>
   );
 
@@ -90,6 +89,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen pt-10 pb-16">
+
       {/* Cover */}
       <div className="relative h-52 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 via-purple-950/20 to-transparent" />
@@ -97,12 +97,14 @@ export default function ProfilePage() {
           <img src={profile.coverImage} alt="" className="w-full h-full object-cover opacity-60" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-        <a href="/marketplace"
-          className="absolute top-4 left-4 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm text-gray-300 text-sm px-3 py-1.5 rounded-full hover:text-white transition">
+        <a
+          href="/marketplace"
+          className="absolute top-4 left-4 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm text-gray-300 text-sm px-3 py-1.5 rounded-xl hover:text-white transition duration-300"
+        >
           <ChevronLeft className="w-4 h-4" /> Marketplace
         </a>
         {isOwner && (
-          <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-purple-600/90 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full">
+          <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-purple-600 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-xl">
             <UserCheck className="w-3.5 h-3.5" /> Your Profile
           </div>
         )}
@@ -124,12 +126,11 @@ export default function ProfilePage() {
           <div className="flex-1 min-w-0 space-y-6 pt-4 lg:pt-0 w-full">
 
             {/* About */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-              <h2 className="text-gray-200 font-bold text-lg mb-2">About</h2>
-              <p className="text-gray-400 leading-relaxed whitespace-pre-line">{profile.description}</p>
+            <div className="bg-gray-900 border border-gray-400/20 rounded-2xl p-5">
+              <h2 className="text-[var(--foreground)] font-bold text-lg mb-2">About</h2>
+              <p className="text-[var(--muted)] leading-relaxed whitespace-pre-line">{profile.description}</p>
             </div>
 
-            {/* Listings with full gallery */}
             <ListingsGrid
               listings={profile.listings}
               isOwner={isOwner}
@@ -139,7 +140,6 @@ export default function ProfilePage() {
               onMessage={startConversation}
             />
 
-            {/* Reviews */}
             <ReviewsSection
               reviews={profile.reviews}
               profileId={profile.id}

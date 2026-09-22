@@ -5,10 +5,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
-  Ticket, Plus, Trash2, Upload, CheckCircle, Loader2, MapPin, X,
+  Ticket, Plus, Trash2, Upload, CheckCircle, Loader2, MapPin,
 } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import SignInModal from "@/components/SignInModal";
 
 interface Category {
   id: string;
@@ -26,7 +27,7 @@ interface TicketEntry {
 interface VenueSuggestion {
   place_name: string;
   place_type?: string[];
-  center: [number, number]; // [lng, lat]
+  center: [number, number];
 }
 
 type EventType = "rsvp" | "paid";
@@ -34,13 +35,13 @@ type SubmitStatus = "idle" | "loading" | "success" | "error";
 
 const COUNTRIES = ["Kenya", "Tanzania", "Uganda"];
 
-const INPUT = "w-full rounded border-[0.5px] border-[var(--brand-purple)]/30 bg-[var(--surface)] p-3 text-[var(--foreground)] outline-none shadow-sm focus:border-[var(--brand-purple)] focus:ring-2 focus:ring-[var(--brand-purple)]/20 transition placeholder:text-[var(--muted)]";
+const INPUT =
+  "w-full rounded-lg border border-gray-400/50 bg-white/5 px-4 py-3 text-[var(--foreground)] placeholder:text-[var(--muted)] outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-600/30 transition disabled:opacity-50 disabled:cursor-not-allowed";
 
 export default function CreateEvent() {
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
 
-  // ── Form state ──
   const [formData, setFormData] = useState({
     image: "",
     title: "",
@@ -60,26 +61,28 @@ export default function CreateEvent() {
     lng: null as number | null,
   });
 
-  // ── Multi-category state ──
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-
-  // ── Location state ──
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<VenueSuggestion[]>([]);
   const [locationLoading, setLocationLoading] = useState(false);
-  const [manualLocation, setManualLocation] = useState(false); // free-text fallback
-
-  // ── UI state ──
+  const [manualLocation, setManualLocation] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<SubmitStatus>("idle");
   const [submitError, setSubmitError] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
   const blobUrlRef = useRef<string | null>(null);
+  const [showSignInModal, setShowSignInModal] = useState(false);
 
   useEffect(() => {
-    if (sessionStatus === "unauthenticated") router.push("/login");
-  }, [sessionStatus, router]);
+    if (sessionStatus === "unauthenticated") {
+      setShowSignInModal(true);
+    }
+
+    if (sessionStatus === "authenticated") {
+      setShowSignInModal(false);
+    }
+  }, [sessionStatus]);
 
   useEffect(() => {
     (async () => {
@@ -94,7 +97,6 @@ export default function CreateEvent() {
     })();
   }, []);
 
-  // ── Helpers ──
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     if (e.target instanceof HTMLInputElement && type === "checkbox") {
@@ -112,7 +114,6 @@ export default function CreateEvent() {
     );
   };
 
-  // ── Image upload ──
   async function compressImage(file: File): Promise<Blob> {
     return new Promise((resolve) => {
       const img = new Image();
@@ -159,14 +160,12 @@ export default function CreateEvent() {
     }
   };
 
-  // ── Venue search ──
   const handleVenueSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const q = e.target.value;
     setQuery(q);
     setFormData(p => ({ ...p, location: q, lat: null, lng: null }));
     setSuggestions([]);
     if (q.length < 3 || !formData.country) return;
-
     setLocationLoading(true);
     try {
       const country = formData.country === "Kenya" ? "KE"
@@ -190,18 +189,21 @@ export default function CreateEvent() {
     setManualLocation(false);
   };
 
-  // ── Tickets ──
-  const addTicket = () => setFormData((p) => ({ ...p, tickets: [...p.tickets, { name: "", price: "", capacity: 50 }] }));
-  const removeTicket = (i: number) => setFormData((p) => ({ ...p, tickets: p.tickets.filter((_, idx) => idx !== i) }));
+  const addTicket = () =>
+    setFormData((p) => ({ ...p, tickets: [...p.tickets, { name: "", price: "", capacity: 50 }] }));
+  const removeTicket = (i: number) =>
+    setFormData((p) => ({ ...p, tickets: p.tickets.filter((_, idx) => idx !== i) }));
   const handleTicketChange = (i: number, field: keyof TicketEntry, value: string | number) =>
     setFormData((p) => { const t = [...p.tickets]; t[i] = { ...t[i], [field]: value }; return { ...p, tickets: t }; });
 
-  // ── Submit ──
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError("");
 
-    // Location validation — allow manual entry without coords
+    if (sessionStatus !== "authenticated") {
+      setShowSignInModal(true);
+      return;
+    }
     if (!manualLocation && !formData.lat && !formData.lng) {
       setSubmitError("Please select a venue from the suggestions, or enable manual entry below the search.");
       return;
@@ -216,7 +218,6 @@ export default function CreateEvent() {
     }
     if (imageUploading) { setSubmitError("Please wait for the image to finish uploading."); return; }
     if (!formData.image) { setSubmitError("Please upload an event image."); return; }
-
     setSubmitStatus("loading");
     try {
       const res = await fetch("/api/events", {
@@ -225,7 +226,7 @@ export default function CreateEvent() {
         body: JSON.stringify({
           ...formData,
           isRsvp: formData.eventType === "rsvp",
-          categoryIds: selectedCategoryIds, // array of ids
+          categoryIds: selectedCategoryIds,
         }),
       });
       const data = await res.json();
@@ -239,47 +240,61 @@ export default function CreateEvent() {
   };
 
   if (sessionStatus === "loading") {
-    return <div className="min-h-screen flex items-center justify-center text-gray-400"><Loader2 className="animate-spin w-8 h-8" /></div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin w-8 h-8 text-purple-600" />
+      </div>
+    );
   }
 
   const isRsvp = formData.eventType === "rsvp";
   const isSubmitting = submitStatus === "loading";
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex justify-center py-4 px-4">
-      <div className="flex flex-col lg:flex-row w-full max-w-5xl overflow-hidden border-[0.5px] border-[var(--brand-purple)]/25 bg-[var(--surface-muted)] rounded-md shadow-[0_18px_40px_rgba(68,45,112,0.1)]">
+    <div className="min-h-screen text-[var(--foreground)] flex justify-center py-4 px-4">
+      <div className="flex flex-col lg:flex-row w-full max-w-5xl overflow-hidden border border-gray-400/20 bg-gray-900 rounded-2xl shadow-2xl">
 
         {/* ── Left: image upload ── */}
-        <div className="lg:w-1/2 flex flex-col items-center justify-start p-6 sm:p-8 lg:p-10 lg:pr-8">
+        <div className="lg:w-1/2 flex flex-col items-center justify-start p-6 sm:p-8 lg:p-10 lg:pr-8 border-b lg:border-b-0 lg:border-r border-[var(--brand-purple)]/25">
           <div className="w-full max-w-xl">
             {imagePreview ? (
               <div className="relative w-full">
-                <img src={imagePreview} alt="Event preview" className="w-full max-h-80 object-cover rounded-xl shadow-lg" />
+                <img
+                  src={imagePreview}
+                  alt="Event preview"
+                  className="w-full max-h-80 object-cover rounded-xl shadow-lg"
+                />
                 {imageUploading && (
-                  <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center gap-2">
+                  <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center gap-2">
                     <Loader2 className="w-5 h-5 animate-spin text-white" />
-                    <span className="text-white text-sm">Uploading...</span>
+                    <span className="text-white text-sm font-medium">Uploading...</span>
                   </div>
                 )}
               </div>
             ) : (
-              <label htmlFor="image-upload" className="flex flex-col items-center justify-center w-full h-72 border-[0.5px] border-dashed border-[var(--brand-purple)]/45 rounded cursor-pointer hover:border-[var(--brand-purple)] transition-colors">
-                <Upload className="w-12 h-12 text-[var(--brand-purple)] mb-3" />
+              <label
+                htmlFor="image-upload"
+                className="flex flex-col items-center justify-center w-full h-72 border border-dashed border-[var(--brand-purple)]/40 rounded-xl cursor-pointer hover:border-purple-600 hover:bg-white/2 transition"
+              >
+                <Upload className="w-12 h-12 text-purple-600 mb-3" />
                 <p className="text-[var(--foreground)] text-sm font-medium">Click to upload event image</p>
                 <p className="text-[var(--muted)] text-xs mt-1">PNG, JPG, WEBP supported</p>
               </label>
             )}
             <input id="image-upload" type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
             {imagePreview && (
-              <button type="button" onClick={() => { setImagePreview(null); setFormData((p) => ({ ...p, image: "" })); }}
-                className="mt-2 text-xs text-red-400 hover:text-red-300 transition">
+              <button
+                type="button"
+                onClick={() => { setImagePreview(null); setFormData((p) => ({ ...p, image: "" })); }}
+                className="mt-2 text-xs text-red-400 hover:text-red-300 transition"
+              >
                 Remove image
               </button>
             )}
           </div>
           {session?.user?.name && (
-            <p className="mt-6 text-xs text-gray-500 self-start">
-              Creating as <span className="text-purple-400 font-semibold">{session.user.name}</span>
+            <p className="mt-6 text-xs text-[var(--muted)] self-start">
+              Creating as <span className="text-purple-600 font-semibold">{session.user.name}</span>
             </p>
           )}
         </div>
@@ -288,20 +303,25 @@ export default function CreateEvent() {
         <form onSubmit={handleSubmit} className="lg:w-1/2 p-8 flex flex-col gap-5">
 
           {/* Title */}
-          <input type="text" name="title" placeholder="Event Name *" value={formData.title}
-            onChange={handleChange} required className={INPUT} />
+          <input
+            type="text" name="title" placeholder="Event Name *"
+            value={formData.title} onChange={handleChange} required className={INPUT}
+          />
 
           {/* Host */}
-          <input type="text" name="host" placeholder="Hosted by *" value={formData.host}
-            onChange={handleChange} required className={INPUT} />
+          <input
+            type="text" name="host" placeholder="Hosted by *"
+            value={formData.host} onChange={handleChange} required className={INPUT}
+          />
 
-          {/* ── Multi-category selector ── */}
+          {/* Categories */}
           <div>
-            <label className="block text-xs text-gray-400 mb-2 font-medium">
-              Event Categories * <span className="text-gray-600 font-normal">(select all that apply)</span>
+            <label className="block text-xs text-[var(--muted)] mb-2 font-medium">
+              Event Categories *{" "}
+              <span className="font-normal opacity-60">(select all that apply)</span>
             </label>
             {categories.length === 0 ? (
-              <p className="text-xs text-gray-500 italic">Loading categories...</p>
+              <p className="text-xs text-[var(--muted)] italic">Loading categories...</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {categories.map((cat) => {
@@ -312,8 +332,8 @@ export default function CreateEvent() {
                       type="button"
                       onClick={() => toggleCategory(cat.id)}
                       className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition duration-300 ${selected
-                        ? "bg-[var(--brand-purple)]/15 border-[var(--brand-purple)] text-[var(--brand-purple)]"
-                        : "bg-[var(--surface)] border-[var(--brand-purple)]/30 text-[var(--muted)] hover:border-[var(--brand-purple)] hover:text-[var(--foreground)]"
+                        ? "bg-purple-600/20 border-purple-600 text-purple-400"
+                        : "bg-white/5 border-gray-400/50 text-[var(--muted)] hover:border-purple-600 hover:text-[var(--foreground)]"
                         }`}
                     >
                       {selected && <CheckCircle className="w-3 h-3" />}
@@ -324,7 +344,7 @@ export default function CreateEvent() {
               </div>
             )}
             {selectedCategoryIds.length > 0 && (
-              <p className="text-xs text-[var(--brand-purple)] mt-2">
+              <p className="text-xs text-purple-600 mt-2">
                 {selectedCategoryIds.length} categor{selectedCategoryIds.length === 1 ? "y" : "ies"} selected
               </p>
             )}
@@ -333,23 +353,21 @@ export default function CreateEvent() {
           {/* Dates */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-gray-400 mb-1 font-medium">Start *</label>
+              <label className="block text-xs text-[var(--muted)] mb-1 font-medium">Start *</label>
               <input type="date" name="startDate" value={formData.startDate} onChange={handleChange} required className={INPUT} />
               <input type="time" name="startTime" value={formData.startTime} onChange={handleChange} required className={`mt-2 ${INPUT}`} />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1 font-medium">End</label>
+              <label className="block text-xs text-[var(--muted)] mb-1 font-medium">End</label>
               <input type="date" name="endDate" value={formData.endDate} onChange={handleChange} className={INPUT} />
               <input type="time" name="endTime" value={formData.endTime} onChange={handleChange} className={`mt-2 ${INPUT}`} />
             </div>
           </div>
 
-          {/* ── Venue ── */}
+          {/* Venue */}
           <div>
-            <label className="block text-xs text-gray-400 mb-1 font-medium">Event Venue *</label>
+            <label className="block text-xs text-[var(--muted)] mb-1 font-medium">Event Venue *</label>
             <div className="space-y-2">
-
-              {/* Country selector */}
               <select
                 name="country"
                 value={formData.country}
@@ -361,7 +379,6 @@ export default function CreateEvent() {
                 {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
 
-              {/* Mapbox search input */}
               <div className="relative">
                 <input
                   type="text"
@@ -369,41 +386,36 @@ export default function CreateEvent() {
                   value={query}
                   onChange={handleVenueSearch}
                   disabled={!formData.country}
-                  className={`${INPUT} disabled:opacity-50 disabled:cursor-not-allowed`}
+                  className={INPUT}
                 />
-
-                {/* Suggestions dropdown */}
                 {suggestions.length > 0 && (
-                  <ul className="absolute z-50 w-full mt-1 bg-gray-900 border border-gray-700 rounded-xl shadow-xl max-h-52 overflow-y-auto">
+                  <ul className="absolute z-50 w-full mt-1 bg-gray-900 border border-gray-400/20 rounded-xl shadow-xl max-h-52 overflow-y-auto">
                     {suggestions.map((place, idx) => (
                       <li
                         key={idx}
                         onClick={() => selectVenue(place)}
-                        className="px-4 py-3 text-sm text-gray-300 hover:bg-gray-700 cursor-pointer border-b border-gray-800 last:border-none"
+                        className="px-4 py-3 text-sm text-[var(--foreground)] hover:bg-white/5 cursor-pointer border-b border-gray-400/20 last:border-none transition"
                       >
-                        <p className="font-medium text-gray-200 truncate">{place.place_name}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{place.place_type?.[0]}</p>
+                        <p className="font-medium truncate">{place.place_name}</p>
+                        <p className="text-xs text-[var(--muted)] mt-0.5">{place.place_type?.[0]}</p>
                       </li>
                     ))}
                   </ul>
                 )}
-
                 {locationLoading && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                    <Loader2 className="w-4 h-4 animate-spin text-[var(--muted)]" />
                   </div>
                 )}
               </div>
 
-              {/* Coordinates confirmed */}
               {formData.lat && formData.lng && (
-                <p className="text-xs text-green-400 flex items-center gap-1">
+                <p className="text-xs text-[var(--brand-green)] flex items-center gap-1">
                   <CheckCircle className="w-3 h-3" />
                   Coordinates captured: {formData.lat.toFixed(4)}, {formData.lng.toFixed(4)}
                 </p>
               )}
 
-              {/* Mini map with draggable pin */}
               {formData.lat && formData.lng && (
                 <VenueMap
                   lat={formData.lat}
@@ -412,22 +424,18 @@ export default function CreateEvent() {
                 />
               )}
 
-              {/* Manual fallback */}
               {!formData.lat && formData.country && query.length > 2 && suggestions.length === 0 && !locationLoading && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setFormData(p => ({ ...p, location: query }));
-                    setManualLocation(true);
-                  }}
-                  className="text-xs text-gray-500 hover:text-purple-400 transition text-left"
+                  onClick={() => { setFormData(p => ({ ...p, location: query })); setManualLocation(true); }}
+                  className="text-xs text-[var(--muted)] hover:text-purple-600 transition text-left"
                 >
                   Venue not found? Save name as-is →
                 </button>
               )}
 
               {manualLocation && (
-                <p className="text-xs text-purple-400 flex items-center gap-1">
+                <p className="text-xs text-purple-600 flex items-center gap-1">
                   <MapPin className="w-3 h-3" /> Saved as custom venue — no map pin will be shown.
                 </p>
               )}
@@ -436,22 +444,29 @@ export default function CreateEvent() {
 
           {/* Description */}
           <div>
-            <label className="block text-xs text-gray-400 mb-1 font-medium">Description</label>
-            <textarea name="description" placeholder="Tell people what to expect at your event..."
-              value={formData.description} onChange={handleChange} rows={4}
-              className={`${INPUT} resize-none`} />
+            <label className="block text-xs text-[var(--muted)] mb-1 font-medium">Description</label>
+            <textarea
+              name="description"
+              placeholder="Tell people what to expect at your event..."
+              value={formData.description}
+              onChange={handleChange}
+              rows={4}
+              className={`${INPUT} resize-none`}
+            />
           </div>
 
           {/* Event Type */}
           <div>
-            <label className="block text-xs text-gray-400 mb-2 font-medium">Event Type *</label>
+            <label className="block text-xs text-[var(--muted)] mb-2 font-medium">Event Type *</label>
             <div className="grid grid-cols-2 gap-3">
               {(["rsvp", "paid"] as EventType[]).map((type) => (
-                <button key={type} type="button"
+                <button
+                  key={type}
+                  type="button"
                   onClick={() => setFormData((p) => ({ ...p, eventType: type, tickets: type === "rsvp" ? [] : p.tickets }))}
-                  className={`py-3 rounded-lg border-[0.5px] text-sm font-semibold transition-all ${formData.eventType === type
-                    ? "border-[var(--brand-purple)] bg-[var(--brand-purple)]/15 text-[var(--brand-purple)]"
-                    : "border-[var(--brand-purple)]/30 bg-[var(--surface)] text-[var(--muted)] hover:border-[var(--brand-purple)]"
+                  className={`py-3 rounded-lg border text-sm font-semibold transition-all ${formData.eventType === type
+                    ? "border-purple-600 bg-purple-600/20 text-purple-400"
+                    : "border-gray-400/50 bg-white/5 text-[var(--muted)] hover:border-purple-600 hover:text-[var(--foreground)]"
                     }`}
                 >
                   {type === "rsvp" ? "RSVP" : "Paid Tickets"}
@@ -462,55 +477,82 @@ export default function CreateEvent() {
 
           {/* RSVP settings */}
           {isRsvp && (
-            <div className="bg-[var(--surface)] border-[0.5px] border-[var(--brand-purple)]/25 rounded p-4 space-y-3">
-              <p className="text-sm text-[var(--brand-purple)] font-medium">RSVP Settings</p>
+            <div className="bg-white/2 border border-[var(--brand-purple)]/25 rounded-xl p-4 space-y-3">
+              <p className="text-sm text-purple-600 font-medium">RSVP Settings</p>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Total Capacity *</label>
-                <input type="number" name="capacity" min={1} value={formData.capacity}
-                  onChange={handleChange} required placeholder="Max attendees" className={INPUT} />
-                <p className="text-xs text-gray-500 mt-1">Attendees will RSVP for free. Set 0 for unlimited.</p>
+                <label className="block text-xs text-[var(--muted)] mb-1">Total Capacity *</label>
+                <input
+                  type="number" name="capacity" min={1}
+                  value={formData.capacity} onChange={handleChange}
+                  required placeholder="Max attendees" className={INPUT}
+                />
+                <p className="text-xs text-[var(--muted)] mt-1">Attendees will RSVP for free. Set 0 for unlimited.</p>
               </div>
             </div>
           )}
 
           {/* Paid tickets */}
           {!isRsvp && (
-            <div className="bg-[var(--surface)] border-[0.5px] border-[var(--brand-purple)]/25 rounded p-4">
+            <div className="bg-white/2 border border-[var(--brand-purple)]/25 rounded-xl p-4">
               <div className="flex justify-between items-center mb-3">
-                <span className="flex items-center gap-2 text-sm text-[var(--brand-purple)] font-medium">
+                <span className="flex items-center gap-2 text-sm text-purple-600 font-medium">
                   <Ticket className="h-4 w-4" /> Ticket Types
                 </span>
-                <button type="button" onClick={addTicket}
-                  className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300 font-medium transition">
+                <button
+                  type="button"
+                  onClick={addTicket}
+                  className="flex items-center gap-1 text-sm text-purple-600 hover:opacity-80 font-medium transition"
+                >
                   <Plus className="h-4 w-4" /> Add Ticket
                 </button>
               </div>
               {formData.tickets.length === 0 && (
-                <p className="text-xs text-gray-500 italic text-center py-3">No tickets yet. Click &quot;Add Ticket&quot; to get started.</p>
+                <p className="text-xs text-[var(--muted)] italic text-center py-3">
+                  No tickets yet. Click &quot;Add Ticket&quot; to get started.
+                </p>
               )}
               <div className="space-y-3">
                 {formData.tickets.map((ticket, index) => (
-                  <div key={index} className="flex gap-2 items-end bg-gray-900/60 p-3 rounded-lg flex-wrap border border-gray-700">
+                  <div
+                    key={index}
+                    className="flex gap-2 items-end bg-white/2 border border-gray-400/20 p-3 rounded-xl flex-wrap"
+                  >
                     <div className="flex flex-col flex-1 min-w-[100px]">
-                      <label className="text-xs text-gray-400 pb-1">Ticket Name</label>
-                      <input type="text" placeholder="e.g. VIP, General" value={ticket.name}
+                      <label className="text-xs text-[var(--muted)] pb-1">Ticket Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. VIP, General"
+                        value={ticket.name}
                         onChange={(e) => handleTicketChange(index, "name", e.target.value)}
-                        className="bg-gray-300 text-gray-800 rounded-lg p-2 text-sm outline-none focus:ring-1 focus:ring-purple-400 placeholder-gray-500" />
+                        className={INPUT}
+                      />
                     </div>
                     <div className="flex flex-col w-24">
-                      <label className="text-xs text-gray-400 pb-1">Price (KES)</label>
-                      <input type="text" placeholder="1500" value={ticket.price}
+                      <label className="text-xs text-[var(--muted)] pb-1">Price (KES)</label>
+                      <input
+                        type="text"
+                        placeholder="1500"
+                        value={ticket.price}
                         onChange={(e) => handleTicketChange(index, "price", e.target.value)}
-                        className="bg-gray-300 text-gray-800 rounded-lg p-2 text-sm outline-none focus:ring-1 focus:ring-purple-400 placeholder-gray-500" />
+                        className={INPUT}
+                      />
                     </div>
                     <div className="flex flex-col w-24">
-                      <label className="text-xs text-gray-400 pb-1">Quantity</label>
-                      <input type="number" min={1} placeholder="50" value={ticket.capacity}
+                      <label className="text-xs text-[var(--muted)] pb-1">Quantity</label>
+                      <input
+                        type="number"
+                        min={1}
+                        placeholder="50"
+                        value={ticket.capacity}
                         onChange={(e) => handleTicketChange(index, "capacity", Number(e.target.value))}
-                        className="bg-gray-300 text-gray-800 rounded-lg p-2 text-sm outline-none focus:ring-1 focus:ring-purple-400" />
+                        className={INPUT}
+                      />
                     </div>
-                    <button type="button" onClick={() => removeTicket(index)}
-                      className="text-red-400 hover:text-red-300 transition ml-1 pb-1">
+                    <button
+                      type="button"
+                      onClick={() => removeTicket(index)}
+                      className="text-red-400 hover:text-red-300 transition pb-1"
+                    >
                       <Trash2 className="h-5 w-5" />
                     </button>
                   </div>
@@ -519,50 +561,64 @@ export default function CreateEvent() {
             </div>
           )}
 
-          {/* Require Approval */}
+          {/* Require Approval toggle */}
           <label className="flex justify-between items-center cursor-pointer select-none">
             <div>
-              <span className="text-gray-300 text-sm font-medium">Require Approval</span>
-              <p className="text-xs text-gray-500">You manually approve each attendee</p>
+              <span className="text-[var(--foreground)] text-sm font-medium">Require Approval</span>
+              <p className="text-xs text-[var(--muted)]">You manually approve each attendee</p>
             </div>
-            <div onClick={() => setFormData((p) => ({ ...p, requireApproval: !p.requireApproval }))}
-              className={`w-12 h-6 rounded-full transition-colors cursor-pointer flex items-center px-0.5 ${formData.requireApproval ? "bg-purple-600" : "bg-gray-600"}`}>
-              <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${formData.requireApproval ? "translate-x-6" : "translate-x-0"}`} />
+            <div
+              onClick={() => setFormData((p) => ({ ...p, requireApproval: !p.requireApproval }))}
+              className={`w-12 h-6 rounded-full transition-colors cursor-pointer flex items-center px-0.5 ${formData.requireApproval ? "bg-purple-600" : "bg-gray-700"
+                }`}
+            >
+              <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${formData.requireApproval ? "translate-x-6" : "translate-x-0"
+                }`} />
             </div>
           </label>
 
           {/* Error */}
           {submitError && (
-            <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 text-sm text-red-300">{submitError}</div>
+            <div className="bg-red-900/20 border border-red-800/50 rounded-xl p-3 text-sm text-red-400">
+              {submitError}
+            </div>
           )}
 
           {/* Success */}
           {submitStatus === "success" && (
-            <div className="bg-green-900/30 border border-green-700 rounded-lg p-3 text-sm text-green-300 flex items-center gap-2">
+            <div className="bg-green-900/20 border border-green-800/50 rounded-xl p-3 text-sm text-green-400 flex items-center gap-2">
               <CheckCircle className="w-4 h-4" /> Event created! Redirecting...
             </div>
           )}
 
           {/* Submit */}
-          <button type="submit" disabled={isSubmitting || submitStatus === "success"}
-            className="w-full bg-[var(--brand-purple)] text-white rounded px-4 py-3 text-sm font-bold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition duration-300 flex items-center justify-center gap-2 shadow-[0_10px_24px_rgba(68,45,112,0.18)]">
-            {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating Event...</> : "Create Event"}
+          <button
+            type="submit"
+            disabled={isSubmitting || submitStatus === "success"}
+            className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition duration-300 flex items-center justify-center gap-2 text-sm"
+          >
+            {isSubmitting
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating Event...</>
+              : "Create Event"
+            }
           </button>
         </form>
       </div>
-    </div>
+
+      {
+        showSignInModal && (
+          <SignInModal onClose={() => setShowSignInModal(false)} />
+        )
+      }</div>
   );
 }
 
 function VenueMap({ lat, lng, onMove }: { lat: number; lng: number; onMove: (lat: number, lng: number) => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const markerRef = useRef<mapboxgl.Marker | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
-
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
-
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: "mapbox://styles/mapbox/dark-v11",
@@ -570,25 +626,20 @@ function VenueMap({ lat, lng, onMove }: { lat: number; lng: number; onMove: (lat
       zoom: 15,
       scrollZoom: false,
     });
-
-    const marker = new mapboxgl.Marker({ draggable: true, color: "#7c3aed" })
+    const marker = new mapboxgl.Marker({ draggable: true, color: "#9333ea" })
       .setLngLat([lng, lat])
       .addTo(map);
-
     marker.on("dragend", () => {
       const { lat: newLat, lng: newLng } = marker.getLngLat();
       onMove(newLat, newLng);
     });
-
-    markerRef.current = marker;
-
     return () => { map.remove(); };
   }, []);
 
   return (
     <div
       ref={containerRef}
-      className="w-full h-48 rounded-xl overflow-hidden border border-gray-700 mt-1"
+      className="w-full h-48 rounded-xl overflow-hidden border border-gray-400/20 mt-1"
     />
   );
 }
