@@ -23,6 +23,12 @@ import SignInModal from "@/components/SignInModal";
 import CreateEventCTA from "./_components/CreateEventCTA";
 import CategoryBrowser from "./_components/CategoryBrowser";
 import LocationBrowser from "./_components/LocationBrowser";
+// app/layout.tsx
+import { Bungee_Shade } from "next/font/google";
+const bungeeShade = Bungee_Shade({
+  subsets: ["latin"],
+  weight: "400",
+});
 
 type EventWithDistance = Event & { distance?: number };
 
@@ -41,6 +47,9 @@ export default function EventsPage() {
   const isAuthenticated = status === "authenticated";
   const isLoading = status === "loading";
   const isEventOwner = isAuthenticated && events.length > 0;
+
+
+
 
   // Fetch events for the discovery surface.
   useEffect(() => {
@@ -104,7 +113,11 @@ export default function EventsPage() {
         <section className="overflow-hidden">
           <div className="grid gap-8 lg:grid-cols-[1fr_0.8fr] lg:items-center lg:p-12">
             <div>
-              <p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-green)]">Noizy events</p>
+              <p
+                className={`${bungeeShade.className} mb-4 inline-block text-[var(--brand-green)] text-xl uppercase tracking-[0.08em] transition-all duration-500 hover:scale-110 hover:-rotate-2 hover:tracking-[0.14em] drop-shadow-[0_0_14px_currentColor]`}
+              >
+                Noizy<span className="text-purple-500">Hub</span>
+              </p>
               <h1 className="max-w-xl text-4xl font-semibold leading-[1.05] tracking-tight text-[var(--foreground)] sm:text-6xl">
                 Find your next event.
               </h1>
@@ -141,31 +154,31 @@ export default function EventsPage() {
                 <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 {/* Replace the existing <select> with this */}
 
-                  <div className="relative">
-                    <select
-                      value={sortMode}
-                      onChange={event =>
-                        setSortMode(event.target.value as "soonest" | "popular")
-                      }
-                      className="h-10 appearance-none rounded-lg border border-[var(--brand-purple)]/25 bg-[var(--surface)] pl-9 pr-10 text-sm font-medium text-[var(--foreground)] shadow-sm outline-none transition-all duration-200 hover:border-[var(--brand-purple)]/50 focus:border-[var(--brand-purple)] focus:ring-2 focus:ring-[var(--brand-purple)]/10"
-                    >
-                      <option value="soonest">Soonest first</option>
-                      <option value="popular">Most popular</option>
-                    </select>
+                <div className="relative">
+                  <select
+                    value={sortMode}
+                    onChange={event =>
+                      setSortMode(event.target.value as "soonest" | "popular")
+                    }
+                    className="h-10 appearance-none rounded-lg border border-[var(--brand-purple)]/25 bg-[var(--surface)] pl-9 pr-10 text-sm font-medium text-[var(--foreground)] shadow-sm outline-none transition-all duration-200 hover:border-[var(--brand-purple)]/50 focus:border-[var(--brand-purple)] focus:ring-2 focus:ring-[var(--brand-purple)]/10"
+                  >
+                    <option value="soonest">Soonest first</option>
+                    <option value="popular">Most popular</option>
+                  </select>
 
-                    <svg
-                      className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-purple-500"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
-                  </div>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <svg
+                    className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-purple-500"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </div>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               </div>
               <Link
                 href="/events/all"

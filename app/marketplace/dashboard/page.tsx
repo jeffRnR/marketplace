@@ -98,7 +98,7 @@ export default function DashboardPage() {
   ] as const;
 
   return (
-    <div className="min-h-screen pt-20 pb-16">
+    <div className="min-h-screen pt-10 pb-16">
       <div className="max-w-4xl mx-auto px-4">
 
         {/* Profile header */}

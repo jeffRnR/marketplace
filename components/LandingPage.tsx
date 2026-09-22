@@ -271,7 +271,7 @@ function LandingPage() {
   }, []);
 
   return (
-    <div className="w-full min-h-screen flex flex-col items-center pt-20 pb-16">
+    <div className="w-full min-h-screen flex flex-col items-center pt-10 pb-16">
       <div className="w-full lg:w-[70%] px-4 flex flex-col gap-8">
 
         {/* ── Banner slider ── */}
