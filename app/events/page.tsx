@@ -214,7 +214,7 @@ function EventListCard({ event }: { event: EventWithDistance }) {
         </div>
         <div className="mt-5 flex items-center justify-between border-t border-[var(--brand-purple)]/15 pt-4 text-xs font-semibold text-[#848d92]">
           <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-[#238b68]" /> {event.attendees} attending</span>
-          <span className="text-purple-600 hover:text-purple-700">View event</span>
+          <span className="text-[var(--brand-purple)] hover:text-purple-700">View event</span>
         </div>
       </div>
     </Link>

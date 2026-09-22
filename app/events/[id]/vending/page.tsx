@@ -2,7 +2,7 @@
 // app/events/[id]/vending/page.tsx
 
 import { useEffect, useState, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import ShareSlotButton from "@/components/ShareSlotModal";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface VendingSlot {
   id:           string;
@@ -31,30 +31,30 @@ interface MyApplication {
   businessName: string;
 }
 
-// The slots API also returns eventOwnerId for the public page
-// We derive isOwner on the client by comparing session user id
-
 type PageView = "list" | "apply" | "waiting_mpesa" | "confirmed";
 
-const INPUT = "w-full bg-gray-800 text-gray-300 rounded-xl border border-gray-700 px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none transition placeholder-gray-600";
+const INPUT =
+  "w-full rounded-xl border border-[var(--brand-purple)]/25 bg-[var(--surface)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--brand-purple)] focus:ring-2 focus:ring-[var(--brand-purple)]/10";
+
+// ─── Status badge ───────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    pending:   "bg-yellow-900/40 text-yellow-400 border-yellow-700/40",
-    approved:  "bg-blue-900/40 text-blue-400 border-blue-700/40",
-    rejected:  "bg-red-900/40 text-red-400 border-red-700/40",
-    paid:      "bg-orange-900/40 text-orange-400 border-orange-700/40",
-    confirmed: "bg-green-900/40 text-green-400 border-green-700/40",
-    expired:   "bg-gray-800 text-gray-500 border-gray-700",
+    pending:   "border-yellow-700/40 bg-yellow-900/30 text-yellow-400",
+    approved:  "border-blue-700/40 bg-blue-900/30 text-blue-400",
+    rejected:  "border-red-700/40 bg-red-900/30 text-red-400",
+    paid:      "border-orange-700/40 bg-orange-900/30 text-orange-400",
+    confirmed: "border-emerald-700/40 bg-emerald-900/30 text-emerald-400",
+    expired:   "border-[var(--brand-purple)]/20 text-[var(--muted)]",
   };
   return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${map[status] ?? "bg-gray-800 text-gray-400 border-gray-700"}`}>
+    <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${map[status] ?? "border-[var(--brand-purple)]/20 text-[var(--muted)]"}`}>
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );
 }
 
-// ─── Copy link button ─────────────────────────────────────────────────────────
+// ─── Copy link button ──────────────────────────────────────────────────────────
 
 function CopyLinkButton({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
@@ -62,37 +62,34 @@ function CopyLinkButton({ url }: { url: string }) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
       const el = document.createElement("textarea");
       el.value = url;
       document.body.appendChild(el);
       el.select();
       document.execCommand("copy");
       document.body.removeChild(el);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
     <button
       onClick={handleCopy}
-      className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-semibold transition shrink-0 ${
+      className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
         copied
-          ? "bg-green-900/30 border-green-700/40 text-green-400"
-          : "bg-gray-800 border-gray-700 text-gray-300 hover:border-purple-500 hover:text-purple-300"
+          ? "border-emerald-700/40 bg-emerald-900/30 text-emerald-400"
+          : "border-[var(--brand-purple)]/25 bg-[var(--surface)] text-[var(--muted)] hover:border-[var(--brand-purple)]/60 hover:text-[var(--foreground)]"
       }`}
     >
-      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
       {copied ? "Copied!" : "Copy"}
     </button>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main component ─────────────────────────────────────────────────────────────
 
 export default function VendingPage() {
   const { id: eventId } = useParams<{ id: string }>();
@@ -107,14 +104,12 @@ export default function VendingPage() {
   const [submitError,  setSubmitError]  = useState("");
   const [submitting,   setSubmitting]   = useState(false);
 
-  // Apply form
   const [businessName, setBusinessName] = useState("");
   const [contactName,  setContactName]  = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [description,  setDescription]  = useState("");
 
-  // Payment polling
   const [txRef,       setTxRef]       = useState("");
   const [pollSeconds, setPollSeconds] = useState(0);
   const [payingSlot,  setPayingSlot]  = useState<VendingSlot | null>(null);
@@ -128,7 +123,6 @@ export default function VendingPage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
-  // ── Load slots + detect ownership ────────────────────────────────────────
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -136,18 +130,13 @@ export default function VendingPage() {
         const [slotsRes, myRes, eventRes] = await Promise.all([
           fetch(`/api/vending/slots?eventId=${eventId}`),
           session ? fetch("/api/vending/applications?mine=true") : Promise.resolve(null),
-          fetch(`/api/events/${eventId}/owner`),  // lightweight endpoint — see note below
+          fetch(`/api/events/${eventId}/owner`),
         ]);
-
         if (slotsRes.ok) setSlots(await slotsRes.json());
         if (myRes?.ok)   setMyApps(await myRes.json());
-
-        // Check ownership via session — compare event createdById
         if (eventRes?.ok) {
           const eventData = await eventRes.json();
-          if (session?.user?.email && eventData.ownerEmail === session.user.email) {
-            setIsOwner(true);
-          }
+          if (session?.user?.email && eventData.ownerEmail === session.user.email) setIsOwner(true);
         }
       } finally {
         setLoading(false);
@@ -156,17 +145,15 @@ export default function VendingPage() {
     load();
   }, [eventId, session]);
 
-  // ── Pre-fill from session ────────────────────────────────────────────────
   useEffect(() => {
     if (session?.user?.email && !contactEmail) setContactEmail(session.user.email);
     if (session?.user?.name  && !contactName)  setContactName(session.user.name);
   }, [session]);
 
   function myAppForSlot(slotId: string): MyApplication | undefined {
-    return myApps.find((a) => a.slotId === slotId);
+    return myApps.find(a => a.slotId === slotId);
   }
 
-  // ── Apply ────────────────────────────────────────────────────────────────
   async function handleApply() {
     if (!selectedSlot) return;
     setSubmitError("");
@@ -175,7 +162,7 @@ export default function VendingPage() {
     }
     setSubmitting(true);
     try {
-      const res  = await fetch("/api/vending/applications", {
+      const res = await fetch("/api/vending/applications", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ slotId: selectedSlot.id, businessName, contactName, contactEmail, contactPhone, description }),
@@ -193,11 +180,10 @@ export default function VendingPage() {
     }
   }
 
-  // ── Pay ──────────────────────────────────────────────────────────────────
   async function handlePay(application: MyApplication, slot: VendingSlot) {
     setSubmitError("");
     try {
-      const res  = await fetch("/api/vending/applications", {
+      const res = await fetch("/api/vending/applications", {
         method:  "PATCH",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ applicationId: application.id, action: "pay" }),
@@ -225,7 +211,7 @@ export default function VendingPage() {
         return;
       }
       try {
-        const res  = await fetch(`/api/payment/status?txRef=${ref}`);
+        const res = await fetch(`/api/payment/status?txRef=${ref}`);
         const data = await res.json();
         if (data.status === "successful") {
           clearInterval(pollRef.current!);
@@ -241,47 +227,54 @@ export default function VendingPage() {
     }, 3000);
   }
 
-  // ── VIEWS ─────────────────────────────────────────────────────────────────
+  // ── Loading ──────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
+      <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-purple)]" />
       </div>
     );
   }
 
-  // ── Waiting for M-Pesa ───────────────────────────────────────────────────
+  // ── Waiting for M-Pesa ───────────────────────────────────────────────────────
+
   if (view === "waiting_mpesa") {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-16">
-        <div className="w-full max-w-md flex flex-col items-center gap-6 text-center">
-          <div className="relative w-20 h-20">
-            <div className="absolute inset-0 rounded-full border-4 border-purple-900/50" />
-            <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin" />
+      <div className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4 py-16">
+        <div className="flex w-full max-w-md flex-col items-center gap-8 text-center">
+          <div className="relative h-20 w-20">
+            <div className="absolute inset-0 rounded-full border-4 border-[var(--brand-purple)]/20" />
+            <div className="absolute inset-0 animate-spin rounded-full border-4 border-t-[var(--brand-purple)]" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <Smartphone className="w-8 h-8 text-purple-400" />
+              <Smartphone className="h-8 w-8 text-[var(--brand-purple)]" />
             </div>
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-100 mb-2">Check your phone</h2>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              An M-Pesa prompt has been sent for<br />
-              <strong className="text-gray-200">{payingSlot?.title}</strong>.<br />
+            <h2 className="text-xl font-semibold text-[var(--foreground)]">Check your phone</h2>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+              An M-Pesa prompt has been sent for{" "}
+              <strong className="text-[var(--foreground)]">{payingSlot?.title}</strong>.<br />
               Enter your PIN to pay{" "}
-              <strong className="text-green-400">KES {payingSlot?.price.toLocaleString()}</strong>.
+              <strong className="text-[var(--brand-green)]">KES {payingSlot?.price.toLocaleString()}</strong>.
             </p>
           </div>
-          <div className="w-full bg-gray-900 border border-gray-700 rounded-2xl p-5">
-            <p className="text-gray-500 text-xs mb-3">Waiting{".".repeat((Math.floor(pollSeconds / 3) % 3) + 1)}</p>
-            <div className="w-full bg-gray-800 rounded-full h-1.5">
-              <div className="bg-purple-500 h-1.5 rounded-full transition-all duration-1000"
-                style={{ width: `${Math.min((pollSeconds / 180) * 100, 100)}%` }} />
+          <div className="w-full rounded-2xl border border-[var(--brand-purple)]/25 bg-[var(--surface)] p-5">
+            <p className="mb-3 text-xs text-[var(--muted)]">
+              Waiting{".".repeat((Math.floor(pollSeconds / 3) % 3) + 1)}
+            </p>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--background)]">
+              <div
+                className="h-1.5 rounded-full bg-[var(--brand-purple)] transition-all duration-1000"
+                style={{ width: `${Math.min((pollSeconds / 180) * 100, 100)}%` }}
+              />
             </div>
-            <p className="text-gray-700 text-xs mt-2">{180 - pollSeconds}s remaining</p>
+            <p className="mt-2 text-xs text-[var(--muted)]">{180 - pollSeconds}s remaining</p>
           </div>
-          <button onClick={() => { if (pollRef.current) clearInterval(pollRef.current); setView("list"); }}
-            className="text-gray-600 hover:text-gray-400 text-sm transition">
+          <button
+            onClick={() => { if (pollRef.current) clearInterval(pollRef.current); setView("list"); }}
+            className="text-sm text-[var(--muted)] transition hover:text-[var(--foreground)]"
+          >
             Cancel
           </button>
         </div>
@@ -289,23 +282,26 @@ export default function VendingPage() {
     );
   }
 
-  // ── Confirmed ─────────────────────────────────────────────────────────────
+  // ── Confirmed ────────────────────────────────────────────────────────────────
+
   if (view === "confirmed") {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-16">
-        <div className="w-full max-w-md flex flex-col items-center gap-6 text-center">
-          <div className="w-16 h-16 rounded-full bg-green-900/40 border border-green-700/50 flex items-center justify-center">
-            <CheckCircle className="w-8 h-8 text-green-400" />
+      <div className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4 py-16">
+        <div className="flex w-full max-w-md flex-col items-center gap-6 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-emerald-700/40 bg-emerald-900/30">
+            <CheckCircle className="h-8 w-8 text-emerald-400" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-100 mb-2">Slot confirmed! 🛒</h2>
-            <p className="text-gray-400 text-sm">
-              Your vending slot has been booked. A confirmation email has been sent to you.<br />
+            <h2 className="text-2xl font-semibold text-[var(--foreground)]">Slot confirmed!</h2>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+              Your vending slot has been booked. A confirmation email has been sent to you.
               The event organiser will contact you with setup details.
             </p>
           </div>
-          <button onClick={() => setView("list")}
-            className="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition">
+          <button
+            onClick={() => setView("list")}
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-purple-600 px-6 text-sm font-bold text-white transition hover:bg-purple-700"
+          >
             Back to slots
           </button>
         </div>
@@ -313,51 +309,78 @@ export default function VendingPage() {
     );
   }
 
-  // ── Apply form ────────────────────────────────────────────────────────────
+  // ── Apply form ────────────────────────────────────────────────────────────────
+
   if (view === "apply" && selectedSlot) {
     return (
-      <div className="min-h-screen flex justify-center px-4 py-16">
-        <div className="w-full max-w-lg flex flex-col gap-5">
-          <button onClick={() => { setView("list"); setSubmitError(""); }}
-            className="flex items-center gap-2 text-gray-500 hover:text-gray-300 text-sm transition self-start">
-            <ArrowLeft className="w-4 h-4" /> Back to slots
+      <div className="page-reveal min-h-screen bg-[var(--background)] px-4 py-12 sm:px-6">
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-6">
+          <button
+            onClick={() => { setView("list"); setSubmitError(""); }}
+            className="flex items-center gap-2 self-start text-sm text-[var(--muted)] transition hover:text-[var(--foreground)]"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to slots
           </button>
+
           <div>
-            <p className="text-gray-500 text-xs uppercase tracking-widest mb-1">Applying for</p>
-            <h1 className="text-xl font-bold text-gray-100">{selectedSlot.title}</h1>
-            <p className="text-green-400 font-semibold mt-1">KES {selectedSlot.price.toLocaleString()}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-green)]">
+              Applying for
+            </p>
+            <h1 className="mt-1 text-xl font-semibold text-[var(--foreground)]">
+              {selectedSlot.title}
+            </h1>
+            <p className="mt-1 font-semibold text-[var(--brand-green)]">
+              KES {selectedSlot.price.toLocaleString()}
+            </p>
           </div>
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5 flex flex-col gap-4">
-            <p className="text-gray-400 text-xs font-semibold uppercase tracking-widest">Business Details</p>
+
+          <div className="flex flex-col gap-4 rounded-2xl border border-[var(--brand-purple)]/25 bg-[var(--surface)] p-5">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
+              Business Details
+            </p>
             {([
               { label: "Business Name",  ph: "Mama Fua Fashions",  value: businessName,  set: setBusinessName },
               { label: "Contact Name",   ph: "Jane Doe",           value: contactName,   set: setContactName },
               { label: "Contact Email",  ph: "jane@example.com",   value: contactEmail,  set: setContactEmail },
               { label: "Contact Phone",  ph: "+254 712 345 678",   value: contactPhone,  set: setContactPhone },
             ] as const).map(({ label, ph, value, set }) => (
-              <div key={label} className="flex flex-col gap-1">
-                <label className="text-xs text-gray-500">{label} *</label>
-                <input type="text" placeholder={ph} value={value}
-                  onChange={(e) => (set as any)(e.target.value)} className={INPUT} />
+              <div key={label} className="flex flex-col gap-1.5">
+                <label className="text-xs text-[var(--muted)]">{label} *</label>
+                <input
+                  type="text"
+                  placeholder={ph}
+                  value={value}
+                  onChange={e => (set as any)(e.target.value)}
+                  className={INPUT}
+                />
               </div>
             ))}
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500">What will you sell / offer? *</label>
-              <textarea rows={4} placeholder="Describe your products or services..."
-                value={description} onChange={(e) => setDescription(e.target.value)}
-                className={INPUT + " resize-none"} />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-[var(--muted)]">What will you sell / offer? *</label>
+              <textarea
+                rows={4}
+                placeholder="Describe your products or services…"
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                className={INPUT + " resize-none"}
+              />
             </div>
           </div>
+
           {submitError && (
-            <div className="flex items-start gap-2 bg-red-900/20 border border-red-700/40 rounded-xl px-4 py-3 text-red-300 text-sm">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {submitError}
+            <div className="flex items-start gap-2 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {submitError}
             </div>
           )}
-          <button onClick={handleApply} disabled={submitting}
-            className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2 text-sm">
-            {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</> : "Submit Application →"}
+
+          <button
+            onClick={handleApply}
+            disabled={submitting}
+            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-purple-600 text-sm font-bold text-white transition hover:bg-purple-700 disabled:opacity-50"
+          >
+            {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</> : "Submit Application"}
           </button>
-          <p className="text-gray-600 text-xs text-center">
+          <p className="text-center text-xs text-[var(--muted)]">
             You'll pay only if the event owner approves your application.
           </p>
         </div>
@@ -365,37 +388,44 @@ export default function VendingPage() {
     );
   }
 
-  // ── Slot list ─────────────────────────────────────────────────────────────
-  return (
-    <div className="min-h-screen flex justify-center px-4 py-16">
-      <div className="w-full max-w-lg flex flex-col gap-6">
+  // ── Slot list ─────────────────────────────────────────────────────────────────
 
+  return (
+    <div className="page-reveal min-h-screen bg-[var(--background)] px-4 pb-20 pt-4 text-[var(--foreground)] sm:px-6">
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-8">
+
+        {/* Header */}
         <div className="flex items-center gap-3">
-          <Link href={`/events/${eventId}`} className="text-gray-500 hover:text-gray-300 transition">
-            <ArrowLeft className="w-5 h-5" />
+          <Link
+            href={`/events/${eventId}`}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--brand-purple)]/25 bg-[var(--surface)] text-[var(--muted)] transition hover:border-[var(--brand-purple)]/50 hover:text-[var(--foreground)]"
+          >
+            <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-100 flex items-center gap-2">
-              <ShoppingBag className="w-6 h-6 text-purple-400" /> Vending Slots
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-green)]">
+              Event
+            </p>
+            <h1 className="mt-0.5 text-2xl font-semibold tracking-tight text-[var(--foreground)]">
+              Vending Slots
             </h1>
-            <p className="text-gray-500 text-sm mt-0.5">Apply for a spot to sell at this event.</p>
           </div>
         </div>
 
-        {/* ── Owner banner — share link ─────────────────────────────────── */}
+        {/* Owner banner */}
         {isOwner && (
-          <div className="bg-purple-900/20 border border-purple-700/40 rounded-2xl p-4 flex flex-col gap-3">
+          <div className="flex flex-col gap-3 rounded-2xl border border-[var(--brand-purple)]/40 bg-[var(--brand-purple)]/10 p-4">
             <div className="flex items-start gap-2">
-              <Lock className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-[var(--brand-purple)]" />
               <div>
-                <p className="text-purple-300 text-sm font-semibold">You own this event</p>
-                <p className="text-purple-400/70 text-xs mt-0.5">
+                <p className="text-sm font-semibold text-[var(--foreground)]">You own this event</p>
+                <p className="mt-0.5 text-xs text-[var(--muted)]">
                   You can't apply to your own slots. Share the link below with vendors.
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2">
-              <p className="text-gray-400 text-xs truncate flex-1 font-mono">{vendingUrl}</p>
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--brand-purple)]/25 bg-[var(--surface)] px-3 py-2">
+              <p className="flex-1 truncate font-mono text-xs text-[var(--muted)]">{vendingUrl}</p>
               <CopyLinkButton url={vendingUrl} />
               <ShareSlotButton
                 url={vendingUrl}
@@ -407,47 +437,52 @@ export default function VendingPage() {
         )}
 
         {submitError && (
-          <div className="flex items-start gap-2 bg-red-900/20 border border-red-700/40 rounded-xl px-4 py-3 text-red-300 text-sm">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {submitError}
+          <div className="flex items-start gap-2 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {submitError}
           </div>
         )}
 
+        {/* Slots */}
         {slots.length === 0 ? (
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-10 text-center">
-            <ShoppingBag className="w-8 h-8 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm">No vending slots available for this event yet.</p>
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--brand-purple)]/45 bg-[var(--surface)] px-6 py-20 text-center">
+            <ShoppingBag className="h-8 w-8 text-[var(--muted)]" />
+            <p className="text-sm text-[var(--muted)]">No vending slots available for this event yet.</p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {slots.map((slot) => {
+            {slots.map(slot => {
               const myApp    = myAppForSlot(slot.id);
               const isFull   = slot.availability === "full" || slot.status === "closed";
               const canApply = !isFull && !myApp && !!session && !isOwner;
 
               return (
-                <div key={slot.id}
-                  className="bg-gray-900 border border-gray-700 rounded-2xl p-5 flex flex-col gap-3">
+                <div
+                  key={slot.id}
+                  className="flex flex-col gap-4 rounded-xl border border-[var(--brand-purple)]/25 bg-[var(--surface)] p-5 transition duration-200 hover:border-[var(--brand-purple)]/60"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-gray-100 font-semibold">{slot.title}</h3>
+                      <h3 className="font-semibold text-[var(--foreground)]">{slot.title}</h3>
                       {slot.description && (
-                        <p className="text-gray-500 text-sm mt-1">{slot.description}</p>
+                        <p className="mt-1 text-sm text-[var(--muted)]">{slot.description}</p>
                       )}
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-green-400 font-bold text-sm">KES {slot.price.toLocaleString()}</p>
-                      <span className={`text-xs font-semibold mt-1 block ${isFull ? "text-red-400" : "text-emerald-400"}`}>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-bold text-[var(--brand-green)]">
+                        KES {slot.price.toLocaleString()}
+                      </p>
+                      <span className={`mt-1 block text-xs font-semibold ${isFull ? "text-red-400" : "text-emerald-400"}`}>
                         {isFull ? "Full" : "Available"}
                       </span>
                     </div>
                   </div>
 
-                  {/* My application status */}
+                  {/* My application */}
                   {myApp && (
-                    <div className="flex items-center justify-between bg-gray-800 rounded-xl px-4 py-3">
+                    <div className="flex items-center justify-between rounded-xl border border-[var(--brand-purple)]/15 bg-[var(--background)] px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <BadgeCheck className="w-4 h-4 text-blue-400" />
-                        <span className="text-gray-300 text-sm">Your application</span>
+                        <BadgeCheck className="h-4 w-4 text-blue-400" />
+                        <span className="text-sm text-[var(--foreground)]">Your application</span>
                       </div>
                       <StatusBadge status={myApp.status} />
                     </div>
@@ -455,10 +490,12 @@ export default function VendingPage() {
 
                   {/* Pay button */}
                   {myApp?.status === "approved" && (
-                    <button onClick={() => handlePay(myApp, slot)}
-                      className="w-full bg-green-700 hover:bg-green-600 text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2 text-sm">
-                      <Smartphone className="w-4 h-4" />
-                      Pay KES {slot.price.toLocaleString()} via M-Pesa →
+                    <button
+                      onClick={() => handlePay(myApp, slot)}
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 text-sm font-bold text-white transition hover:bg-emerald-600"
+                    >
+                      <Smartphone className="h-4 w-4" />
+                      Pay KES {slot.price.toLocaleString()} via M-Pesa
                     </button>
                   )}
 
@@ -466,16 +503,20 @@ export default function VendingPage() {
                   {canApply && (
                     <button
                       onClick={() => { setSelectedSlot(slot); setView("apply"); setSubmitError(""); }}
-                      className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-600 hover:border-purple-500 text-gray-300 hover:text-purple-300 text-sm font-medium transition">
+                      className="flex h-11 w-full items-center justify-between rounded-xl border border-[var(--brand-purple)]/25 px-4 text-sm font-medium text-[var(--muted)] transition hover:border-[var(--brand-purple)] hover:text-[var(--foreground)]"
+                    >
                       Apply for this slot
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="h-4 w-4" />
                     </button>
                   )}
 
                   {/* Sign in prompt */}
                   {!session && !isFull && !isOwner && (
-                    <p className="text-gray-600 text-xs text-center">
-                      <Link href="/auth/signin" className="text-purple-400 hover:underline">Sign in</Link> to apply
+                    <p className="text-center text-xs text-[var(--muted)]">
+                      <Link href="/auth/signin" className="font-semibold text-[var(--brand-purple)] hover:text-[var(--foreground)]">
+                        Sign in
+                      </Link>{" "}
+                      to apply
                     </p>
                   )}
                 </div>

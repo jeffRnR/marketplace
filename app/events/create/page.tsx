@@ -242,7 +242,7 @@ export default function CreateEvent() {
   if (sessionStatus === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin w-8 h-8 text-purple-600" />
+        <Loader2 className="animate-spin w-8 h-8 text-[var(--brand-purple)]" />
       </div>
     );
   }
@@ -276,7 +276,7 @@ export default function CreateEvent() {
                 htmlFor="image-upload"
                 className="flex flex-col items-center justify-center w-full h-72 border border-dashed border-[var(--brand-purple)]/40 rounded-xl cursor-pointer hover:border-purple-600 hover:bg-white/2 transition"
               >
-                <Upload className="w-12 h-12 text-purple-600 mb-3" />
+                <Upload className="w-12 h-12 text-[var(--brand-purple)] mb-3" />
                 <p className="text-[var(--foreground)] text-sm font-medium">Click to upload event image</p>
                 <p className="text-[var(--muted)] text-xs mt-1">PNG, JPG, WEBP supported</p>
               </label>
@@ -294,7 +294,7 @@ export default function CreateEvent() {
           </div>
           {session?.user?.name && (
             <p className="mt-6 text-xs text-[var(--muted)] self-start">
-              Creating as <span className="text-purple-600 font-semibold">{session.user.name}</span>
+              Creating as <span className="text-[var(--brand-purple)] font-semibold">{session.user.name}</span>
             </p>
           )}
         </div>
@@ -344,7 +344,7 @@ export default function CreateEvent() {
               </div>
             )}
             {selectedCategoryIds.length > 0 && (
-              <p className="text-xs text-purple-600 mt-2">
+              <p className="text-xs text-[var(--brand-purple)] mt-2">
                 {selectedCategoryIds.length} categor{selectedCategoryIds.length === 1 ? "y" : "ies"} selected
               </p>
             )}
@@ -428,14 +428,14 @@ export default function CreateEvent() {
                 <button
                   type="button"
                   onClick={() => { setFormData(p => ({ ...p, location: query })); setManualLocation(true); }}
-                  className="text-xs text-[var(--muted)] hover:text-purple-600 transition text-left"
+                  className="text-xs text-[var(--muted)] hover:text-[var(--brand-purple)] transition text-left"
                 >
                   Venue not found? Save name as-is →
                 </button>
               )}
 
               {manualLocation && (
-                <p className="text-xs text-purple-600 flex items-center gap-1">
+                <p className="text-xs text-[var(--brand-purple)] flex items-center gap-1">
                   <MapPin className="w-3 h-3" /> Saved as custom venue — no map pin will be shown.
                 </p>
               )}
@@ -478,7 +478,7 @@ export default function CreateEvent() {
           {/* RSVP settings */}
           {isRsvp && (
             <div className="bg-white/2 border border-[var(--brand-purple)]/25 rounded-xl p-4 space-y-3">
-              <p className="text-sm text-purple-600 font-medium">RSVP Settings</p>
+              <p className="text-sm text-[var(--brand-purple)] font-medium">RSVP Settings</p>
               <div>
                 <label className="block text-xs text-[var(--muted)] mb-1">Total Capacity *</label>
                 <input
@@ -495,13 +495,13 @@ export default function CreateEvent() {
           {!isRsvp && (
             <div className="bg-white/2 border border-[var(--brand-purple)]/25 rounded-xl p-4">
               <div className="flex justify-between items-center mb-3">
-                <span className="flex items-center gap-2 text-sm text-purple-600 font-medium">
+                <span className="flex items-center gap-2 text-sm text-[var(--brand-purple)] font-medium">
                   <Ticket className="h-4 w-4" /> Ticket Types
                 </span>
                 <button
                   type="button"
                   onClick={addTicket}
-                  className="flex items-center gap-1 text-sm text-purple-600 hover:opacity-80 font-medium transition"
+                  className="flex items-center gap-1 text-sm text-[var(--brand-purple)] hover:opacity-80 font-medium transition"
                 >
                   <Plus className="h-4 w-4" /> Add Ticket
                 </button>

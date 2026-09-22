@@ -75,7 +75,7 @@ export default function ProfilePage() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
+      <Loader2 className="w-8 h-8 text-[var(--brand-purple)] animate-spin" />
     </div>
   );
 

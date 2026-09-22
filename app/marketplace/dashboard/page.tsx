@@ -76,7 +76,7 @@ export default function DashboardPage() {
   );
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
+      <Loader2 className="w-8 h-8 text-[var(--brand-purple)] animate-spin" />
     </div>
   );
   if (!profile) return null;
@@ -112,7 +112,7 @@ export default function DashboardPage() {
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl border-4 border-gray-900 bg-gray-800 overflow-hidden mb-3 flex items-center justify-center shadow-xl">
               {profile.logoImage
                 ? <img src={profile.logoImage} alt="" className="w-full h-full object-cover" />
-                : <Store className="w-7 h-7 sm:w-8 sm:h-8 text-purple-600" />
+                : <Store className="w-7 h-7 sm:w-8 sm:h-8 text-[var(--brand-purple)]" />
               }
             </div>
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -121,7 +121,7 @@ export default function DashboardPage() {
                   <h1 className="text-[var(--foreground)] font-black text-lg sm:text-xl truncate max-w-[200px] sm:max-w-none">
                     {profile.businessName}
                   </h1>
-                  {profile.isVerified && <BadgeCheck className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 shrink-0" />}
+                  {profile.isVerified && <BadgeCheck className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--brand-purple)] shrink-0" />}
                   <span className={`text-xs px-2 py-0.5 rounded-full border shrink-0 ${
                     profile.isActive
                       ? "bg-green-900/30 text-green-400 border-green-700/30"
@@ -141,7 +141,7 @@ export default function DashboardPage() {
                   <span className="text-[var(--muted)] text-xs">({profile.reviewCount})</span>
                 </div>
                 <a href={`/marketplace/${profile.id}`} target="_blank"
-                  className="flex items-center gap-1 text-purple-600 hover:opacity-80 transition text-xs font-semibold">
+                  className="flex items-center gap-1 text-[var(--brand-purple)] hover:opacity-80 transition text-xs font-semibold">
                   Profile <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </a>
               </div>
@@ -237,7 +237,7 @@ export default function DashboardPage() {
                               {listing.isActive ? <EyeOff className="w-3.5 h-3.5" /> : <EyeIcon className="w-3.5 h-3.5" />}
                             </button>
                             <button onClick={() => setEditId(listing.id)}
-                              className="p-1.5 rounded-lg border border-gray-400/20 text-[var(--muted)] hover:text-purple-600 hover:border-purple-600/50 transition">
+                              className="p-1.5 rounded-lg border border-gray-400/20 text-[var(--muted)] hover:text-[var(--brand-purple)] hover:border-purple-600/50 transition">
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => handleDeleteListing(listing.id)}
@@ -284,7 +284,7 @@ export default function DashboardPage() {
                         <p className="text-[var(--muted)] text-xs line-clamp-2 mb-2">{listing.description}</p>
 
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                          <span className="text-purple-600 font-semibold">
+                          <span className="text-[var(--brand-purple)] font-semibold">
                             {listing.priceType === "negotiable" ? "Negotiable"
                               : listing.priceType === "free" ? "Free"
                               : listing.price

@@ -1,8 +1,5 @@
 "use client";
 // app/events/[id]/manage-vending/page.tsx
-// Event owner only.
-// Left panel: list + create/edit/delete slots.
-// Right panel: applications for the selected slot, sorted by priority.
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -14,7 +11,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface Slot {
   id:           string;
@@ -29,69 +26,69 @@ interface Slot {
 }
 
 interface Application {
-  id:             string;
-  businessName:   string;
-  contactName:    string;
-  contactEmail:   string;
-  contactPhone:   string;
-  description:    string;
-  hasPriority:    boolean;
-  status:         string;
-  ownerNote:      string | null;
-  createdAt:      string;
+  id:           string;
+  businessName: string;
+  contactName:  string;
+  contactEmail: string;
+  contactPhone: string;
+  description:  string;
+  hasPriority:  boolean;
+  status:       string;
+  ownerNote:    string | null;
+  createdAt:    string;
 }
 
 type ModalMode = "none" | "create" | "edit";
 
-const INPUT = "w-full bg-gray-800 text-gray-300 rounded-xl border border-gray-700 px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none transition placeholder-gray-600";
+const INPUT =
+  "w-full rounded-xl border border-[var(--brand-purple)]/25 bg-[var(--surface)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--brand-purple)] focus:ring-2 focus:ring-[var(--brand-purple)]/10";
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
+// ─── Status badge ───────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    pending:   "bg-yellow-900/40 text-yellow-400 border-yellow-700/40",
-    approved:  "bg-blue-900/40 text-blue-400 border-blue-700/40",
-    rejected:  "bg-red-900/40 text-red-400 border-red-700/40",
-    paid:      "bg-orange-900/40 text-orange-400 border-orange-700/40",
-    confirmed: "bg-green-900/40 text-green-400 border-green-700/40",
-    expired:   "bg-gray-800 text-gray-500 border-gray-700",
+    pending:   "bg-yellow-900/30 text-yellow-400 border-yellow-700/40",
+    approved:  "bg-blue-900/30 text-blue-400 border-blue-700/40",
+    rejected:  "bg-red-900/30 text-red-400 border-red-700/40",
+    paid:      "bg-orange-900/30 text-orange-400 border-orange-700/40",
+    confirmed: "bg-emerald-900/30 text-emerald-400 border-emerald-700/40",
+    expired:   "border-[var(--brand-purple)]/20 text-[var(--muted)]",
   };
   return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${map[status] ?? "bg-gray-800 text-gray-400 border-gray-700"}`}>
+    <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${map[status] ?? "border-[var(--brand-purple)]/20 text-[var(--muted)]"}`}>
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main component ─────────────────────────────────────────────────────────────
 
 export default function ManageVendingPage() {
   const { id: eventId } = useParams<{ id: string }>();
-  const router          = useRouter();
+  const router = useRouter();
   const { data: session, status: authStatus } = useSession();
 
-  const [slots,          setSlots]          = useState<Slot[]>([]);
-  const [selectedSlot,   setSelectedSlot]   = useState<Slot | null>(null);
-  const [applications,   setApplications]   = useState<Application[]>([]);
-  const [loading,        setLoading]        = useState(true);
-  const [appsLoading,    setAppsLoading]    = useState(false);
-  const [actionLoading,  setActionLoading]  = useState<string | null>(null);
-  const [error,          setError]          = useState("");
+  const [slots,         setSlots]         = useState<Slot[]>([]);
+  const [selectedSlot,  setSelectedSlot]  = useState<Slot | null>(null);
+  const [applications,  setApplications]  = useState<Application[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [appsLoading,   setAppsLoading]   = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [error,         setError]         = useState("");
 
-  // Slot modal
-  const [modal,         setModal]         = useState<ModalMode>("none");
-  const [modalLoading,  setModalLoading]  = useState(false);
-  const [modalError,    setModalError]    = useState("");
-  const [form, setForm] = useState({ title: "", description: "", price: "", totalSlots: "", currency: "KES" });
+  const [modal,        setModal]        = useState<ModalMode>("none");
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError,   setModalError]   = useState("");
+  const [form, setForm] = useState({
+    title: "", description: "", price: "", totalSlots: "", currency: "KES",
+  });
 
-  // Approve/reject note
   const [noteMap, setNoteMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (authStatus === "unauthenticated") router.push("/auth/signin");
   }, [authStatus]);
 
-  // ── Load slots ─────────────────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -105,7 +102,6 @@ export default function ManageVendingPage() {
     if (authStatus === "authenticated") load();
   }, [eventId, authStatus]);
 
-  // ── Load applications when slot selected ──────────────────────────────────
   async function loadApplications(slotId: string) {
     setAppsLoading(true);
     try {
@@ -122,7 +118,6 @@ export default function ManageVendingPage() {
     loadApplications(slot.id);
   }
 
-  // ── Create / edit slot ────────────────────────────────────────────────────
   function openCreate() {
     setForm({ title: "", description: "", price: "", totalSlots: "", currency: "KES" });
     setModalError("");
@@ -148,24 +143,24 @@ export default function ManageVendingPage() {
     setModalLoading(true); setModalError("");
     try {
       if (modal === "create") {
-        const res  = await fetch("/api/vending/slots", {
+        const res = await fetch("/api/vending/slots", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ eventId: eventId, ...form, price: Number(form.price), totalSlots: Number(form.totalSlots) }),
+          body:    JSON.stringify({ eventId, ...form, price: Number(form.price), totalSlots: Number(form.totalSlots) }),
         });
         const data = await res.json();
         if (!res.ok) { setModalError(data.error ?? "Failed to create slot."); return; }
-        setSlots((prev) => [...prev, { ...data.slot, bookedCount: 0, availability: "available" }]);
+        setSlots(prev => [...prev, { ...data.slot, bookedCount: 0, availability: "available" }]);
       } else if (modal === "edit" && selectedSlot) {
-        const res  = await fetch("/api/vending/slots", {
+        const res = await fetch("/api/vending/slots", {
           method:  "PATCH",
           headers: { "Content-Type": "application/json" },
           body:    JSON.stringify({ slotId: selectedSlot.id, ...form, price: Number(form.price), totalSlots: Number(form.totalSlots) }),
         });
         const data = await res.json();
         if (!res.ok) { setModalError(data.error ?? "Failed to update slot."); return; }
-        setSlots((prev) => prev.map((s) => s.id === selectedSlot.id ? { ...s, ...data.slot } : s));
-        setSelectedSlot((prev) => prev ? { ...prev, ...data.slot } : prev);
+        setSlots(prev => prev.map(s => s.id === selectedSlot.id ? { ...s, ...data.slot } : s));
+        setSelectedSlot(prev => prev ? { ...prev, ...data.slot } : prev);
       }
       setModal("none");
     } finally {
@@ -177,32 +172,29 @@ export default function ManageVendingPage() {
     if (!confirm("Delete this slot? All pending applications will also be removed.")) return;
     const res = await fetch(`/api/vending/slots?slotId=${slotId}`, { method: "DELETE" });
     if (res.ok) {
-      setSlots((prev) => prev.filter((s) => s.id !== slotId));
+      setSlots(prev => prev.filter(s => s.id !== slotId));
       if (selectedSlot?.id === slotId) { setSelectedSlot(null); setApplications([]); }
     }
   }
 
-  // ── Approve / reject ──────────────────────────────────────────────────────
   async function handleAction(applicationId: string, action: "approve" | "reject") {
-    setActionLoading(applicationId);
-    setError("");
+    setActionLoading(applicationId); setError("");
     try {
-      const res  = await fetch("/api/vending/applications", {
+      const res = await fetch("/api/vending/applications", {
         method:  "PATCH",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ applicationId, action, ownerNote: noteMap[applicationId] ?? null }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? `Failed to ${action} application.`); return; }
-      setApplications((prev) =>
-        prev.map((a) => a.id === applicationId ? { ...a, status: data.application.status, ownerNote: data.application.ownerNote } : a)
+      setApplications(prev =>
+        prev.map(a => a.id === applicationId ? { ...a, status: data.application.status, ownerNote: data.application.ownerNote } : a)
       );
     } finally {
       setActionLoading(null);
     }
   }
 
-  // ── Toggle slot open/closed ───────────────────────────────────────────────
   async function toggleSlotStatus(slot: Slot) {
     const newStatus = slot.status === "open" ? "closed" : "open";
     const res = await fetch("/api/vending/slots", {
@@ -211,92 +203,124 @@ export default function ManageVendingPage() {
       body:    JSON.stringify({ slotId: slot.id, status: newStatus }),
     });
     if (res.ok) {
-      setSlots((prev) => prev.map((s) => s.id === slot.id ? { ...s, status: newStatus } : s));
-      if (selectedSlot?.id === slot.id) setSelectedSlot((prev) => prev ? { ...prev, status: newStatus } : prev);
+      setSlots(prev => prev.map(s => s.id === slot.id ? { ...s, status: newStatus } : s));
+      if (selectedSlot?.id === slot.id) setSelectedSlot(prev => prev ? { ...prev, status: newStatus } : prev);
     }
   }
 
   if (loading || authStatus === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
+      <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-purple)]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen px-4 py-12">
-      <div className="max-w-5xl mx-auto flex flex-col gap-6">
+    <div className="page-reveal min-h-screen w-full bg-[var(--background)] px-4 pb-20 pt-4 text-[var(--foreground)] sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href={`/events/${eventId}`} className="text-gray-500 hover:text-gray-300 transition">
-              <ArrowLeft className="w-5 h-5" />
+            <Link
+              href={`/events/${eventId}`}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--brand-purple)]/25 bg-[var(--surface)] text-[var(--muted)] transition hover:border-[var(--brand-purple)]/50 hover:text-[var(--foreground)]"
+            >
+              <ArrowLeft className="h-4 w-4" />
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-gray-100 flex items-center gap-2">
-                <ShoppingBag className="w-6 h-6 text-purple-400" /> Manage Vending
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-green)]">
+                Event management
+              </p>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--foreground)]">
+                Manage Vending
               </h1>
-              <p className="text-gray-500 text-sm">Create slots and review applications.</p>
             </div>
           </div>
-          <button onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-semibold transition">
-            <Plus className="w-4 h-4" /> New Slot
+          <button
+            onClick={openCreate}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-purple-600 px-4 text-sm font-bold text-white transition hover:bg-purple-700"
+          >
+            <Plus className="h-4 w-4" /> New Slot
           </button>
         </div>
 
         {error && (
-          <div className="flex items-start gap-2 bg-red-900/20 border border-red-700/40 rounded-xl px-4 py-3 text-red-300 text-sm">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {error}
+          <div className="flex items-start gap-2 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-5">
 
-          {/* ── Slots list ─────────────────────────────────────────────── */}
-          <div className="md:col-span-2 flex flex-col gap-3">
+          {/* ── Slots list ──────────────────────────────────────────────── */}
+          <div className="flex flex-col gap-3 md:col-span-2">
             {slots.length === 0 ? (
-              <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 text-center flex flex-col items-center gap-3">
-                <ShoppingBag className="w-8 h-8 text-gray-600" />
-                <p className="text-gray-500 text-sm">No slots yet.</p>
-                <button onClick={openCreate}
-                  className="text-purple-400 hover:text-purple-300 text-sm font-medium transition">
-                  Create your first slot →
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--brand-purple)]/45 bg-[var(--surface)] px-6 py-16 text-center">
+                <ShoppingBag className="h-8 w-8 text-[var(--muted)]" />
+                <p className="text-sm text-[var(--muted)]">No slots yet.</p>
+                <button
+                  onClick={openCreate}
+                  className="text-sm font-semibold text-[var(--brand-purple)] transition hover:text-[var(--foreground)]"
+                >
+                  Create your first slot
                 </button>
               </div>
-            ) : slots.map((slot) => (
-              <div key={slot.id}
+            ) : slots.map(slot => (
+              <div
+                key={slot.id}
                 onClick={() => selectSlot(slot)}
-                className={`bg-gray-900 border rounded-2xl p-4 cursor-pointer transition ${selectedSlot?.id === slot.id ? "border-purple-500 ring-1 ring-purple-500/30" : "border-gray-700 hover:border-gray-500"}`}>
+                className={`cursor-pointer rounded-xl border bg-[var(--surface)] p-4 transition duration-200 ${
+                  selectedSlot?.id === slot.id
+                    ? "border-[var(--brand-purple)] ring-1 ring-[var(--brand-purple)]/20"
+                    : "border-[var(--brand-purple)]/25 hover:border-[var(--brand-purple)]/60"
+                }`}
+              >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-gray-100 font-semibold text-sm truncate">{slot.title}</p>
-                    <p className="text-gray-500 text-xs mt-0.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-[var(--foreground)]">
+                      {slot.title}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[var(--muted)]">
                       KES {slot.price.toLocaleString()} · {slot.bookedCount}/{slot.totalSlots} booked
                     </p>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${slot.status === "open" ? "bg-emerald-900/40 text-emerald-400 border-emerald-700/40" : "bg-gray-800 text-gray-500 border-gray-700"}`}>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                      slot.status === "open"
+                        ? "border-emerald-700/40 bg-emerald-900/30 text-emerald-400"
+                        : "border-[var(--brand-purple)]/20 text-[var(--muted)]"
+                    }`}>
                       {slot.status}
                     </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
+                    <ChevronRight className="h-3.5 w-3.5 text-[var(--muted)]" />
                   </div>
                 </div>
-                <div className="flex items-center gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
-                  <button onClick={() => openEdit(slot)}
-                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300 transition">
-                    <Pencil className="w-3 h-3" /> Edit
+                <div
+                  className="mt-3 flex items-center gap-3 border-t border-[var(--brand-purple)]/10 pt-3"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => openEdit(slot)}
+                    className="flex items-center gap-1 text-xs text-[var(--muted)] transition hover:text-[var(--foreground)]"
+                  >
+                    <Pencil className="h-3 w-3" /> Edit
                   </button>
-                  <button onClick={() => toggleSlotStatus(slot)}
-                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300 transition">
-                    {slot.status === "open" ? <XCircle className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
+                  <button
+                    onClick={() => toggleSlotStatus(slot)}
+                    className="flex items-center gap-1 text-xs text-[var(--muted)] transition hover:text-[var(--foreground)]"
+                  >
+                    {slot.status === "open"
+                      ? <XCircle className="h-3 w-3" />
+                      : <CheckCircle className="h-3 w-3" />}
                     {slot.status === "open" ? "Close" : "Open"}
                   </button>
-                  <button onClick={() => deleteSlot(slot.id)}
-                    className="flex items-center gap-1 text-xs text-red-600 hover:text-red-400 transition ml-auto">
-                    <Trash2 className="w-3 h-3" /> Delete
+                  <button
+                    onClick={() => deleteSlot(slot.id)}
+                    className="ml-auto flex items-center gap-1 text-xs text-red-400/70 transition hover:text-red-400"
+                  >
+                    <Trash2 className="h-3 w-3" /> Delete
                   </button>
                 </div>
               </div>
@@ -306,127 +330,147 @@ export default function ManageVendingPage() {
           {/* ── Applications panel ──────────────────────────────────────── */}
           <div className="md:col-span-3">
             {!selectedSlot ? (
-              <div className="bg-gray-900 border border-gray-700 rounded-2xl p-10 text-center flex flex-col items-center gap-3 h-full">
-                <Users className="w-8 h-8 text-gray-600" />
-                <p className="text-gray-500 text-sm">Select a slot to view applications.</p>
+              <div className="flex h-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--brand-purple)]/45 bg-[var(--surface)] p-10 text-center">
+                <Users className="h-8 w-8 text-[var(--muted)]" />
+                <p className="text-sm text-[var(--muted)]">Select a slot to view applications.</p>
               </div>
             ) : (
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-gray-200 font-semibold">{selectedSlot.title}</h2>
-                  <p className="text-gray-500 text-xs">{applications.length} application{applications.length !== 1 ? "s" : ""}</p>
+                  <h2 className="font-semibold text-[var(--foreground)]">{selectedSlot.title}</h2>
+                  <p className="text-xs text-[var(--muted)]">
+                    {applications.length} application{applications.length !== 1 ? "s" : ""}
+                  </p>
                 </div>
 
                 {appsLoading ? (
                   <div className="flex items-center justify-center py-16">
-                    <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin text-[var(--brand-purple)]" />
                   </div>
                 ) : applications.length === 0 ? (
-                  <div className="bg-gray-900 border border-gray-700 rounded-2xl p-10 text-center">
-                    <p className="text-gray-500 text-sm">No applications yet.</p>
+                  <div className="rounded-2xl border border-dashed border-[var(--brand-purple)]/45 bg-[var(--surface)] p-10 text-center">
+                    <p className="text-sm text-[var(--muted)]">No applications yet.</p>
                   </div>
-                ) : (
-                  applications.map((app) => (
-                    <div key={app.id} className="bg-gray-900 border border-gray-700 rounded-2xl p-5 flex flex-col gap-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-gray-100 font-semibold text-sm">{app.businessName}</p>
-                            {app.hasPriority && (
-                              <span className="flex items-center gap-1 text-xs bg-amber-900/30 text-amber-400 border border-amber-700/40 px-2 py-0.5 rounded-full">
-                                <BadgeCheck className="w-3 h-3" /> Priority
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-gray-500 text-xs mt-0.5">{app.contactName} · {app.contactEmail} · {app.contactPhone}</p>
+                ) : applications.map(app => (
+                  <div
+                    key={app.id}
+                    className="flex flex-col gap-4 rounded-xl border border-[var(--brand-purple)]/25 bg-[var(--surface)] p-5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-[var(--foreground)]">
+                            {app.businessName}
+                          </p>
+                          {app.hasPriority && (
+                            <span className="flex items-center gap-1 rounded-full border border-amber-700/40 bg-amber-900/30 px-2 py-0.5 text-xs text-amber-400">
+                              <BadgeCheck className="h-3 w-3" /> Priority
+                            </span>
+                          )}
                         </div>
-                        <StatusBadge status={app.status} />
+                        <p className="mt-0.5 text-xs text-[var(--muted)]">
+                          {app.contactName} · {app.contactEmail} · {app.contactPhone}
+                        </p>
                       </div>
-
-                      <p className="text-gray-400 text-sm bg-gray-800 rounded-xl px-4 py-3">
-                        {app.description}
-                      </p>
-
-                      {app.ownerNote && (
-                        <p className="text-gray-500 text-xs italic">Note: {app.ownerNote}</p>
-                      )}
-
-                      {/* Approve/reject actions — only for pending */}
-                      {app.status === "pending" && (
-                        <div className="flex flex-col gap-2">
-                          <textarea
-                            rows={2}
-                            placeholder="Optional note to applicant…"
-                            value={noteMap[app.id] ?? ""}
-                            onChange={(e) => setNoteMap((prev) => ({ ...prev, [app.id]: e.target.value }))}
-                            className={INPUT + " resize-none text-xs"}
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleAction(app.id, "approve")}
-                              disabled={actionLoading === app.id}
-                              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white text-xs font-semibold transition"
-                            >
-                              {actionLoading === app.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleAction(app.id, "reject")}
-                              disabled={actionLoading === app.id}
-                              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gray-800 hover:bg-red-900/40 border border-gray-700 hover:border-red-700/40 disabled:opacity-40 text-gray-400 hover:text-red-400 text-xs font-semibold transition"
-                            >
-                              {actionLoading === app.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
-                              Reject
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                      <StatusBadge status={app.status} />
                     </div>
-                  ))
-                )}
+
+                    <p className="rounded-xl border border-[var(--brand-purple)]/15 bg-[var(--background)] px-4 py-3 text-sm text-[var(--muted)]">
+                      {app.description}
+                    </p>
+
+                    {app.ownerNote && (
+                      <p className="text-xs italic text-[var(--muted)]">Note: {app.ownerNote}</p>
+                    )}
+
+                    {app.status === "pending" && (
+                      <div className="flex flex-col gap-2">
+                        <textarea
+                          rows={2}
+                          placeholder="Optional note to applicant…"
+                          value={noteMap[app.id] ?? ""}
+                          onChange={e => setNoteMap(prev => ({ ...prev, [app.id]: e.target.value }))}
+                          className={INPUT + " resize-none text-xs"}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleAction(app.id, "approve")}
+                            disabled={actionLoading === app.id}
+                            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-700 py-2.5 text-xs font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-40"
+                          >
+                            {actionLoading === app.id
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <CheckCircle className="h-3.5 w-3.5" />}
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleAction(app.id, "reject")}
+                            disabled={actionLoading === app.id}
+                            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--brand-purple)]/25 bg-[var(--surface)] py-2.5 text-xs font-semibold text-[var(--muted)] transition hover:border-red-700/40 hover:bg-red-900/20 hover:text-red-400 disabled:opacity-40"
+                          >
+                            {actionLoading === app.id
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <XCircle className="h-3.5 w-3.5" />}
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── Create / Edit Modal ──────────────────────────────────────────────── */}
+      {/* ── Modal ───────────────────────────────────────────────────────────── */}
       {modal !== "none" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-md bg-gray-900 border border-gray-700 rounded-2xl p-6 flex flex-col gap-4">
-            <h2 className="text-gray-100 font-bold text-lg">{modal === "create" ? "New Vending Slot" : "Edit Slot"}</h2>
-            {[
-              { label: "Title",          key: "title",       ph: "Food & Beverages" },
-              { label: "Description",    key: "description", ph: "Snacks, drinks, grilled items…" },
-              { label: "Price (KES)",    key: "price",       ph: "5000" },
-              { label: "Total Slots",    key: "totalSlots",  ph: "3" },
-            ].map(({ label, key, ph }) => (
-              <div key={key} className="flex flex-col gap-1">
-                <label className="text-xs text-gray-500">{label} *</label>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+          <div className="flex w-full max-w-md flex-col gap-4 rounded-2xl border border-[var(--brand-purple)]/25 bg-[var(--background)] p-6 shadow-[0_24px_60px_rgba(68,45,112,0.25)]">
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">
+              {modal === "create" ? "New Vending Slot" : "Edit Slot"}
+            </h2>
+
+            {([
+              { label: "Title",       key: "title",       ph: "Food & Beverages" },
+              { label: "Description", key: "description", ph: "Snacks, drinks, grilled items…" },
+              { label: "Price (KES)", key: "price",       ph: "5000" },
+              { label: "Total Slots", key: "totalSlots",  ph: "3" },
+            ] as const).map(({ label, key, ph }) => (
+              <div key={key} className="flex flex-col gap-1.5">
+                <label className="text-xs text-[var(--muted)]">{label} *</label>
                 <input
                   type={key === "price" || key === "totalSlots" ? "number" : "text"}
                   placeholder={ph}
                   value={(form as any)[key]}
-                  onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                  onChange={e => setForm(prev => ({ ...prev, [key]: e.target.value }))}
                   className={INPUT}
                 />
               </div>
             ))}
 
             {modalError && (
-              <p className="text-red-400 text-xs flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5" /> {modalError}
+              <p className="flex items-center gap-1.5 text-xs text-red-400">
+                <AlertTriangle className="h-3.5 w-3.5" /> {modalError}
               </p>
             )}
 
             <div className="flex gap-3 pt-1">
-              <button onClick={() => setModal("none")}
-                className="flex-1 py-3 rounded-xl border border-gray-700 text-gray-400 hover:text-gray-200 text-sm font-medium transition">
+              <button
+                onClick={() => setModal("none")}
+                className="flex-1 rounded-xl border border-[var(--brand-purple)]/25 py-3 text-sm font-medium text-[var(--muted)] transition hover:border-[var(--brand-purple)]/50 hover:text-[var(--foreground)]"
+              >
                 Cancel
               </button>
-              <button onClick={saveSlot} disabled={modalLoading}
-                className="flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-semibold transition flex items-center justify-center gap-2">
-                {modalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (modal === "create" ? "Create Slot" : "Save Changes")}
+              <button
+                onClick={saveSlot}
+                disabled={modalLoading}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-purple-600 py-3 text-sm font-bold text-white transition hover:bg-purple-700 disabled:opacity-50"
+              >
+                {modalLoading
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : modal === "create" ? "Create Slot" : "Save Changes"}
               </button>
             </div>
           </div>

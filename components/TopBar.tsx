@@ -98,10 +98,6 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                 height={50}
                 className="w-7 lg:hidden"
               />
-
-              <span className="hidden text-sm font-bold tracking-[0.16em] text-[var(--foreground)] xl:block">
-                NOIZY
-              </span>
             </Link>
           </div>
 
@@ -161,7 +157,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                 </div>
 
                 {/* Desktop nav */}
-                <div className="hidden items-center gap-1 rounded-md border-[0.5px] border-[var(--brand-purple)]/35 bg-[var(--surface)] p-1 shadow-[0_8px_24px_rgba(68,45,112,0.1)] lg:flex">
+                <div className="hidden items-center gap-1 p-1 bg-transparent lg:flex">
                   <Link href="/events/create">
                     <button className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]">
                       <CalendarPlus className="h-4 w-4" />
@@ -205,9 +201,9 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
 
                   <button
                     onClick={handleSignOut}
-                    className="rounded-xl border border-[var(--brand-purple)]/40 px-3 py-2 text-sm font-semibold text-[var(--brand-purple)] transition hover:bg-[var(--brand-purple)] hover:text-white"
+                    className="rounded-xl px-3 py-2 text-sm font-semibold transition bg-red-600/50 hover:bg-red-700/50 hover:text-white"
                   >
-                    Logout
+                    Sign Out
                   </button>
                 </div>
 
@@ -262,7 +258,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
 
                 <button
                   onClick={() => setShowSignInModal(true)}
-                  className="hidden rounded-xl border border-[var(--brand-purple)]/40 px-3 py-2 text-sm font-semibold text-[var(--brand-purple)] transition hover:bg-[var(--brand-purple)] hover:text-white sm:block"
+                  className="hidden rounded-xl bg-[var(--brand-purple)] px-3 py-2 text-sm font-semibold transition hover:bg-[var(--brand-purple)]/50 hover:text-white sm:block"
                 >
                   Sign In
                 </button>
@@ -411,7 +407,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                         closeMobileMenu();
                         setShowSignInModal(true);
                       }}
-                      className="w-full rounded-lg border px-4 py-2.5 text-left text-sm font-semibold transition hover:bg-[var(--brand-purple)]/50 bg-[var(--brand-purpler)] hover:text-white"
+                      className="w-full rounded-lg px-4 py-2.5 text-left text-sm font-semibold transition bg-[var(--brand-purple)] hover:bg-[var(--brand-purple)]/50 hover:text-white"
                     >
                       Sign In
                     </button>

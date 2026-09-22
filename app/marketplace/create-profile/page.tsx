@@ -132,7 +132,7 @@ function ImageUploader({
           className={`relative flex flex-col items-center justify-center gap-2 border border-dashed border-gray-400/30 rounded-xl cursor-pointer hover:border-purple-600 hover:bg-purple-600/5 transition-all ${isCover ? "h-36" : "h-24"} ${uploading ? "pointer-events-none opacity-60" : ""}`}
         >
           {uploading ? (
-            <><Loader2 className="w-6 h-6 text-purple-600 animate-spin" /><span className="text-[var(--muted)] text-xs">Uploading…</span></>
+            <><Loader2 className="w-6 h-6 text-[var(--brand-purple)] animate-spin" /><span className="text-[var(--muted)] text-xs">Uploading…</span></>
           ) : (
             <><Upload className="w-6 h-6 text-[var(--muted)]" /><span className="text-[var(--muted)] text-xs text-center px-4">Click or drag & drop to upload<br /><span className="opacity-60">JPG, PNG, WEBP · max 10 MB</span></span></>
           )}
@@ -222,7 +222,7 @@ export default function CreateProfilePage() {
           {STEPS.map((s, i) => (
             <React.Fragment key={s}>
               <div className={`flex items-center gap-2 text-sm font-semibold transition-colors ${
-                i === step ? "text-purple-600" : i < step ? "text-green-400" : "text-[var(--muted)]"
+                i === step ? "text-[var(--brand-purple)]" : i < step ? "text-green-400" : "text-[var(--muted)]"
               }`}>
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border transition-all ${
                   i === step ? "border-purple-600 bg-purple-600/20 text-purple-400"

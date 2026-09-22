@@ -311,7 +311,7 @@ function BookingsPageInner() {
 
   if (authStatus === "loading") return (
     <div className="min-h-screen flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
+      <Loader2 className="w-8 h-8 text-[var(--brand-purple)] animate-spin" />
     </div>
   );
 
@@ -366,7 +366,7 @@ function BookingsPageInner() {
         {/* List */}
         {loading ? (
           <div className="flex justify-center py-16">
-            <Loader2 className="w-6 h-6 text-purple-600 animate-spin" />
+            <Loader2 className="w-6 h-6 text-[var(--brand-purple)] animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 bg-gray-900 border border-gray-400/20 rounded-2xl">
@@ -394,7 +394,7 @@ export default function BookingsPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
+        <Loader2 className="w-8 h-8 text-[var(--brand-purple)] animate-spin" />
       </div>
     }>
       <BookingsPageInner />

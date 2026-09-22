@@ -135,7 +135,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
           </h2>
           <button
             onClick={onClose}
-            className="text-purple-800 font-bold text-2xl hover:text-purple-600 hover:cursor-pointer transition hover:rotate-90 duration-300"
+            className="text-purple-800 font-bold text-2xl hover:text-[var(--brand-purple)] hover:cursor-pointer transition hover:rotate-90 duration-300"
             aria-label="Close modal"
           >
             ×
@@ -215,7 +215,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
                     href="/terms"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-semibold text-purple-800 hover:text-purple-600 underline underline-offset-2 transition"
+                    className="font-semibold text-purple-800 hover:text-[var(--brand-purple)] underline underline-offset-2 transition"
                     onClick={(e) => e.stopPropagation()}
                   >
                     Terms & Conditions
@@ -225,7 +225,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
                     href="/terms#privacy"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-semibold text-purple-800 hover:text-purple-600 underline underline-offset-2 transition"
+                    className="font-semibold text-purple-800 hover:text-[var(--brand-purple)] underline underline-offset-2 transition"
                     onClick={(e) => e.stopPropagation()}
                   >
                     Privacy Policy
@@ -287,7 +287,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
           <p className="text-center text-xs text-gray-500 -mt-3 mb-4">
             By signing up with Google you also agree to our{" "}
             <a href="/terms" target="_blank" rel="noopener noreferrer"
-              className="text-purple-800 underline underline-offset-2 hover:text-purple-600 transition">
+              className="text-purple-800 underline underline-offset-2 hover:text-[var(--brand-purple)] transition">
               Terms & Conditions
             </a>
             .
@@ -302,7 +302,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
               <button
                 type="button"
                 disabled={isLoading}
-                className="font-bold text-purple-800 hover:underline hover:text-purple-600 transition"
+                className="font-bold text-purple-800 hover:underline hover:text-[var(--brand-purple)] transition"
                 onClick={() => {
                   setIsSignUp(false);
                   resetForm();
@@ -317,7 +317,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
               <button
                 type="button"
                 disabled={isLoading}
-                className="font-bold text-purple-800 hover:underline hover:text-purple-600 transition"
+                className="font-bold text-purple-800 hover:underline hover:text-[var(--brand-purple)] transition"
                 onClick={() => {
                   setIsSignUp(true);
                   resetForm();

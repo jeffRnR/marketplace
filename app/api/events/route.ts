@@ -54,49 +54,49 @@ export async function POST(req: Request) {
     }
 
     // 5. Build fields
-    const eventDate      = new Date(`${startDate}T${startTime}`);
-    const timeLabel      = `${startTime}${endDate && endTime ? ` – ${endTime} (${endDate})` : ""}`;
-    const mapUrl         = hasCoordinates 
+    const eventDate       = new Date(`${startDate}T${startTime}`);
+    const timeLabel       = `${startTime}${endDate && endTime ? ` – ${endTime} (${endDate})` : ""}`;
+    const mapUrl          = hasCoordinates
       ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`
       : null;
     const fullDescription = requireApproval
       ? `${description}\n\n[Attendance requires host approval]`
       : description;
 
-    // 6. Create event + tickets + category join rows in one transaction
-    const event = await prisma.$transaction(async (tx) => {
-      return tx.event.create({
-        data: {
-          image,
-          title,
-          host,
-          date:        eventDate,
-          time:        timeLabel,
-          location:    `${location}${country ? `, ${country}` : ""}`,
-          description: fullDescription,
-          mapUrl,
-          createdById: user.id,
-          tickets: {
-            create: isRsvp
-              ? [{ type: "RSVP", price: "Free", link: `capacity:${capacity ?? 0}` }]
-              : (tickets ?? []).map((t: { name: string; price: string; capacity: number }) => ({
-                  type:  t.name || "General",
-                  price: String(t.price),
-                  link:  `capacity:${t.capacity ?? 0}`,
-                })),
-          },
-          // Create one EventCategory row per selected category
-          categories: {
-            create: (categoryIds as string[]).map((id) => ({
-              category: { connect: { id } },
-            })),
-          },
+    // 6. Create event + tickets + category join rows in a single atomic call.
+    //    Prisma wraps nested `create` in its own implicit transaction, so no
+    //    $transaction wrapper is needed — and removing it eliminates the 5-second
+    //    interactive transaction timeout that was causing the error.
+    const event = await prisma.event.create({
+      data: {
+        image,
+        title,
+        host,
+        date:        eventDate,
+        time:        timeLabel,
+        location:    `${location}${country ? `, ${country}` : ""}`,
+        description: fullDescription,
+        mapUrl,
+        createdById: user.id,
+        tickets: {
+          create: isRsvp
+            ? [{ type: "RSVP", price: "Free", link: `capacity:${capacity ?? 0}` }]
+            : (tickets ?? []).map((t: { name: string; price: string; capacity: number }) => ({
+                type:  t.name || "General",
+                price: String(t.price),
+                link:  `capacity:${t.capacity ?? 0}`,
+              })),
         },
-        include: {
-          tickets:    true,
-          categories: { include: { category: true } },
+        categories: {
+          create: (categoryIds as string[]).map((id) => ({
+            category: { connect: { id } },
+          })),
         },
-      });
+      },
+      include: {
+        tickets:    true,
+        categories: { include: { category: true } },
+      },
     });
 
     return NextResponse.json({ event }, { status: 201 });
@@ -117,7 +117,6 @@ export async function GET(req: Request) {
 
     const events = await prisma.event.findMany({
       where: {
-        // Filter via join table instead of direct field
         ...(categoryId ? {
           categories: { some: { categoryId } },
         } : {}),

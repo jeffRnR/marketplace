@@ -119,7 +119,7 @@ function ProfileCard({ profile, isMyProfile }: { profile: Profile; isMyProfile: 
           <div className="w-12 h-12 rounded-xl border border-gray-400/20 bg-gray-800 overflow-hidden shadow-lg flex items-center justify-center">
             {profile.logoImage
               ? <img src={profile.logoImage} alt="" className="w-full h-full object-cover" />
-              : <Icon className="w-6 h-6 text-purple-600" />
+              : <Icon className="w-6 h-6 text-[var(--brand-purple)]" />
             }
           </div>
         </div>
@@ -151,12 +151,12 @@ function ProfileCard({ profile, isMyProfile }: { profile: Profile; isMyProfile: 
               </div>
             </div>
           )}
-          <div className="flex items-center justify-between border-t border-[var(--brand-purple)]/25 pt-3">
+          <div className="flex items-center justify-between pt-3">
             <span className="text-[var(--muted)] text-xs">
               {profile._count?.listings ?? profile.listings.length} listing
               {(profile._count?.listings ?? profile.listings.length) !== 1 ? "s" : ""}
             </span>
-            <span className="text-purple-600 text-xs font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
+            <span className="text-[var(--brand-purple)] text-xs font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
               View profile <ChevronRight className="w-3 h-3" />
             </span>
           </div>
@@ -212,7 +212,7 @@ export default function MarketplacePage() {
 
       {/* Hero */}
       <div className="border-b border-[var(--brand-purple)]/25">
-        <div className="max-w-6xl mx-auto px-4 py-14">
+        <div className="max-w-6xl mx-auto px-4 py-10">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div>
               <h1 className="text-4xl lg:text-5xl font-black text-[var(--foreground)] leading-tight mb-3">

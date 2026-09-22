@@ -347,7 +347,7 @@ export default function NotificationBar() {
                   <button
                     onClick={markAllRead}
                     disabled={marking}
-                    className="flex items-center gap-1 text-xs text-purple-600 hover:opacity-80 transition font-semibold disabled:opacity-40"
+                    className="flex items-center gap-1 text-xs text-[var(--brand-purple)] hover:opacity-80 transition font-semibold disabled:opacity-40"
                   >
                     <Check className="w-3 h-3" /> Mark all read
                   </button>
@@ -356,7 +356,7 @@ export default function NotificationBar() {
 
               <div className="max-h-[380px] overflow-y-auto">
                 {notifs.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-14 gap-3 text-[var(--muted)]">
+                  <div className="flex flex-col items-center justify-center py-10 gap-3 text-[var(--muted)]">
                     <Bell className="w-8 h-8 opacity-30" />
                     <p className="text-sm">No notifications yet</p>
                   </div>
@@ -419,7 +419,7 @@ export default function NotificationBar() {
 
               <div className="max-h-[380px] overflow-y-auto">
                 {totalConvs === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-14 gap-3 text-[var(--muted)]">
+                  <div className="flex flex-col items-center justify-center py-10 gap-3 text-[var(--muted)]">
                     <MessageCircle className="w-8 h-8 opacity-30" />
                     <p className="text-sm">No conversations yet</p>
                     <p className="text-xs opacity-60 text-center px-6">
@@ -446,7 +446,7 @@ export default function NotificationBar() {
               <div className="border-t border-[var(--brand-purple)]/25 px-4 py-2.5">
                 <button
                   onClick={() => { setOpen(false); router.push("/messages"); }}
-                  className="w-full flex items-center justify-center gap-2 text-xs text-purple-600 hover:opacity-80 font-semibold transition py-1"
+                  className="w-full flex items-center justify-center gap-2 text-xs text-[var(--brand-purple)] hover:opacity-80 font-semibold transition py-1"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                   Open full messages
