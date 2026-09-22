@@ -36,7 +36,7 @@ export default async function EventDetailPage({ params }: PageProps) {
   });
 
   return (
-    <div className="p-4 lg:w-[70%] min-h-screen mt-4 w-full mx-auto">
+    <div className="p-4 lg:w-[70%] min-h-screen w-full mx-auto ">
       <EventCard
         eventId={String(event.id)}
         createdById={event.createdById}
