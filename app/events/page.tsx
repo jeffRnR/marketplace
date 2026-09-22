@@ -114,7 +114,7 @@ export default function EventsPage() {
           <div className="grid gap-8 lg:grid-cols-[1fr_0.8fr] lg:items-center lg:p-12">
             <div>
               <p
-                className={`${bungeeShade.className} mb-4 inline-block text-[var(--brand-green)] text-xl uppercase tracking-[0.08em] transition-all duration-500 hover:scale-110 hover:-rotate-2 hover:tracking-[0.14em] drop-shadow-[0_0_14px_currentColor]`}
+                className={`${bungeeShade.className} mb-4 inline-block text-[var(--brand-green)] text-xl uppercase tracking-[0.08em] transition-all duration-500 hover:scale-110 hover:-rotate-2 hover:tracking-[0.14em] `}
               >
                 Noizy<span className="text-purple-500">Hub</span>
               </p>
