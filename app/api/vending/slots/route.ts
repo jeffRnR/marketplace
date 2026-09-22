@@ -26,10 +26,10 @@ export async function GET(req: Request) {
     const eventId = eventIdParam;
 
     const session = await getServerSession(authOptions);
-    const userId  = session?.user?.email ? await getSessionUserId(session.user.email) : null;
+    const userId = session?.user?.email ? await getSessionUserId(session.user.email) : null;
 
     const event = await prisma.event.findUnique({
-      where:  { id: eventId },
+      where: { id: eventId },
       select: { createdById: true, title: true, date: true, location: true },
     });
     if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
@@ -39,23 +39,23 @@ export async function GET(req: Request) {
     if (isOwner) {
       // Owner sees everything: totalSlots, applications, bookedCount
       const slots = await prisma.vendingSlot.findMany({
-        where:   { eventId },
+        where: { eventId },
         orderBy: { createdAt: "asc" },
         include: {
           applications: {
             orderBy: [{ hasPriority: "desc" }, { createdAt: "asc" }],
             select: {
-              id:              true,
-              businessName:    true,
-              contactName:     true,
-              contactEmail:    true,
-              contactPhone:    true,
-              description:     true,
-              status:          true,
-              hasPriority:     true,
-              ownerNote:       true,
+              id: true,
+              businessName: true,
+              contactName: true,
+              contactEmail: true,
+              contactPhone: true,
+              description: true,
+              status: true,
+              hasPriority: true,
+              ownerNote: true,
               marketProfileId: true,
-              createdAt:       true,
+              createdAt: true,
             },
           },
         },
@@ -71,27 +71,27 @@ export async function GET(req: Request) {
 
     // Public: availability only — no totalSlots exposed
     const slots = await prisma.vendingSlot.findMany({
-      where:   { eventId, status: "open" },
+      where: { eventId, status: "open" },
       orderBy: { createdAt: "asc" },
       select: {
-        id:          true,
-        title:       true,
+        id: true,
+        title: true,
         description: true,
-        price:       true,
-        currency:    true,
-        status:      true,
-        _count:      { select: { applications: { where: { status: "confirmed" } } } },
+        price: true,
+        currency: true,
+        status: true,
+        _count: { select: { applications: { where: { status: "confirmed" } } } },
       },
     });
 
     const publicSlots = slots.map((s) => ({
-      id:          s.id,
-      title:       s.title,
+      id: s.id,
+      title: s.title,
       description: s.description,
-      price:       s.price,
-      currency:    s.currency,
-      status:      s.status,
-      available:   true, // open slots shown as available; closed ones are filtered out above
+      price: s.price,
+      currency: s.currency,
+      status: s.status,
+      available: true, // open slots shown as available; closed ones are filtered out above
     }));
 
     return NextResponse.json(publicSlots);
@@ -110,10 +110,12 @@ export async function POST(req: Request) {
     if (!userId) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const body = await req.json();
-    const { eventId: eventIdValue, title, description, price, currency, totalSlots, applicationId } = body;
-    const eventId = String(eventIdValue ?? "");
+    console.log("POST /api/vending/slots body:", body);
 
-    if (!Number.isInteger(eventId) || !title?.trim() || !price || !totalSlots) {
+    const { eventId: eventIdValue, title, description, price, currency, totalSlots } = body;
+    const eventId = String(eventIdValue ?? "").trim();
+
+    if (!eventId || !title?.trim() || !price || !totalSlots) {
       return NextResponse.json(
         { error: "Required: eventId, title, price, totalSlots" },
         { status: 400 }
@@ -122,38 +124,31 @@ export async function POST(req: Request) {
 
     const event = await prisma.event.findUnique({
       where:  { id: eventId },
-      select: { createdById: true, title: true, date: true, location: true },
+      select: { id: true, createdById: true, title: true, date: true, location: true },
     });
-    if (!event)                    return NextResponse.json({ error: "Event not found" }, { status: 404 });
+
+    if (!event) return NextResponse.json(
+      { error: `Event not found for id: "${eventId}"` },
+      { status: 404 }
+    );
+
     if (event.createdById !== userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const slot = await prisma.vendingSlot.create({
       data: {
-        eventId:    eventId,
-        title:      title.trim(),
-        description: description?.trim() || null,
-        price:      Number(price),
-        currency:   currency ?? "KES",
-        totalSlots: Number(totalSlots),
-        status:     "open",
+        event:       { connect: { id: event.id } },
+        title:       title.trim(),
+        description: description?.trim() || "",
+        price:       Number(price),
+        currency:    currency ?? "KES",
+        totalSlots:  Number(totalSlots),
+        status:      "open",
       },
     });
 
-    if (applicationId) {
-      const application = await prisma.slotApplication.findUnique({
-        where: { id: applicationId },
-        select: { contactPhone: true, contactName: true },
-      });
-      if (application) {
-        void sendSMS(
-          application.contactPhone,
-          `Hi ${application.contactName}, slot ${slot.title} at ${event.title} is assigned. ${event.location}, ${new Date(event.date).toLocaleDateString("en-KE")}.`,
-        );
-      }
-    }
-
     return NextResponse.json({ slot }, { status: 201 });
   } catch (err: any) {
+    console.error("POST /api/vending/slots error:", err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
@@ -172,20 +167,20 @@ export async function PATCH(req: Request) {
     if (!slotId) return NextResponse.json({ error: "slotId required" }, { status: 400 });
 
     const slot = await prisma.vendingSlot.findUnique({
-      where:   { id: slotId },
+      where: { id: slotId },
       include: { event: { select: { createdById: true } } },
     });
-    if (!slot)                           return NextResponse.json({ error: "Slot not found" }, { status: 404 });
+    if (!slot) return NextResponse.json({ error: "Slot not found" }, { status: 404 });
     if (slot.event.createdById !== userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const updated = await prisma.vendingSlot.update({
       where: { id: slotId },
       data: {
-        ...(title       !== undefined && { title: title.trim() }),
+        ...(title !== undefined && { title: title.trim() }),
         ...(description !== undefined && { description: description?.trim() || null }),
-        ...(price       !== undefined && { price: Number(price) }),
-        ...(totalSlots  !== undefined && { totalSlots: Number(totalSlots) }),
-        ...(status      !== undefined && { status }),
+        ...(price !== undefined && { price: Number(price) }),
+        ...(totalSlots !== undefined && { totalSlots: Number(totalSlots) }),
+        ...(status !== undefined && { status }),
       },
     });
 
@@ -209,15 +204,15 @@ export async function DELETE(req: Request) {
     if (!slotId) return NextResponse.json({ error: "slotId required" }, { status: 400 });
 
     const slot = await prisma.vendingSlot.findUnique({
-      where:   { id: slotId },
+      where: { id: slotId },
       include: {
-        event:        { select: { createdById: true } },
+        event: { select: { createdById: true } },
         applications: { where: { status: "confirmed" }, select: { id: true } },
       },
     });
-    if (!slot)                           return NextResponse.json({ error: "Slot not found" }, { status: 404 });
+    if (!slot) return NextResponse.json({ error: "Slot not found" }, { status: 404 });
     if (slot.event.createdById !== userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    if (slot.applications.length > 0)    return NextResponse.json(
+    if (slot.applications.length > 0) return NextResponse.json(
       { error: "Cannot delete a slot with confirmed bookings." },
       { status: 409 }
     );

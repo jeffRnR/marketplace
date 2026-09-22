@@ -42,11 +42,10 @@ function CopyLinkButton({ url, label = "Copy link" }: { url: string; label?: str
   return (
     <button
       onClick={handleCopy}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition shrink-0 ${
-        copied
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition shrink-0 ${copied
           ? "bg-green-900/30 border-green-700/40 text-green-400"
           : "bg-gray-800 border-gray-700 text-gray-400 hover:border-purple-500 hover:text-purple-300"
-      }`}
+        }`}
     >
       {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
       {copied ? "Copied!" : label}
@@ -57,29 +56,29 @@ function CopyLinkButton({ url, label = "Copy link" }: { url: string; label?: str
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface VendingSlot {
-  id:           string;
-  title:        string;
-  description:  string | null;
-  price:        number;
-  currency:     string;
-  totalSlots:   number;
-  status:       "open" | "closed";
-  bookedCount:  number;
+  id: string;
+  title: string;
+  description: string | null;
+  price: number;
+  currency: string;
+  totalSlots: number;
+  status: "open" | "closed";
+  bookedCount: number;
   applications: SlotApplication[];
 }
 
 interface SlotApplication {
-  id:              string;
-  businessName:    string;
-  contactName:     string;
-  contactEmail:    string;
-  contactPhone:    string;
-  description:     string;
-  status:          "pending" | "approved" | "paid" | "confirmed" | "rejected" | "expired";
-  hasPriority:     boolean;
-  ownerNote:       string | null;
+  id: string;
+  businessName: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  description: string;
+  status: "pending" | "approved" | "paid" | "confirmed" | "rejected" | "expired";
+  hasPriority: boolean;
+  ownerNote: string | null;
   marketProfileId: string | null;
-  createdAt:       string;
+  createdAt: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -88,21 +87,21 @@ const INPUT = "w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 te
 const LABEL = "block text-gray-400 text-xs font-semibold mb-1.5";
 
 const APP_STATUS_STYLE: Record<string, string> = {
-  pending:   "bg-amber-900/30 border-amber-700/40 text-amber-400",
-  approved:  "bg-blue-900/30 border-blue-700/40 text-blue-400",
-  paid:      "bg-indigo-900/30 border-indigo-700/40 text-indigo-400",
+  pending: "bg-amber-900/30 border-amber-700/40 text-amber-400",
+  approved: "bg-blue-900/30 border-blue-700/40 text-blue-400",
+  paid: "bg-indigo-900/30 border-indigo-700/40 text-indigo-400",
   confirmed: "bg-green-900/30 border-green-700/40 text-green-400",
-  rejected:  "bg-red-900/30 border-red-700/40 text-red-400",
-  expired:   "bg-gray-800 border-gray-700 text-gray-500",
+  rejected: "bg-red-900/30 border-red-700/40 text-red-400",
+  expired: "bg-gray-800 border-gray-700 text-gray-500",
 };
 
 const APP_STATUS_ICON: Record<string, React.ReactNode> = {
-  pending:   <Clock className="w-3 h-3" />,
-  approved:  <CheckCircle className="w-3 h-3" />,
-  paid:      <Wallet className="w-3 h-3" />,
+  pending: <Clock className="w-3 h-3" />,
+  approved: <CheckCircle className="w-3 h-3" />,
+  paid: <Wallet className="w-3 h-3" />,
   confirmed: <BadgeCheck className="w-3 h-3" />,
-  rejected:  <XCircle className="w-3 h-3" />,
-  expired:   <XCircle className="w-3 h-3" />,
+  rejected: <XCircle className="w-3 h-3" />,
+  expired: <XCircle className="w-3 h-3" />,
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -117,42 +116,58 @@ function StatusBadge({ status }: { status: string }) {
 // ─── Slot Form ────────────────────────────────────────────────────────────────
 
 function SlotForm({ eventId, initial, onSaved, onCancel }: {
-  eventId:  string;
+  eventId: string;
   initial?: Partial<VendingSlot>;
-  onSaved:  () => void;
+  onSaved: () => void;
   onCancel: () => void;
 }) {
-  const [title,       setTitle]       = useState(initial?.title       ?? "");
+  const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [price,       setPrice]       = useState(String(initial?.price ?? ""));
-  const [totalSlots,  setTotalSlots]  = useState(String(initial?.totalSlots ?? "1"));
-  const [saving,      setSaving]      = useState(false);
-  const [error,       setError]       = useState("");
+  const [price, setPrice] = useState(String(initial?.price ?? ""));
+  const [totalSlots, setTotalSlots] = useState(String(initial?.totalSlots ?? "1"));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   async function submit() {
     setError("");
-    if (!title.trim())                    { setError("Title is required.");                    return; }
-    if (!price || Number(price) <= 0)     { setError("Price must be greater than 0.");         return; }
-    if (!totalSlots || Number(totalSlots) < 1) { setError("Must have at least 1 slot.");      return; }
+    if (!title.trim()) { setError("Title is required."); return; }
+    if (!price || Number(price) <= 0) { setError("Price must be greater than 0."); return; }
+    if (!totalSlots || Number(totalSlots) < 1) { setError("Must have at least 1 slot."); return; }
+
+    const isEdit = !!initial?.id;
+
+    // Guard: eventId is required on create
+    if (!isEdit && !eventId) {
+      setError("Event ID is missing — cannot create slot.");
+      return;
+    }
 
     setSaving(true);
     try {
-      const isEdit = !!initial?.id;
       const res = await fetch("/api/vending/slots", {
-        method:  isEdit ? "PATCH" : "POST",
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...(isEdit ? { slotId: initial!.id } : { eventId }),
-          title:       title.trim(),
+          title: title.trim(),
           description: description.trim() || null,
-          price:       Number(price),
-          currency:    "KES",
-          totalSlots:  Number(totalSlots),
+          price: Number(price),
+          currency: "KES",
+          totalSlots: Number(totalSlots),
         }),
       });
+
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Failed to save slot."); return; }
+
+      if (!res.ok) {
+        // Surface the real API error, not a generic fallback
+        setError(data.error ?? data.message ?? JSON.stringify(data));
+        return;
+      }
+
       onSaved();
+    } catch (err: any) {
+      setError(err.message ?? "Network error");
     } finally {
       setSaving(false);
     }
@@ -210,11 +225,11 @@ function SlotForm({ eventId, initial, onSaved, onCancel }: {
 // ─── Application Card ─────────────────────────────────────────────────────────
 
 function AppCard({ app, onDecision }: {
-  app:        SlotApplication;
+  app: SlotApplication;
   onDecision: (id: string, action: "approve" | "reject", note: string) => Promise<void>;
 }) {
-  const [open,   setOpen]   = useState(false);
-  const [note,   setNote]   = useState(app.ownerNote ?? "");
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState(app.ownerNote ?? "");
   const [saving, setSaving] = useState<"approve" | "reject" | null>(null);
 
   const decide = async (action: "approve" | "reject") => {
@@ -333,30 +348,30 @@ function AppCard({ app, onDecision }: {
 // ─── Slot Card ────────────────────────────────────────────────────────────────
 
 function SlotCard({ slot, eventId, onRefresh }: {
-  slot:      VendingSlot;
-  eventId:   string;
+  slot: VendingSlot;
+  eventId: string;
   onRefresh: () => void;
 }) {
   const vendingUrl = typeof window !== "undefined"
     ? `${window.location.origin}/events/${eventId}/vending`
     : `/events/${eventId}/vending`;
-  const [open,       setOpen]       = useState(false);
-  const [editing,    setEditing]    = useState(false);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [deleting,   setDeleting]   = useState(false);
-  const [toggling,   setToggling]   = useState(false);
-  const [appFilter,  setAppFilter]  = useState<"all"|"pending"|"approved"|"confirmed">("all");
+  const [deleting, setDeleting] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const [appFilter, setAppFilter] = useState<"all" | "pending" | "approved" | "confirmed">("all");
 
-  const pending   = slot.applications.filter(a => a.status === "pending").length;
+  const pending = slot.applications.filter(a => a.status === "pending").length;
   const confirmed = slot.applications.filter(a => a.status === "confirmed").length;
   const spotsLeft = slot.totalSlots - slot.bookedCount;
 
   const handleToggle = async () => {
     setToggling(true);
     await fetch("/api/vending/slots", {
-      method:  "PATCH",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ slotId: slot.id, status: slot.status === "open" ? "closed" : "open" }),
+      body: JSON.stringify({ slotId: slot.id, status: slot.status === "open" ? "closed" : "open" }),
     });
     setToggling(false);
     onRefresh();
@@ -366,9 +381,9 @@ function SlotCard({ slot, eventId, onRefresh }: {
     if (!confirming) { setConfirming(true); return; }
     setDeleting(true);
     await fetch("/api/vending/slots", {
-      method:  "DELETE",
+      method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ slotId: slot.id }),
+      body: JSON.stringify({ slotId: slot.id }),
     });
     setDeleting(false);
     setConfirming(false);
@@ -377,9 +392,9 @@ function SlotCard({ slot, eventId, onRefresh }: {
 
   const handleDecision = async (appId: string, action: "approve" | "reject", note: string) => {
     await fetch("/api/vending/applications", {
-      method:  "PATCH",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ applicationId: appId, action, ownerNote: note }),
+      body: JSON.stringify({ applicationId: appId, action, ownerNote: note }),
     });
     onRefresh();
   };
@@ -405,11 +420,10 @@ function SlotCard({ slot, eventId, onRefresh }: {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h4 className="text-gray-200 font-bold text-sm">{slot.title}</h4>
-            <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${
-              slot.status === "open"
+            <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${slot.status === "open"
                 ? "bg-green-900/30 border-green-700/40 text-green-400"
                 : "bg-gray-800 border-gray-700 text-gray-500"
-            }`}>
+              }`}>
               {slot.status === "open" ? "Open" : "Closed"}
             </span>
             {pending > 0 && (
@@ -445,7 +459,7 @@ function SlotCard({ slot, eventId, onRefresh }: {
             className="text-gray-500 hover:text-gray-300 transition">
             {toggling ? <Loader2 className="w-4 h-4 animate-spin" />
               : slot.status === "open" ? <ToggleRight className="w-5 h-5 text-green-400" />
-              : <ToggleLeft className="w-5 h-5" />}
+                : <ToggleLeft className="w-5 h-5" />}
           </button>
           <button onClick={() => setEditing(true)} className="text-gray-500 hover:text-gray-300 transition">
             <Pencil className="w-4 h-4" />
@@ -471,11 +485,10 @@ function SlotCard({ slot, eventId, onRefresh }: {
             </p>
             {slot.applications.length > 0 && (
               <div className="flex gap-1 flex-wrap">
-                {(["all","pending","approved","confirmed"] as const).map(f => (
+                {(["all", "pending", "approved", "confirmed"] as const).map(f => (
                   <button key={f} onClick={() => setAppFilter(f)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
-                      appFilter === f ? "bg-gray-700 text-gray-100" : "text-gray-600 hover:text-gray-400"
-                    }`}>
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${appFilter === f ? "bg-gray-700 text-gray-100" : "text-gray-600 hover:text-gray-400"
+                      }`}>
                     {f.charAt(0).toUpperCase() + f.slice(1)} ({f === "all" ? slot.applications.length : slot.applications.filter(a => a.status === f).length})
                   </button>
                 ))}
@@ -505,14 +518,14 @@ function SlotCard({ slot, eventId, onRefresh }: {
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
 export default function VendorsPanel({ eventId }: { eventId: string }) {
-  const [slots,    setSlots]    = useState<VendingSlot[]>([]);
-  const [loading,  setLoading]  = useState(true);
+  const [slots, setSlots] = useState<VendingSlot[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
   const fetchSlots = useCallback(async () => {
     setLoading(true);
     try {
-      const res  = await fetch(`/api/vending/slots?eventId=${eventId}`);
+      const res = await fetch(`/api/vending/slots?eventId=${eventId}`);
       const data = await res.json();
       setSlots(Array.isArray(data) ? data : []);
     } finally {
@@ -522,7 +535,7 @@ export default function VendorsPanel({ eventId }: { eventId: string }) {
 
   useEffect(() => { fetchSlots(); }, [fetchSlots]);
 
-  const totalEarned  = slots.reduce((s, sl) => s + sl.bookedCount * sl.price, 0);
+  const totalEarned = slots.reduce((s, sl) => s + sl.bookedCount * sl.price, 0);
   const totalPending = slots.reduce((s, sl) => s + sl.applications.filter(a => a.status === "pending").length, 0);
 
   if (loading) return (
