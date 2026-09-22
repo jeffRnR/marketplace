@@ -265,7 +265,7 @@ function EventCard({
               {liveTickets.length > 0 && (
                 <>
                   <button onClick={handleBuy}
-                    className="w-full bg-purple-600/50 text-gray-100 font-semibold px-3 py-2 rounded-lg hover:cursor-pointer hover:bg-purple-700 transition">
+                    className="w-full bg-[(var)] text-gray-100 font-semibold px-3 py-2 rounded-lg hover:cursor-pointer hover:bg-purple-700 transition">
                     Proceed to Checkout
                   </button>
                   {errorMessage && (

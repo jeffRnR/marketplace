@@ -258,7 +258,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
 
                 <button
                   onClick={() => setShowSignInModal(true)}
-                  className="hidden rounded-xl bg-[var(--brand-purple)] px-3 py-2 text-sm font-semibold transition hover:bg-[var(--brand-purple)]/50 hover:text-white sm:block"
+                  className="hidden rounded-xl bg-[var(--brand-purple)] px-3 py-2 text-sm font-semibold transition hover:bg-[var(--brand-purple)]/50 text-white hover:text-white sm:block"
                 >
                   Sign In
                 </button>
