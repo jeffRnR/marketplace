@@ -39,9 +39,9 @@ export async function GET() {
       const ticketRevenue = isRsvp
         ? 0
         : event.tickets.reduce((sum, t) => {
-            const price = parseFloat(t.price.replace(/[^0-9.]/g, "")) || 0;
-            return sum + price;
-          }, 0);
+          const price = parseFloat(t.price.replace(/[^0-9.]/g, "")) || 0;
+          return sum + price;
+        }, 0);
 
       const isPast = new Date(event.date) < new Date();
 
@@ -130,43 +130,68 @@ export async function GET() {
   }
 }
 
+// app/api/my-events/route.ts
+
 export async function DELETE(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email)
+
+    if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const { searchParams } = new URL(req.url);
-    const eventIdParam = searchParams.get("eventId");
-    if (!eventIdParam || !eventIdParam.trim())
-      return NextResponse.json({ error: "Event ID required" }, { status: 400 });
-    const eventId = eventIdParam;
-    if (!Number.isInteger(eventId))
-      return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
+    const eventId = searchParams.get("eventId");
+
+    if (!eventId?.trim()) {
+      return NextResponse.json(
+        { error: "Event ID required" },
+        { status: 400 }
+      );
+    }
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true },
     });
-    if (!user)
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
 
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       select: { createdById: true },
     });
-    if (!event)
-      return NextResponse.json({ error: "Event not found" }, { status: 404 });
-    if (event.createdById !== user.id)
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    await prisma.event.delete({ where: { id: eventId } });
+    if (!event) {
+      return NextResponse.json(
+        { error: "Event not found" },
+        { status: 404 }
+      );
+    }
+
+    if (event.createdById !== user.id) {
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
+    }
+
+    await prisma.event.delete({
+      where: { id: eventId },
+    });
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("Delete event error:", error);
+
     return NextResponse.json(
       { error: error?.message ?? "Internal server error" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

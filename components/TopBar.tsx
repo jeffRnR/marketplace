@@ -1,5 +1,6 @@
-"use client";
 // app/components/TopBar.tsx
+
+"use client";
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
@@ -8,13 +9,21 @@ import Image from "next/image";
 import logo from "@/images/logo.png";
 import logo5 from "@/images/logo5.png";
 import {
-  CalendarPlus, Telescope, Store, Ticket,
-  Menu, X, MessageCircle, ShoppingCart,
-  Sun, Moon, Monitor,
+  CalendarPlus,
+  Telescope,
+  Store,
+  Ticket,
+  Menu,
+  X,
+  MessageCircle,
+  ShoppingCart,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
-import SearchBar       from "./SearchBar";
+import SearchBar from "./SearchBar";
 import NotificationBar from "./NotificationBar";
-import SignInModal     from "./SignInModal";
+import SignInModal from "./SignInModal";
 import { useTheme } from "./ThemeProvider";
 
 interface TopBarProps {
@@ -22,16 +31,19 @@ interface TopBarProps {
 }
 
 export default function TopBar({ onViewEvents }: TopBarProps) {
-  const [scrolled,        setScrolled]       = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
-  const [mobileMenuOpen,  setMobileMenuOpen]  = useState(false);
-  const [unreadMessages,  setUnreadMessages]  = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
   const { data: session, status } = useSession();
   const { mode, resolvedTheme, cycleTheme } = useTheme();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 0);
+
     window.addEventListener("scroll", handleScroll);
+
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -40,6 +52,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
 
     try {
       const res = await fetch("/api/messages/unread-count");
+
       if (!res.ok) return;
 
       const data = await res.json();
@@ -72,17 +85,68 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
     session?.user?.email?.split("@")[0] ??
     "";
 
+  const themeButton = (
+    <button
+      onClick={cycleTheme}
+      aria-label={`Switch to ${
+        resolvedTheme === "dark" ? "day" : "night"
+      } mode`}
+      title={`Switch to ${
+        resolvedTheme === "dark" ? "day" : "night"
+      } mode`}
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--brand-green)] hover:text-[var(--brand-green)]"
+    >
+      {mode === "system" ? (
+        <Monitor className="h-4 w-4" />
+      ) : resolvedTheme === "dark" ? (
+        <Moon className="h-4 w-4" />
+      ) : (
+        <Sun className="h-4 w-4" />
+      )}
+    </button>
+  );
+
+  const mobileMenuButton = (
+    <button
+      onClick={() => setMobileMenuOpen((open) => !open)}
+      aria-label="Toggle menu"
+      aria-expanded={mobileMenuOpen}
+      className="flex h-9 w-9 shrink-0 items-center justify-center text-[var(--foreground)] transition-all duration-300 hover:text-purple-500 lg:hidden"
+    >
+      <div className="relative h-6 w-6">
+        <Menu
+          className={`absolute h-6 w-6 transition-all duration-300 ${
+            mobileMenuOpen
+              ? "rotate-180 opacity-0"
+              : "rotate-0 opacity-100"
+          }`}
+        />
+
+        <X
+          className={`absolute h-6 w-6 transition-all duration-300 ${
+            mobileMenuOpen
+              ? "rotate-0 opacity-100"
+              : "-rotate-180 opacity-0"
+          }`}
+        />
+      </div>
+    </button>
+  );
+
   return (
     <>
-      <div className="fixed top-0 left-0 right-0 z-50 border-b border-[var(--border)] bg-[var(--background)]/90 backdrop-blur-xl">
+      <div className="fixed left-0 right-0 top-0 z-50 border-b border-[var(--border)] bg-[var(--background)]/90 backdrop-blur-xl">
         <div
-          className={`mx-auto flex max-w-7xl items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3 transition-all duration-300 ${
+          className={`mx-auto flex max-w-7xl items-center gap-2 px-3 py-2.5 transition-all duration-300 sm:gap-3 sm:px-4 sm:py-3 ${
             scrolled ? "shadow-sm shadow-black/10" : ""
           }`}
         >
           {/* Logo */}
           <div className="flex items-center lg:w-auto">
-            <Link href="/" className="flex shrink-0 items-center gap-2 font-bold">
+            <Link
+              href="/"
+              className="flex shrink-0 items-center gap-2 font-bold"
+            >
               <Image
                 src={logo}
                 alt="logo"
@@ -114,34 +178,24 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
           </div>
 
           {/* Right side */}
-          <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
-            {/* Theme */}
-            <button
-              onClick={cycleTheme}
-              aria-label={`Switch to ${
-                resolvedTheme === "dark" ? "day" : "night"
-              } mode`}
-              title={`Switch to ${
-                resolvedTheme === "dark" ? "day" : "night"
-              } mode`}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--brand-green)] hover:text-[var(--brand-green)]"
-            >
-              {mode === "system" ? (
-                <Monitor className="h-4 w-4" />
-              ) : resolvedTheme === "dark" ? (
-                <Moon className="h-4 w-4" />
-              ) : (
-                <Sun className="h-4 w-4" />
-              )}
-            </button>
-
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
             {isLoading ? (
               <div className="hidden text-sm text-[var(--foreground)] sm:block">
                 Loading...
               </div>
             ) : isAuthenticated ? (
               <>
-                {/* Welcome greeting — desktop only */}
+                {/* Mobile greeting */}
+                {firstName && (
+                  <span className="max-w-[90px] truncate text-xs text-[var(--muted)] sm:hidden px-4">
+                    Hi,{" "}
+                    <span className="font-semibold text-[var(--brand-green)]">
+                      {firstName}
+                    </span>
+                  </span>
+                )}
+
+                {/* Desktop greeting */}
                 {firstName && (
                   <span className="hidden pr-2 text-sm text-[var(--muted)] lg:block">
                     Hi,{" "}
@@ -151,13 +205,13 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                   </span>
                 )}
 
-                {/* Notification bell */}
+                {/* Notification */}
                 <div className="hidden items-center sm:flex">
                   <NotificationBar />
                 </div>
 
-                {/* Desktop nav */}
-                <div className="hidden items-center gap-1 p-1 bg-transparent lg:flex">
+                {/* Desktop navigation */}
+                <div className="hidden items-center gap-1 bg-transparent p-1 lg:flex">
                   <Link href="/events/create">
                     <button className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]">
                       <CalendarPlus className="h-4 w-4" />
@@ -185,7 +239,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                       <span>Messages</span>
 
                       {unreadMessages > 0 && (
-                        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                        <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
                           {unreadMessages > 9 ? "9+" : unreadMessages}
                         </span>
                       )}
@@ -201,35 +255,24 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
 
                   <button
                     onClick={handleSignOut}
-                    className="rounded-xl px-3 py-2 text-sm font-semibold transition bg-red-600/50 hover:bg-red-700/50 text-white"
+                    className="rounded-xl bg-red-600/50 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-700/50"
                   >
                     Sign Out
                   </button>
                 </div>
 
+                {/* Mobile theme */}
+                <div className="lg:hidden">
+                  {themeButton}
+                </div>
+
                 {/* Mobile hamburger */}
-                <button
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  aria-label="Toggle menu"
-                  className="lg:hidden text-[var(--foreground)] transition-all duration-300 hover:text-purple-500"
-                >
-                  <div className="relative h-6 w-6">
-                    <Menu
-                      className={`absolute h-6 w-6 transition-all duration-300 ${
-                        mobileMenuOpen
-                          ? "rotate-180 opacity-0"
-                          : "rotate-0 opacity-100"
-                      }`}
-                    />
-                    <X
-                      className={`absolute h-6 w-6 transition-all duration-300 ${
-                        mobileMenuOpen
-                          ? "rotate-0 opacity-100"
-                          : "-rotate-180 opacity-0"
-                      }`}
-                    />
-                  </div>
-                </button>
+                {mobileMenuButton}
+
+                {/* Desktop theme */}
+                <div className="hidden lg:block">
+                  {themeButton}
+                </div>
               </>
             ) : (
               <>
@@ -241,7 +284,6 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                   </button>
                 </Link>
 
-                {/* Public links always available */}
                 <Link href="/events/create">
                   <button className="hidden items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:text-[var(--brand-green)] lg:flex">
                     <CalendarPlus className="h-4 w-4" />
@@ -258,34 +300,23 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
 
                 <button
                   onClick={() => setShowSignInModal(true)}
-                  className="hidden rounded-xl bg-[var(--brand-purple)] px-3 py-2 text-sm font-semibold transition hover:bg-[var(--brand-purple)]/50 text-white hover:text-white sm:block"
+                  className="hidden rounded-xl bg-[var(--brand-purple)] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-purple)]/50 sm:block"
                 >
                   Sign In
                 </button>
 
-                {/* Public mobile hamburger */}
-                <button
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  aria-label="Toggle menu"
-                  className="lg:hidden text-[var(--foreground)] transition-all duration-300 hover:text-purple-500"
-                >
-                  <div className="relative h-6 w-6">
-                    <Menu
-                      className={`absolute h-6 w-6 transition-all duration-300 ${
-                        mobileMenuOpen
-                          ? "rotate-180 opacity-0"
-                          : "rotate-0 opacity-100"
-                      }`}
-                    />
-                    <X
-                      className={`absolute h-6 w-6 transition-all duration-300 ${
-                        mobileMenuOpen
-                          ? "rotate-0 opacity-100"
-                          : "-rotate-180 opacity-0"
-                      }`}
-                    />
-                  </div>
-                </button>
+                {/* Mobile theme */}
+                <div className="lg:hidden">
+                  {themeButton}
+                </div>
+
+                {/* Mobile hamburger */}
+                {mobileMenuButton}
+
+                {/* Desktop theme */}
+                <div className="hidden lg:block">
+                  {themeButton}
+                </div>
               </>
             )}
           </div>
@@ -293,7 +324,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="fixed inset-0 z-40 flex min-h-screen items-start justify-center bg-black/50 pt-20 backdrop-blur-lg lg:hidden sm:pt-24">
+          <div className="fixed inset-0 z-40 flex min-h-screen items-start justify-center bg-black/50 pt-20 backdrop-blur-lg sm:pt-24 lg:hidden">
             <div className="relative mx-3 w-[calc(100%-1.5rem)] max-w-md rounded-xl border-[0.5px] border-[var(--brand-purple)]/35 bg-[var(--surface)] p-4 shadow-[0_20px_50px_rgba(68,45,112,0.2)] sm:mx-4 sm:p-5">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-lg font-bold text-[var(--foreground)]">
@@ -342,7 +373,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                   </Link>
                 ))}
 
-                {/* Authenticated-only items */}
+                {/* Authenticated only */}
                 {isAuthenticated && (
                   <>
                     <Link
@@ -397,7 +428,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                   </>
                 )}
 
-                {/* Sign in for guests */}
+                {/* Guest sign in */}
                 {!isAuthenticated && (
                   <>
                     <div className="my-2 border-t border-[var(--brand-purple)]/25" />
@@ -407,7 +438,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                         closeMobileMenu();
                         setShowSignInModal(true);
                       }}
-                      className="w-full rounded-lg px-4 py-2.5 text-left text-sm font-semibold transition bg-[var(--brand-purple)] hover:bg-[var(--brand-purple)]/50 hover:text-white"
+                      className="w-full rounded-lg bg-[var(--brand-purple)] px-4 py-2.5 text-left text-sm font-semibold transition hover:bg-[var(--brand-purple)]/50 hover:text-white"
                     >
                       Sign In
                     </button>

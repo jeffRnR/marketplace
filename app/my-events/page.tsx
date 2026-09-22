@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Ticket, AlertCircle, Loader2 } from "lucide-react";
+import { Plus, Ticket, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 import { ManagedEvent, Summary, Tab } from "./types";
 import { SummaryCards } from "./components/SummaryCards";
 import { EventRow } from "./components/EventRow";
@@ -18,6 +18,7 @@ export default function MyEventsPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("all");
 
   useEffect(() => {
@@ -28,13 +29,19 @@ export default function MyEventsPage() {
     try {
       setLoading(true);
       setError(null);
+
       const res = await fetch("/api/my-events");
+
       if (!res.ok) throw new Error("Failed to fetch events");
+
       const data = await res.json();
+
       setEvents(data.events ?? []);
       setSummary(data.summary ?? null);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(
+        err instanceof Error ? err.message : "Something went wrong"
+      );
     } finally {
       setLoading(false);
     }
@@ -45,10 +52,54 @@ export default function MyEventsPage() {
   }, [status, fetchEvents]);
 
   const handleDelete = async (eventId: string) => {
-    const res = await fetch(`/api/my-events?eventId=${eventId}`, { method: "DELETE" });
-    if (!res.ok) return;
-    setEvents((p) => p.filter((e) => e.id !== eventId));
-    setSummary((p) => p ? { ...p, totalEvents: p.totalEvents - 1 } : p);
+    const event = events.find((e) => e.id === eventId);
+
+    if (!event) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${event.title}"?\n\nThis action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setError(null);
+      setSuccess(null);
+
+      const res = await fetch(
+        `/api/my-events?eventId=${encodeURIComponent(eventId)}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to delete event");
+      }
+
+      setEvents((p) => p.filter((e) => e.id !== eventId));
+
+      setSummary((p) =>
+        p
+          ? {
+              ...p,
+              totalEvents: Math.max(0, p.totalEvents - 1),
+            }
+          : p
+      );
+
+      setSuccess(`"${event.title}" was deleted successfully.`);
+
+      setTimeout(() => {
+        setSuccess(null);
+      }, 4000);
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Failed to delete event"
+      );
+    }
   };
 
   const filtered = events.filter((e) => {
@@ -70,9 +121,22 @@ export default function MyEventsPage() {
 
       {/* Header */}
       <div className="w-full">
-        <h1 className="text-gray-300 font-bold text-[2.5rem]">My Events</h1>
-        <p className="text-gray-400 text-md">Manage every event you&apos;ve created — track attendance, revenue and more.</p>
+        <h1 className="text-gray-300 font-bold text-[2.5rem]">
+          My Events
+        </h1>
+
+        <p className="text-gray-400 text-md">
+          Manage every event you&apos;ve created — track attendance, revenue and more.
+        </p>
       </div>
+
+      {/* Success */}
+      {success && (
+        <div className="flex items-center gap-2.5 bg-green-900/20 border border-green-700/40 rounded-lg px-4 py-3 text-green-400 text-sm">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          {success}
+        </div>
+      )}
 
       {/* Summary stats */}
       {summary && (
@@ -95,9 +159,14 @@ export default function MyEventsPage() {
               }`}
             >
               {t}
-              {t === "upcoming" && summary && summary.upcomingCount > 0 && (
-                <span className="ml-1.5 text-xs text-purple-400">{summary.upcomingCount}</span>
-              )}
+
+              {t === "upcoming" &&
+                summary &&
+                summary.upcomingCount > 0 && (
+                  <span className="ml-1.5 text-xs text-purple-400">
+                    {summary.upcomingCount}
+                  </span>
+                )}
             </button>
           ))}
         </div>
@@ -132,7 +201,11 @@ export default function MyEventsPage() {
       ) : (
         <div className="flex flex-col gap-4 mt-4">
           {filtered.map((event) => (
-            <EventRow key={event.id} event={event} onDelete={handleDelete} />
+            <EventRow
+              key={event.id}
+              event={event}
+              onDelete={handleDelete}
+            />
           ))}
         </div>
       )}
@@ -142,14 +215,17 @@ export default function MyEventsPage() {
 
 function Empty({ tab }: { tab: Tab }) {
   const msgs: Record<Tab, string> = {
-    all:      "You haven't created any events yet.",
+    all: "You haven't created any events yet.",
     upcoming: "No upcoming events.",
-    past:     "No past events.",
+    past: "No past events.",
   };
+
   return (
     <div className="flex flex-col items-center justify-center py-16 text-gray-500 gap-3">
       <Ticket className="w-8 h-8 opacity-40" />
+
       <p className="text-sm">{msgs[tab]}</p>
+
       {tab === "all" && (
         <Link
           href="/events/create"
