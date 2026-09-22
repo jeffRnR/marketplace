@@ -211,7 +211,7 @@ export default function ManageVendingPage() {
   if (loading || authStatus === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
-        <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-purple)]" />
+        <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
       </div>
     );
   }
@@ -262,7 +262,7 @@ export default function ManageVendingPage() {
                 <p className="text-sm text-[var(--muted)]">No slots yet.</p>
                 <button
                   onClick={openCreate}
-                  className="text-sm font-semibold text-[var(--brand-purple)] transition hover:text-[var(--foreground)]"
+                  className="text-sm font-semibold text-purple-500 transition hover:text-[var(--foreground)]"
                 >
                   Create your first slot
                 </button>
@@ -345,7 +345,7 @@ export default function ManageVendingPage() {
 
                 {appsLoading ? (
                   <div className="flex items-center justify-center py-16">
-                    <Loader2 className="h-5 w-5 animate-spin text-[var(--brand-purple)]" />
+                    <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
                   </div>
                 ) : applications.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-[var(--brand-purple)]/45 bg-[var(--surface)] p-10 text-center">

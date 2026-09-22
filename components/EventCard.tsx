@@ -132,7 +132,7 @@ function EventCard({
   const CategoryMeta = () => (
     <>
       <div className="text-[var(--foreground)] text-md flex gap-2 items-center">
-        <User className="w-4 h-4 text-[var(--brand-purple)]" />
+        <User className="w-4 h-4 text-purple-500" />
         <span className="font-medium">Hosted by {host}</span>
       </div>
       <div className="text-[var(--foreground)] text-md flex gap-2 items-center">
@@ -144,8 +144,8 @@ function EventCard({
         <span className="font-medium">{category.name}</span>
       </div>
       <div className="text-[var(--muted)] flex flex-col gap-4 text-sm my-4">
-        <Link href="" className="font-medium hover:text-[var(--brand-purple)] transition">Contact Host</Link>
-        <Link href="" className="font-medium hover:text-[var(--brand-purple)] transition">Report Event</Link>
+        <Link href="" className="font-medium hover:text-purple-500 transition">Contact Host</Link>
+        <Link href="" className="font-medium hover:text-purple-500 transition">Report Event</Link>
       </div>
     </>
   );
@@ -171,7 +171,7 @@ function EventCard({
         <h2 className="text-[2.5rem] font-bold text-[var(--foreground)]">{title}</h2>
 
         <div className="text-md text-[var(--muted)] flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-[var(--brand-purple)]" />
+          <MapPin className="h-4 w-4 text-purple-500" />
           <span className="font-semibold">{location}</span>
         </div>
 

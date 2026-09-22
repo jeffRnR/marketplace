@@ -286,7 +286,7 @@ export default function NotificationBar() {
       {/* Bell button */}
       <button
         onClick={() => setOpen(v => !v)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-[var(--muted)] hover:text-[var(--brand-purple)] hover:bg-white/5 transition duration-300"
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-[var(--muted)] hover:text-purple-500 hover:bg-white/5 transition duration-300"
         aria-label={`Notifications${totalUnread > 0 ? ` — ${totalUnread} unread` : ""}`}
       >
         <Bell className="w-5 h-5" />
@@ -347,7 +347,7 @@ export default function NotificationBar() {
                   <button
                     onClick={markAllRead}
                     disabled={marking}
-                    className="flex items-center gap-1 text-xs text-[var(--brand-purple)] hover:opacity-80 transition font-semibold disabled:opacity-40"
+                    className="flex items-center gap-1 text-xs text-purple-500 hover:opacity-80 transition font-semibold disabled:opacity-40"
                   >
                     <Check className="w-3 h-3" /> Mark all read
                   </button>
@@ -446,7 +446,7 @@ export default function NotificationBar() {
               <div className="border-t border-[var(--brand-purple)]/25 px-4 py-2.5">
                 <button
                   onClick={() => { setOpen(false); router.push("/messages"); }}
-                  className="w-full flex items-center justify-center gap-2 text-xs text-[var(--brand-purple)] hover:opacity-80 font-semibold transition py-1"
+                  className="w-full flex items-center justify-center gap-2 text-xs text-purple-500 hover:opacity-80 font-semibold transition py-1"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                   Open full messages

@@ -35,7 +35,7 @@ export default function UpcomingEvents({ events, loading, error }: Props) {
       {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-16 gap-3 text-[var(--muted)]">
-          <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-purple)]" />
+          <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
           <span className="text-sm">Loading events...</span>
         </div>
       )}
@@ -56,7 +56,7 @@ export default function UpcomingEvents({ events, loading, error }: Props) {
           <p className="text-[var(--muted)] text-sm">No upcoming events yet.</p>
           <Link
             href="/events/create"
-            className="text-[var(--brand-purple)] hover:opacity-80 text-sm font-semibold transition"
+            className="text-purple-500 hover:opacity-80 text-sm font-semibold transition"
           >
             Create the first one →
           </Link>

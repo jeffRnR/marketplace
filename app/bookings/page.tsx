@@ -161,7 +161,7 @@ function BookingCard({
       {/* M-Pesa waiting */}
       {waitingPay && (
         <div className="mx-4 mb-3 flex flex-col items-center gap-2 p-3 bg-white/2 border border-gray-400/20 rounded-xl text-center">
-          <Smartphone className="w-6 h-6 text-[var(--brand-purple)] animate-pulse" />
+          <Smartphone className="w-6 h-6 text-purple-500 animate-pulse" />
           <p className="text-[var(--foreground)] text-sm font-semibold">Check your M-Pesa — enter your PIN</p>
           <div className="w-full bg-gray-800 rounded-full h-1">
             <div className="bg-purple-600 h-1 rounded-full transition-all" style={{ width: `${Math.min((pollSecs / 180) * 100, 100)}%` }} />
@@ -249,7 +249,7 @@ function BookingCard({
       <div className="px-4 pb-4 border-t border-[var(--brand-purple)]/25 pt-3">
         <button
           onClick={() => router.push(`/messages?c=${booking.conversation.id}`)}
-          className="w-full text-[var(--brand-purple)] hover:opacity-80 text-xs font-semibold transition text-center"
+          className="w-full text-purple-500 hover:opacity-80 text-xs font-semibold transition text-center"
         >
           View conversation →
         </button>
@@ -311,7 +311,7 @@ function BookingsPageInner() {
 
   if (authStatus === "loading") return (
     <div className="min-h-screen flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-[var(--brand-purple)] animate-spin" />
+      <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
     </div>
   );
 
@@ -323,7 +323,7 @@ function BookingsPageInner() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-[var(--foreground)] font-black text-2xl flex items-center gap-2">
-              <ShoppingCart className="w-6 h-6 text-[var(--brand-purple)]" />
+              <ShoppingCart className="w-6 h-6 text-purple-500" />
               Bookings
             </h1>
             <p className="text-[var(--muted)] text-sm mt-1">
@@ -366,7 +366,7 @@ function BookingsPageInner() {
         {/* List */}
         {loading ? (
           <div className="flex justify-center py-16">
-            <Loader2 className="w-6 h-6 text-[var(--brand-purple)] animate-spin" />
+            <Loader2 className="w-6 h-6 text-purple-500 animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 bg-gray-900 border border-gray-400/20 rounded-2xl">
@@ -394,7 +394,7 @@ export default function BookingsPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[var(--brand-purple)] animate-spin" />
+        <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
       </div>
     }>
       <BookingsPageInner />

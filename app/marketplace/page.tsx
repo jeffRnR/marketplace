@@ -119,14 +119,14 @@ function ProfileCard({ profile, isMyProfile }: { profile: Profile; isMyProfile: 
           <div className="w-12 h-12 rounded-xl border border-gray-400/20 bg-gray-800 overflow-hidden shadow-lg flex items-center justify-center">
             {profile.logoImage
               ? <img src={profile.logoImage} alt="" className="w-full h-full object-cover" />
-              : <Icon className="w-6 h-6 text-[var(--brand-purple)]" />
+              : <Icon className="w-6 h-6 text-purple-500" />
             }
           </div>
         </div>
 
         {/* Body */}
         <div className="px-4 pt-2 pb-4">
-          <h3 className="font-bold text-[var(--foreground)] text-base leading-tight group-hover:text-[var(--brand-purple)] transition-colors mb-1">
+          <h3 className="font-bold text-[var(--foreground)] text-base leading-tight group-hover:text-purple-500 transition-colors mb-1">
             {profile.businessName}
           </h3>
           {profile.tagline && (
@@ -156,7 +156,7 @@ function ProfileCard({ profile, isMyProfile }: { profile: Profile; isMyProfile: 
               {profile._count?.listings ?? profile.listings.length} listing
               {(profile._count?.listings ?? profile.listings.length) !== 1 ? "s" : ""}
             </span>
-            <span className="text-[var(--brand-purple)] text-xs font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
+            <span className="text-purple-500 text-xs font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
               View profile <ChevronRight className="w-3 h-3" />
             </span>
           </div>

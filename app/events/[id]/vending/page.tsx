@@ -232,7 +232,7 @@ export default function VendingPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
-        <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-purple)]" />
+        <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
       </div>
     );
   }
@@ -247,7 +247,7 @@ export default function VendingPage() {
             <div className="absolute inset-0 rounded-full border-4 border-[var(--brand-purple)]/20" />
             <div className="absolute inset-0 animate-spin rounded-full border-4 border-t-[var(--brand-purple)]" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <Smartphone className="h-8 w-8 text-[var(--brand-purple)]" />
+              <Smartphone className="h-8 w-8 text-purple-500" />
             </div>
           </div>
           <div>
@@ -416,7 +416,7 @@ export default function VendingPage() {
         {isOwner && (
           <div className="flex flex-col gap-3 rounded-2xl border border-[var(--brand-purple)]/40 bg-[var(--brand-purple)]/10 p-4">
             <div className="flex items-start gap-2">
-              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-[var(--brand-purple)]" />
+              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-purple-500" />
               <div>
                 <p className="text-sm font-semibold text-[var(--foreground)]">You own this event</p>
                 <p className="mt-0.5 text-xs text-[var(--muted)]">
@@ -513,7 +513,7 @@ export default function VendingPage() {
                   {/* Sign in prompt */}
                   {!session && !isFull && !isOwner && (
                     <p className="text-center text-xs text-[var(--muted)]">
-                      <Link href="/auth/signin" className="font-semibold text-[var(--brand-purple)] hover:text-[var(--foreground)]">
+                      <Link href="/auth/signin" className="font-semibold text-purple-500 hover:text-[var(--foreground)]">
                         Sign in
                       </Link>{" "}
                       to apply

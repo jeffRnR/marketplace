@@ -211,7 +211,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                 <button
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                   aria-label="Toggle menu"
-                  className="lg:hidden text-[var(--foreground)] transition-all duration-300 hover:text-[var(--brand-purple)]"
+                  className="lg:hidden text-[var(--foreground)] transition-all duration-300 hover:text-purple-500"
                 >
                   <div className="relative h-6 w-6">
                     <Menu
@@ -267,7 +267,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                 <button
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                   aria-label="Toggle menu"
-                  className="lg:hidden text-[var(--foreground)] transition-all duration-300 hover:text-[var(--brand-purple)]"
+                  className="lg:hidden text-[var(--foreground)] transition-all duration-300 hover:text-purple-500"
                 >
                   <div className="relative h-6 w-6">
                     <Menu
@@ -302,7 +302,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
 
                 <button
                   onClick={closeMobileMenu}
-                  className="text-xl font-bold text-[var(--brand-purple)] transition hover:opacity-70"
+                  className="text-xl font-bold text-purple-500 transition hover:opacity-70"
                   aria-label="Close menu"
                 >
                   ×
@@ -335,7 +335,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                     href={href}
                     onClick={closeMobileMenu}
                   >
-                    <button className="flex w-full items-center gap-3 rounded-lg p-2.5 text-left text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--brand-purple)]">
+                    <button className="flex w-full items-center gap-3 rounded-lg p-2.5 text-left text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)] hover:text-purple-500">
                       {icon}
                       <span>{label}</span>
                     </button>
@@ -349,7 +349,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                       href="/my-events"
                       onClick={closeMobileMenu}
                     >
-                      <button className="flex w-full items-center gap-3 rounded-lg p-2.5 text-left text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--brand-purple)]">
+                      <button className="flex w-full items-center gap-3 rounded-lg p-2.5 text-left text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)] hover:text-purple-500">
                         <Ticket className="h-5 w-5" />
                         <span>My Events</span>
                       </button>
@@ -359,7 +359,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                       href="/bookings"
                       onClick={closeMobileMenu}
                     >
-                      <button className="flex w-full items-center gap-3 rounded-lg p-2.5 text-left text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--brand-purple)]">
+                      <button className="flex w-full items-center gap-3 rounded-lg p-2.5 text-left text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)] hover:text-purple-500">
                         <ShoppingCart className="h-5 w-5" />
                         <span>Bookings</span>
                       </button>
@@ -369,7 +369,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                       href="/messages"
                       onClick={closeMobileMenu}
                     >
-                      <button className="flex w-full items-center justify-between rounded-lg p-2.5 text-left text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--brand-purple)]">
+                      <button className="flex w-full items-center justify-between rounded-lg p-2.5 text-left text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)] hover:text-purple-500">
                         <span className="flex items-center gap-3">
                           <MessageCircle className="h-5 w-5" />
                           <span>Messages</span>

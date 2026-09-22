@@ -97,7 +97,7 @@ function SearchBar() {
               />
               <button
                 onClick={handleClose}
-                className="text-[var(--muted)] hover:text-[var(--brand-purple)] transition duration-300 ml-2"
+                className="text-[var(--muted)] hover:text-purple-500 transition duration-300 ml-2"
                 aria-label="Close search"
               >
                 <X className="w-5 h-5" />
@@ -118,7 +118,7 @@ function SearchBar() {
                     className="flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-400/20 last:border-none text-[var(--foreground)] hover:bg-purple-600/10 hover:text-[var(--foreground)] transition duration-200"
                   >
                     {item.type === "event"
-                      ? <Ticket className="w-4 h-4 text-[var(--brand-purple)] shrink-0" />
+                      ? <Ticket className="w-4 h-4 text-purple-500 shrink-0" />
                       : <Tag className="w-4 h-4 text-[var(--brand-green)] shrink-0" />
                     }
                     <span className="font-medium text-sm">{item.title}</span>

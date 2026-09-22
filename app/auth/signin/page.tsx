@@ -125,7 +125,7 @@ export default function SignInPage() {
           Don&apos;t have an account?{" "}
           <a
             href="/signup"
-            className="font-bold text-[var(--brand-purple)] hover:opacity-80 hover:underline transition"
+            className="font-bold text-purple-500 hover:opacity-80 hover:underline transition"
           >
             Sign Up
           </a>

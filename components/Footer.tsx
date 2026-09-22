@@ -28,19 +28,19 @@ function Footer() {
             {/* Social icons */}
             <div className="flex items-center gap-3">
               <Link href="https://linktr.ee/noizynightz" target="_blank" aria-label="Linktree"
-                className="w-8 h-8 rounded-lg bg-[var(--surface)] border-[0.5px] border-[var(--brand-purple)]/25 flex items-center justify-center text-[var(--muted)] hover:text-[var(--brand-purple)] hover:border-[var(--brand-purple)] transition duration-200">
+                className="w-8 h-8 rounded-lg bg-[var(--surface)] border-[0.5px] border-[var(--brand-purple)]/25 flex items-center justify-center text-[var(--muted)] hover:text-purple-500 hover:border-[var(--brand-purple)] transition duration-200">
                 <FontAwesomeIcon icon={faLinktree} className="w-3.5 h-3.5" />
               </Link>
               <Link href="https://instagram.com/noizynightz" target="_blank" aria-label="Instagram"
-                className="w-8 h-8 rounded-lg bg-[var(--surface)] border-[0.5px] border-[var(--brand-purple)]/25 flex items-center justify-center text-[var(--muted)] hover:text-[var(--brand-purple)] hover:border-[var(--brand-purple)] transition duration-200">
+                className="w-8 h-8 rounded-lg bg-[var(--surface)] border-[0.5px] border-[var(--brand-purple)]/25 flex items-center justify-center text-[var(--muted)] hover:text-purple-500 hover:border-[var(--brand-purple)] transition duration-200">
                 <FontAwesomeIcon icon={faInstagram} className="w-3.5 h-3.5" />
               </Link>
               <Link href="https://tiktok.com/@noizynightz" target="_blank" aria-label="TikTok"
-                className="w-8 h-8 rounded-lg bg-[var(--surface)] border-[0.5px] border-[var(--brand-purple)]/25 flex items-center justify-center text-[var(--muted)] hover:text-[var(--brand-purple)] hover:border-[var(--brand-purple)] transition duration-200">
+                className="w-8 h-8 rounded-lg bg-[var(--surface)] border-[0.5px] border-[var(--brand-purple)]/25 flex items-center justify-center text-[var(--muted)] hover:text-purple-500 hover:border-[var(--brand-purple)] transition duration-200">
                 <FontAwesomeIcon icon={faTiktok} className="w-3.5 h-3.5" />
               </Link>
               <Link href="https://x.com/noizynightz" target="_blank" aria-label="X / Twitter"
-                className="w-8 h-8 rounded-lg bg-[var(--surface)] border-[0.5px] border-[var(--brand-purple)]/25 flex items-center justify-center text-[var(--muted)] hover:text-[var(--brand-purple)] hover:border-[var(--brand-purple)] transition duration-200">
+                className="w-8 h-8 rounded-lg bg-[var(--surface)] border-[0.5px] border-[var(--brand-purple)]/25 flex items-center justify-center text-[var(--muted)] hover:text-purple-500 hover:border-[var(--brand-purple)] transition duration-200">
                 <FontAwesomeIcon icon={faXTwitter} className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -93,27 +93,27 @@ function Footer() {
               <li>
                 <a href="mailto:noizyhub@gmail.com"
                   className="flex items-center gap-2.5 text-[var(--muted)] text-sm hover:text-[var(--foreground)] transition duration-200 group">
-                  <Mail className="w-3.5 h-3.5 text-[var(--brand-purple)] shrink-0" />
+                  <Mail className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                   noizyhub@gmail.com
                 </a>
               </li>
               <li>
                 <a href="tel:+254742422990"
                   className="flex items-center gap-2.5 text-[var(--muted)] text-sm hover:text-[var(--foreground)] transition duration-200 group">
-                  <Phone className="w-3.5 h-3.5 text-[var(--brand-purple)] shrink-0" />
+                  <Phone className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                   0742 422 990
                 </a>
               </li>
               <li>
                 <a href="https://wa.me/254742422990" target="_blank"
                   className="flex items-center gap-2.5 text-[var(--muted)] text-sm hover:text-[var(--foreground)] transition duration-200 group">
-                  <MessageCircle className="w-3.5 h-3.5 text-[var(--brand-purple)] shrink-0" />
+                  <MessageCircle className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                   WhatsApp Us
                 </a>
               </li>
               <li>
                 <div className="flex items-start gap-2.5 text-[var(--muted)] text-sm">
-                  <MapPin className="w-3.5 h-3.5 text-[var(--brand-purple)] shrink-0 mt-0.5" />
+                  <MapPin className="w-3.5 h-3.5 text-purple-500 shrink-0 mt-0.5" />
                   Nairobi, Kenya
                 </div>
               </li>
@@ -127,11 +127,11 @@ function Footer() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-4 text-sm text-[var(--muted)] flex-wrap justify-center sm:justify-start">
               <Link href="/terms"    className="hover:text-[var(--foreground)] transition duration-200">Terms</Link>
-              <span className="text-[var(--brand-purple)]">·</span>
+              <span className="text-purple-500">·</span>
               <Link href="/privacy"  className="hover:text-[var(--foreground)] transition duration-200">Privacy</Link>
-              <span className="text-[var(--brand-purple)]">·</span>
+              <span className="text-purple-500">·</span>
               <Link href="/security" className="hover:text-[var(--foreground)] transition duration-200">Security</Link>
-              <span className="text-[var(--brand-purple)]">·</span>
+              <span className="text-purple-500">·</span>
               <Link href="#"         className="hover:text-[var(--foreground)] transition duration-200">Help</Link>
             </div>
             <p className="text-[var(--muted)] text-xs shrink-0">
