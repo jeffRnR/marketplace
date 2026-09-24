@@ -20,6 +20,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  Home,
 } from "lucide-react";
 import SearchBar from "./SearchBar";
 import NotificationBar from "./NotificationBar";
@@ -345,6 +346,11 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
               <div className="space-y-0.5">
                 {/* Always available */}
                 {[
+                  {
+                    href: "/",
+                    icon: <Home className="h-5 w-5" />,
+                    label: "Home",
+                  },
                   {
                     href: "/events/create",
                     icon: <CalendarPlus className="h-5 w-5" />,

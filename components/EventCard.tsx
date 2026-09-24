@@ -25,36 +25,36 @@ const ICON_MAP: Record<string, React.ElementType> = {
 };
 
 interface TicketOption {
-  id:         string;
-  type:     string;
-  price:    string;
-  link:     string;
-  isActive?:  boolean;
-  startsAt?:  string | null;
-  endsAt?:    string | null;
+  id: string;
+  type: string;
+  price: string;
+  link: string;
+  isActive?: boolean;
+  startsAt?: string | null;
+  endsAt?: string | null;
 }
 
 interface EventCategory {
-  id:        string;
-  name:      string;
-  iconName:  string;
+  id: string;
+  name: string;
+  iconName: string;
   iconColor: string;
 }
 
 interface EventCardProps {
-  eventId:     string;
+  eventId: string;
   createdById: string;
-  image:       string;
-  title:       string;
-  date:        string;
-  time:        string;
-  location:    string;
-  tickets:     TicketOption[];
+  image: string;
+  title: string;
+  date: string;
+  time: string;
+  location: string;
+  tickets: TicketOption[];
   description: string;
-  mapUrl:      string;
-  host:        string;
-  attendees:   number;
-  category:    EventCategory;
+  mapUrl: string;
+  host: string;
+  attendees: number | null;
+  category: EventCategory;
 }
 
 // ── Ticket visibility logic (mirrors TicketsPanel) ───────────────────────
@@ -65,7 +65,7 @@ function isTicketLive(t: TicketOption): boolean {
   if (!t.isActive) return false;
   const now = new Date();
   if (t.startsAt && new Date(t.startsAt) > now) return false; // not started yet
-  if (t.endsAt   && new Date(t.endsAt)   < now) return false; // expired
+  if (t.endsAt && new Date(t.endsAt) < now) return false; // expired
   return true;
 }
 
@@ -81,7 +81,7 @@ function EventCard({
   location, tickets, description, host, attendees, category,
 }: EventCardProps) {
   // Only show tickets that are currently live
-  const liveTickets    = tickets.filter(isTicketLive);
+  const liveTickets = tickets.filter(isTicketLive);
   const soldOutTickets = tickets.filter((t) => !isTicketLive(t) && t.isActive === undefined
     ? false
     : !isTicketLive(t) && t.isActive && getCapacity(t.link) === 0
@@ -89,9 +89,9 @@ function EventCard({
   // Tickets that are inactive/scheduled/expired — hidden completely
   // Tickets that sold out (capacity 0) — shown greyed out
 
-  const [quantities,    setQuantities]    = useState<number[]>(liveTickets.map(() => 0));
-  const [errorMessage,  setErrorMessage]  = useState("");
-  const router      = useRouter();
+  const [quantities, setQuantities] = useState<number[]>(liveTickets.map(() => 0));
+  const [errorMessage, setErrorMessage] = useState("");
+  const router = useRouter();
   const { data: session } = useSession();
 
   const CategoryIcon = ICON_MAP[category.iconName] ?? Sparkles;
@@ -111,10 +111,10 @@ function EventCard({
       .map((t, idx) => {
         const isRsvpTicket = t.type === "RSVP" || t.price === " " || t.price === "0";
         return {
-          ticketId:   t.id,
+          ticketId: t.id,
           ticketType: t.type,
-          price:      t.price,
-          quantity:   isRsvpTicket ? 1 : quantities[idx],
+          price: t.price,
+          quantity: isRsvpTicket ? 1 : quantities[idx],
         };
       })
       .filter((t) => t.quantity > 0);
@@ -135,10 +135,12 @@ function EventCard({
         <User className="w-4 h-4 text-purple-500" />
         <span className="font-medium">Hosted by {host}</span>
       </div>
-      <div className="text-[var(--foreground)] text-md flex gap-2 items-center">
-        <Users className="w-4 h-4 text-[var(--brand-green)]" />
-        <span className="font-medium">{attendees} attending</span>
-      </div>
+      {attendees !== null && (
+        <div className="text-[var(--foreground)] text-md flex gap-2 items-center">
+          <Users className="w-4 h-4 text-[var(--brand-green)]" />
+          <span className="font-medium">{attendees} attending</span>
+        </div>
+      )}
       <div className="text-[var(--foreground)] text-md border-b-2 pb-4 border-[var(--brand-purple)]/25 flex items-center gap-2">
         <CategoryIcon className="h-4 w-4" style={{ color: category.iconColor }} />
         <span className="font-medium">{category.name}</span>

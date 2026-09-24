@@ -23,9 +23,9 @@ export async function GET(
     if (!user)
       return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const { eventId: eventIdParam } = await params;
-    const eventId = eventIdParam;
-    if (!Number.isInteger(eventId))
+    const { eventId } = await params;
+    // IDs are cuid strings — just check it's a non-empty string
+    if (!eventId?.trim())
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
 
     const event = await prisma.event.findUnique({

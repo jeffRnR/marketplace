@@ -1,50 +1,51 @@
 // app/my-events/types.ts
 
 export interface TicketStat {
-  id:       string;
-  type:     string;
-  price:    string;
+  id: string;
+  type: string;
+  price: string;
   capacity: number;
-  link:     string;
+  link: string;
   isActive: boolean;
   startsAt: string | null; // ISO string
-  endsAt:   string | null; // ISO string
+  endsAt: string | null; // ISO string
 }
 
 export interface EventStats {
-  isRsvp:        boolean;
+  isRsvp: boolean;
   totalCapacity: number;
   ticketRevenue: number;
-  isPast:        boolean;
-  isUpcoming:    boolean;
-  ticketTypes:   number;
+  isPast: boolean;
+  isUpcoming: boolean;
+  ticketTypes: number;
   spotsRemaining: number;
-  fillRate:      number;
+  fillRate: number;
 }
 
 export interface ManagedEvent {
-  id:          string;
-  title:       string;
-  image:       string;
-  date:        string;
-  rawDate:     string;
-  time:        string;
-  location:    string;
+  id: string;
+  title: string;
+  image: string;
+  date: string;
+  rawDate: string;
+  time: string;
+  location: string;
   description: string;
-  host:        string;
-  attendees:   number;
-  categories:  { id: string; name: string; icon?: string; iconColor?: string }[];
-  tickets:     TicketStat[];
-  stats:       EventStats;
+  host: string;
+  attendees: number;
+  showAttendees: boolean;
+  categories: { id: string; name: string; icon?: string; iconColor?: string }[];
+  tickets: TicketStat[];
+  stats: EventStats;
 }
 
 export interface Summary {
-  totalEvents:     number;
-  upcomingCount:   number;
-  pastCount:       number;
-  totalAttendees:  number;
-  totalRevenue:    number;
+  totalEvents: number;
+  upcomingCount: number;
+  pastCount: number;
+  totalAttendees: number;
+  totalRevenue: number;
 }
 
-export type Tab         = "all" | "upcoming" | "past";
+export type Tab = "all" | "upcoming" | "past";
 export type DeleteState = "idle" | "confirming" | "deleting";

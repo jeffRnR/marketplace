@@ -45,7 +45,7 @@ export default function LocationBrowser({ events, loading }: Props) {
   const [locationSearch, setLocationSearch] = useState("");
   const [locationState, setLocationState] = useState<LocationState>({ status: "idle" });
   const [showDropdown, setShowDropdown] = useState(false);
-  const [showMap, setShowMap] = useState(false);
+  const [showMap, setShowMap] = useState(true);
   const [sortedEvents, setSortedEvents] = useState<EventWithDistance[]>(events);
   const [filteredEvents, setFilteredEvents] = useState<EventWithDistance[]>(events);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -115,9 +115,9 @@ export default function LocationBrowser({ events, loading }: Props) {
     <div className="w-full" ref={dropdownRef}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-[var(--foreground)] font-bold text-[1.5rem]">Browse by Location</h2>
-        <button
+        {/* <button
           onClick={() => setShowMap(v => !v)}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium
+          className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm font-medium
                       border transition duration-300 ${showMap
               ? "bg-[#64c5a6] border-[#64c5a6] text-[#09251e] hover:bg-[#8ce0c1]"
               : "border-[0.5px] border-[var(--brand-purple)]/30 bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--brand-purple)] hover:text-[var(--foreground)]"
@@ -125,7 +125,7 @@ export default function LocationBrowser({ events, loading }: Props) {
         >
           {showMap ? <MapPinOff className="h-4 w-4" /> : <Map className="h-4 w-4" />}
           {showMap ? "Hide Map" : "Show Map"}
-        </button>
+        </button> */}
       </div>
 
       {/* Search bar */}
@@ -170,7 +170,7 @@ export default function LocationBrowser({ events, loading }: Props) {
       {locationState.status === "idle" && (
         <div className="flex items-center gap-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-4 py-3 mb-4">
           <LocateFixed className="h-5 w-5 text-[#64c5a6] shrink-0" />
-          <p className="text-[#6d7c75] text-sm flex-1">Want to see events sorted by distance?</p>
+          <p className="text-[#6d7c75] text-sm flex-1">Want to see events near you?</p>
           <button
             onClick={requestLocation}
             className="text-sm font-semibold text-[#247653] hover:text-[#1d2d28]

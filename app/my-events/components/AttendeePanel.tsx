@@ -7,7 +7,7 @@ import React, { useEffect, useState } from "react";
 import {
   Search, Download, CheckCircle, Clock,
   UserCheck, Users, Loader2, Mail, Phone,
-  Ticket, AlertCircle,
+  Ticket, AlertCircle, Eye, EyeOff,
 } from "lucide-react";
 import { ManagedEvent } from "../types";
 import { FillBar } from "./FillBar";
@@ -26,10 +26,12 @@ interface Attendee {
 }
 
 export function AttendeePanel({ event }: { event: ManagedEvent }) {
-  const [attendees, setAttendees] = useState<Attendee[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState("");
-  const [search,    setSearch]    = useState("");
+  const [attendees,     setAttendees]     = useState<Attendee[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState("");
+  const [search,        setSearch]        = useState("");
+  const [showAttendees, setShowAttendees] = useState<boolean>(event.showAttendees ?? false);
+  const [togglingVis,   setTogglingVis]   = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -70,10 +72,29 @@ export function AttendeePanel({ event }: { event: ManagedEvent }) {
     el.click();
   };
 
-  const total    = attendees.length;
+  const toggleVisibility = async () => {
+    setTogglingVis(true);
+    const next = !showAttendees;
+    try {
+      const res = await fetch(`/api/events/${event.id}`, {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ showAttendees: next }),
+      });
+      if (!res.ok) throw new Error("Failed to update visibility");
+      setShowAttendees(next);
+    } catch (err: any) {
+      // revert on failure
+      setShowAttendees(!next);
+    } finally {
+      setTogglingVis(false);
+    }
+  };
+
+  const total      = attendees.length;
   const rsvpCount  = attendees.filter(a => a.isRsvp).length;
   const paidCount  = attendees.filter(a => !a.isRsvp).length;
-  const fillRate = event.stats.totalCapacity > 0
+  const fillRate   = event.stats.totalCapacity > 0
     ? Math.round((event.attendees / event.stats.totalCapacity) * 100)
     : 0;
 
@@ -108,9 +129,9 @@ export function AttendeePanel({ event }: { event: ManagedEvent }) {
       <FillBar rate={fillRate} />
       <div className="grid grid-cols-3 gap-3">
         {[
-          { icon: Users,     label: "Total",     value: total,     color: "text-gray-300" },
-          { icon: Ticket,    label: "Paid",      value: paidCount, color: "text-green-400" },
-          { icon: UserCheck, label: "RSVP",      value: rsvpCount, color: "text-purple-400" },
+          { icon: Users,     label: "Total",  value: total,     color: "text-gray-300"   },
+          { icon: Ticket,    label: "Paid",   value: paidCount, color: "text-green-400"  },
+          { icon: UserCheck, label: "RSVP",   value: rsvpCount, color: "text-purple-400" },
         ].map(({ icon: Icon, label, value, color }) => (
           <div key={label} className="bg-gray-700/40 border border-gray-700 rounded-lg py-3 px-3 text-center">
             <Icon className={`w-4 h-4 mx-auto mb-1.5 ${color}`} />
@@ -118,6 +139,40 @@ export function AttendeePanel({ event }: { event: ManagedEvent }) {
             <p className="text-xs text-gray-500 mt-0.5">{label}</p>
           </div>
         ))}
+      </div>
+
+      {/* Attendee count visibility toggle */}
+      <div className="flex items-center justify-between bg-gray-800/60 border border-gray-700 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-3">
+          {showAttendees
+            ? <Eye className="w-4 h-4 text-purple-400 shrink-0" />
+            : <EyeOff className="w-4 h-4 text-gray-500 shrink-0" />
+          }
+          <div>
+            <p className="text-sm font-medium text-gray-300">
+              Attendee count is {showAttendees ? "public" : "hidden"}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {showAttendees
+                ? "Visitors can see how many people are going"
+                : "Only you can see the attendee count"}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={toggleVisibility}
+          disabled={togglingVis}
+          className={`relative w-12 h-6 rounded-full transition-colors flex items-center px-0.5 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed ${
+            showAttendees ? "bg-purple-600" : "bg-gray-700"
+          }`}
+        >
+          {togglingVis
+            ? <Loader2 className="w-4 h-4 animate-spin text-white mx-auto" />
+            : <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${
+                showAttendees ? "translate-x-6" : "translate-x-0"
+              }`} />
+          }
+        </button>
       </div>
 
       {/* Search */}

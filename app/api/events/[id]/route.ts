@@ -95,24 +95,23 @@ export async function PATCH(
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const { id: idParam } = await params;
-    const eventId = idParam;
-    if (!eventId) {
+    const { id: eventId } = await params;
+    if (!eventId?.trim())
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
-    }
 
     // Verify ownership
     const existing = await prisma.event.findUnique({
       where:  { id: eventId },
       select: {
-        createdById: true,
-        title:       true,
-        date:        true,
-        time:        true,
-        location:    true,
-        description: true,
-        host:        true,
-        image:       true,
+        createdById:   true,
+        title:         true,
+        date:          true,
+        time:          true,
+        location:      true,
+        description:   true,
+        host:          true,
+        image:         true,
+        showAttendees: true,   // ← included
       },
     });
     if (!existing)
@@ -125,7 +124,17 @@ export async function PATCH(
       title, host, description, location, image,
       startDate, startTime, endDate, endTime,
       lat, lng,
+      showAttendees,   // ← accepted from body
     } = body;
+
+    // If this is a visibility-only PATCH (just showAttendees), handle it directly
+    if (typeof showAttendees === "boolean" && Object.keys(body).length === 1) {
+      const updated = await prisma.event.update({
+        where: { id: eventId },
+        data:  { showAttendees },
+      });
+      return NextResponse.json({ event: updated });
+    }
 
     if (!title?.trim())
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -139,9 +148,7 @@ export async function PATCH(
       ? `${startTime}${endDate && endTime ? ` – ${endTime} (${endDate})` : ""}`
       : existing.time;
 
-    const newLocation = location?.trim()
-      ? (lat && lng ? location.trim() : location.trim())
-      : existing.location;
+    const newLocation = location?.trim() ? location.trim() : existing.location;
 
     const newMapUrl = lat && lng
       ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`
@@ -150,9 +157,10 @@ export async function PATCH(
     // Detect critical changes that warrant notifying ticket holders
     const changes: { field: string; from: string; to: string }[] = [];
 
-    const oldDateStr = existing.date.toLocaleDateString("en-KE", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
-    const newDateStr = newDate.toLocaleDateString("en-KE",       { weekday:"long", year:"numeric", month:"long", day:"numeric" });
-    if (oldDateStr !== newDateStr) changes.push({ field: "date", from: oldDateStr, to: newDateStr });
+    const oldDateStr = existing.date.toLocaleDateString("en-KE", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const newDateStr = newDate.toLocaleDateString("en-KE",        { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    if (oldDateStr !== newDateStr)
+      changes.push({ field: "date", from: oldDateStr, to: newDateStr });
 
     if (existing.time !== newTime)
       changes.push({ field: "time", from: existing.time, to: newTime });
@@ -160,15 +168,15 @@ export async function PATCH(
     if (existing.location !== newLocation)
       changes.push({ field: "venue", from: existing.location, to: newLocation });
 
-    // Update the event
     const updateData: any = {
-      title:       title.trim(),
-      host:        host?.trim()        ?? existing.host,
-      description: description?.trim() ?? existing.description,
-      location:    newLocation,
-      date:        newDate,
-      time:        newTime,
-      image:       image || existing.image,
+      title:         title.trim(),
+      host:          host?.trim()        ?? existing.host,
+      description:   description?.trim() ?? existing.description,
+      location:      newLocation,
+      date:          newDate,
+      time:          newTime,
+      image:         image || existing.image,
+      showAttendees: typeof showAttendees === "boolean" ? showAttendees : existing.showAttendees,
     };
     if (newMapUrl) updateData.mapUrl = newMapUrl;
 
@@ -177,15 +185,14 @@ export async function PATCH(
       data:  updateData,
     });
 
-    // If critical fields changed, email all confirmed ticket holders
+    // Email ticket holders if critical fields changed
     if (changes.length > 0) {
       const orders = await prisma.order.findMany({
         where:  { eventId, status: "confirmed" },
         select: { name: true, email: true },
       });
 
-      // Deduplicate by email
-      const unique = Array.from(new Map(orders.map(o => [o.email, o])).values());
+      const unique  = Array.from(new Map(orders.map(o => [o.email, o])).values());
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:4000";
 
       await Promise.all(unique.map(order =>
@@ -194,7 +201,7 @@ export async function PATCH(
           name:       order.name,
           eventTitle: updated.title,
           changes,
-          eventId: String(eventId),
+          eventId:    String(eventId),
           baseUrl,
         })
       ));

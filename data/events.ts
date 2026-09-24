@@ -24,6 +24,7 @@ export interface Event {
   mapUrl: string;
   host: string;
   attendees: number;
+  showAttendees: boolean; 
   tickets: TicketOption[];
   categories: EventCategory[];
   lat?: number;
@@ -46,6 +47,7 @@ export function formatDbEvent(raw: any): Event {
     mapUrl:      raw.mapUrl ?? "",
     host:        raw.host,
     attendees:   raw.attendees ?? 0,
+    showAttendees: raw.showAttendees ?? false,
     createdById: raw.createdById ?? raw.createdBy?.id ?? undefined,
     tickets: (raw.tickets ?? []).map((t: any) => ({
       type: t.type, price: t.price, link: t.link,

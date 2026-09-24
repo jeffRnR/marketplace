@@ -106,6 +106,7 @@ model Event {
   rsvpTier           String?
   rsvpTierPayment    RsvpTierPayment?
   ticketCapacities   TicketCapacity[]
+  showAttendees      Boolean             @default(false)
 }
 
 model EventCategory {

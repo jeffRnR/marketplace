@@ -2,7 +2,7 @@
 import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import EventCard from "@/components/EventCard";
-// import EventVendors from "@/components/EventVendors";
+import EventVendors from "@/components/EventVendors";
 import { categories as staticCategories } from "@/data/categories";
 
 interface PageProps { params: Promise<{ id: string }> }
@@ -36,7 +36,7 @@ export default async function EventDetailPage({ params }: PageProps) {
   });
 
   return (
-    <div className="p-4 lg:w-[70%] min-h-screen w-full mx-auto ">
+    <div className="p-4 lg:w-[70%] min-h-screen mt-14 w-full mx-auto">
       <EventCard
         eventId={String(event.id)}
         createdById={event.createdById}
@@ -57,7 +57,8 @@ export default async function EventDetailPage({ params }: PageProps) {
         description={event.description}
         mapUrl={event.mapUrl ?? ""}
         host={event.host}
-        attendees={event.attendees}
+        // Pass null when the organiser has hidden the count from the public
+        attendees={event.showAttendees ? event.attendees : null}
         category={{
           id:        primaryCategory.id,
           name:      primaryCategory.name,
@@ -66,7 +67,7 @@ export default async function EventDetailPage({ params }: PageProps) {
         }}
       />
 
-      {/* <EventVendors eventId={String(event.id)} /> */}
+      <EventVendors eventId={String(event.id)} />
     </div>
   );
 }
