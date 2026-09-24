@@ -95,7 +95,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
       title={`Switch to ${
         resolvedTheme === "dark" ? "day" : "night"
       } mode`}
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--brand-green)] hover:text-[var(--brand-green)]"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--brand-green)] hover:text-[var(--brand-green)] dark:border-[var(--border)] light:border-gray-400"
     >
       {mode === "system" ? (
         <Monitor className="h-4 w-4" />
@@ -427,7 +427,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                         handleSignOut();
                         closeMobileMenu();
                       }}
-                      className="w-full rounded-lg bg-red-600/50 px-4 py-2.5 text-left text-sm font-semibold text-[var(--foreground)] transition hover:bg-red-700/50 hover:text-gray-100"
+                      className="w-full rounded-lg bg-red-600/50 px-4 py-2.5 text-left text-sm font-semibold transition hover:bg-red-700/50 hover:text-gray-100 text-white"
                     >
                       Sign out
                     </button>

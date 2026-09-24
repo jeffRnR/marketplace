@@ -25,6 +25,7 @@ interface Analytics {
 }
 
 // ── Insight card ──────────────────────────────────────────────────────────
+
 function Insight({
   icon: Icon, label, value, sub, trend,
 }: {
@@ -32,16 +33,18 @@ function Insight({
   sub?: string; trend?: "up" | "down" | "neutral";
 }) {
   return (
-    <div className="shadow-md shadow-black bg-gray-800 border border-gray-700 hover:border-gray-600 rounded-2xl p-4 flex flex-col gap-3 transition duration-300">
-      <Icon className="w-4 h-4 text-purple-400" />
+    <div className="bg-gray-900 border border-gray-400/20 hover:border-[var(--brand-purple)]/40 rounded-2xl p-4 flex flex-col gap-3 transition duration-300">
+      <Icon className="w-4 h-4 text-purple-600" />
       <div>
-        <p className="text-gray-300 font-bold text-[1.5rem] leading-tight">{value}</p>
-        <p className="text-gray-400 text-sm mt-0.5">{label}</p>
+        <p className="text-[var(--foreground)] font-bold text-2xl leading-tight">{value}</p>
+        <p className="text-[var(--muted)] text-sm mt-0.5">{label}</p>
         {sub && (
           <p className={`text-xs mt-1 flex items-center gap-1 ${
-            trend === "up" ? "text-green-400" : trend === "down" ? "text-red-400" : "text-gray-500"
+            trend === "up"   ? "text-[var(--brand-green)]"
+            : trend === "down" ? "text-red-400"
+            :                    "text-[var(--muted)]"
           }`}>
-            {trend === "up" && <TrendingUp className="w-3 h-3" />}
+            {trend === "up"   && <TrendingUp   className="w-3 h-3" />}
             {trend === "down" && <TrendingDown className="w-3 h-3" />}
             {sub}
           </p>
@@ -51,51 +54,56 @@ function Insight({
   );
 }
 
-// ── Section ────────────────────────────────────────────────────────────────
+// ── Section ───────────────────────────────────────────────────────────────
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-gray-400 font-bold text-sm uppercase tracking-widest">{title}</p>
+      <p className="text-[var(--muted)] font-bold text-xs uppercase tracking-widest">{title}</p>
       {children}
     </div>
   );
 }
 
 // ── Alert ─────────────────────────────────────────────────────────────────
+
 function Alert({ type, message }: { type: "warn" | "good"; message: string }) {
   return (
-    <div className={`flex items-start gap-3 rounded-lg px-4 py-3 border ${
+    <div className={`flex items-start gap-3 rounded-xl px-4 py-3 border ${
       type === "warn"
-        ? "bg-orange-900/20 border-orange-700/40 text-orange-300"
-        : "bg-purple-900/30 border-purple-700/50 text-purple-300"
+        ? "bg-amber-900/20 border-amber-700/30 text-amber-300"
+        : "bg-purple-600/10 border-purple-600/25 text-purple-400"
     }`}>
       {type === "warn"
         ? <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-        : <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />}
+        : <CheckCircle   className="w-4 h-4 shrink-0 mt-0.5" />
+      }
       <p className="text-sm">{message}</p>
     </div>
   );
 }
 
-// ── Ticket fill bar ────────────────────────────────────────────────────────
+// ── Ticket fill bar ───────────────────────────────────────────────────────
+
 function TicketBar({ label, sold, total, net, price }: {
   label: string; sold: number; total: number; net: number; price: string;
 }) {
-  const pct = total > 0 ? Math.round((sold / total) * 100) : 0;
-  const barColor = pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-purple-500" : "bg-gray-600";
+  const pct      = total > 0 ? Math.round((sold / total) * 100) : 0;
+  const barColor = pct >= 80 ? "bg-[var(--brand-green)]" : pct >= 50 ? "bg-purple-600" : "bg-gray-600";
+
   return (
-    <div className="bg-gray-700/40 border border-gray-700 rounded-lg px-4 py-3 flex flex-col gap-2.5">
+    <div className="bg-white/2 border border-gray-400/20 rounded-xl px-4 py-3 flex flex-col gap-2.5">
       <div className="flex justify-between items-start">
         <div>
-          <p className="text-sm font-semibold text-gray-300">{label}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{sold} sold of {total} · {price} each</p>
+          <p className="text-sm font-semibold text-[var(--foreground)]">{label}</p>
+          <p className="text-xs text-[var(--muted)] mt-0.5">{sold} sold of {total} · {price} each</p>
         </div>
         <div className="text-right">
-          <p className="text-sm font-bold text-green-400">KES {net.toLocaleString()}</p>
-          <p className="text-xs text-gray-600">net · {pct}% sold</p>
+          <p className="text-sm font-bold text-[var(--brand-green)]">KES {net.toLocaleString()}</p>
+          <p className="text-xs text-[var(--muted)] opacity-60">net · {pct}% sold</p>
         </div>
       </div>
-      <div className="w-full bg-gray-700 rounded-full h-[3px]">
+      <div className="w-full bg-gray-800 rounded-full h-[3px]">
         <div className={`h-[3px] rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -103,10 +111,11 @@ function TicketBar({ label, sold, total, net, price }: {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────
+
 export function AnalyticsPanel({ event }: { event: ManagedEvent }) {
-  const [data, setData] = useState<Analytics | null>(null);
+  const [data,    setData]    = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error,   setError]   = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -120,14 +129,18 @@ export function AnalyticsPanel({ event }: { event: ManagedEvent }) {
   }, [event.id]);
 
   if (loading) return (
-    <div className="flex items-center justify-center py-16 gap-3 text-gray-400">
-      <Loader2 className="w-6 h-6 animate-spin" />
+    <div className="flex items-center justify-center py-16 gap-3 text-[var(--muted)]">
+      <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
       <span className="text-sm">Loading insights...</span>
     </div>
   );
 
   if (error || !data) return (
-    <p className="text-sm text-red-400 py-8 text-center">{error ?? "No data available"}</p>
+    <div className="flex items-center justify-center py-8">
+      <p className="text-sm text-red-400 bg-red-900/20 border border-red-800/50 rounded-xl px-4 py-3">
+        {error ?? "No data available"}
+      </p>
+    </div>
   );
 
   const avgTime = data.avgTimeOnPageSeconds >= 60
@@ -163,14 +176,14 @@ export function AnalyticsPanel({ event }: { event: ManagedEvent }) {
       {/* Traffic */}
       <Section title="Traffic & Engagement">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Insight icon={Eye}       label="Views (last 24h)"    value={data.viewsLast24h}                          trend="up"  sub="Live page traffic" />
-          <Insight icon={Users}     label="Unique visitors"      value={data.uniqueVisitorsTotal.toLocaleString()}  trend="up"  sub="All time" />
-          <Insight icon={Clock}     label="Avg. time on page"    value={avgTime}                                    trend={data.avgTimeOnPageSeconds > 60 ? "up" : "down"} sub="Time spent reading" />
-          <Insight icon={RotateCcw} label="Returning visitors"   value={data.returningVisitors}                     sub="Came back to look again" />
+          <Insight icon={Eye}       label="Views (last 24h)"   value={data.viewsLast24h}                         trend="up"  sub="Live page traffic" />
+          <Insight icon={Users}     label="Unique visitors"     value={data.uniqueVisitorsTotal.toLocaleString()} trend="up"  sub="All time" />
+          <Insight icon={Clock}     label="Avg. time on page"   value={avgTime}                                   trend={data.avgTimeOnPageSeconds > 60 ? "up" : "down"} sub="Time spent reading" />
+          <Insight icon={RotateCcw} label="Returning visitors"  value={data.returningVisitors}                    sub="Came back to look again" />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Insight icon={Share2} label="Share clicks"  value={data.shareClicks} sub="People who shared the event" />
-          <Insight icon={Zap}    label="Bounce rate"   value={`${data.bounceRate}%`} trend={data.bounceRate > 60 ? "down" : "neutral"} sub="Left without interacting" />
+          <Insight icon={Share2} label="Share clicks" value={data.shareClicks}         sub="People who shared the event" />
+          <Insight icon={Zap}    label="Bounce rate"  value={`${data.bounceRate}%`}    trend={data.bounceRate > 60 ? "down" : "neutral"} sub="Left without interacting" />
         </div>
       </Section>
 
@@ -188,14 +201,14 @@ export function AnalyticsPanel({ event }: { event: ManagedEvent }) {
       {!data.isRsvp && (
         <Section title="Revenue">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Insight icon={DollarSign} label="Gross revenue"         value={`KES ${data.grossRevenue.toLocaleString()}`}      sub="Before platform fee" />
-            <Insight icon={Activity}   label="Platform commission"   value={`KES ${data.commission.toLocaleString()}`}        trend="down" sub="5% goes to the platform" />
-            <Insight icon={TrendingUp} label="Your net earnings"     value={`KES ${data.netRevenue.toLocaleString()}`}        trend="up"   sub="What you take home" />
-            <Insight icon={BarChart2}  label="Projected at sell-out" value={`KES ${data.projectedNet.toLocaleString()}`}      trend="up"   sub="Net at full capacity" />
+            <Insight icon={DollarSign} label="Gross revenue"         value={`KES ${data.grossRevenue.toLocaleString()}`} sub="Before platform fee" />
+            <Insight icon={Activity}   label="Platform commission"   value={`KES ${data.commission.toLocaleString()}`}   trend="down" sub="5% goes to the platform" />
+            <Insight icon={TrendingUp} label="Your net earnings"     value={`KES ${data.netRevenue.toLocaleString()}`}   trend="up"   sub="What you take home" />
+            <Insight icon={BarChart2}  label="Projected at sell-out" value={`KES ${data.projectedNet.toLocaleString()}`} trend="up"   sub="Net at full capacity" />
           </div>
           <div className="flex flex-col gap-2">
-            <p className="text-gray-400 font-bold text-sm uppercase tracking-widest">Per ticket type</p>
-            {data.ticketBreakdown.filter((t) => t.type !== "RSVP").map((t) => (
+            <p className="text-[var(--muted)] font-bold text-xs uppercase tracking-widest">Per ticket type</p>
+            {data.ticketBreakdown.filter(t => t.type !== "RSVP").map(t => (
               <TicketBar key={t.id} label={t.type} sold={t.sold} total={t.capacity} net={t.net} price={t.price} />
             ))}
           </div>
@@ -222,12 +235,12 @@ export function AnalyticsPanel({ event }: { event: ManagedEvent }) {
             sub={data.isPast ? "Stats are final" : data.daysUntilEvent <= 7 ? "Coming up soon!" : "Plenty of time to sell"}
             trend={data.isPast ? "neutral" : data.daysUntilEvent <= 3 ? "down" : "up"}
           />
-          <Insight icon={Activity} label="Peak sales day" value={`${data.peakDaysAgo}d ago`}  sub="Most tickets sold in one day" />
-          <Insight icon={Clock}    label="Days listed"    value={data.daysSinceCreated}         sub="Since event was published" />
+          <Insight icon={Activity} label="Peak sales day" value={`${data.peakDaysAgo}d ago`} sub="Most tickets sold in one day" />
+          <Insight icon={Clock}    label="Days listed"    value={data.daysSinceCreated}        sub="Since event was published" />
         </div>
       </Section>
 
-      <p className="text-xs text-gray-600 text-center">
+      <p className="text-xs text-[var(--muted)] opacity-40 text-center">
         Traffic metrics are simulated · Integrate Plausible or PostHog for real-time analytics
       </p>
     </div>
