@@ -10,27 +10,28 @@ import {
   Activity, ChevronDown, Ticket, Store, ScanLine,
 } from "lucide-react";
 import { ManagedEvent, DeleteState, TicketStat } from "../types";
-import { FillBar }        from "./FillBar";
-import { AttendeePanel }  from "./AttendeePanel";
-import { RevenuePanel }   from "./RevenuePanel";
-import { PromoPanel }     from "./PromoPanel";
+import { FillBar } from "./FillBar";
+import { AttendeePanel } from "./AttendeePanel";
+import { RevenuePanel } from "./RevenuePanel";
+import { PromoPanel } from "./PromoPanel";
 import { AnalyticsPanel } from "./AnalyticsPanel";
 import { EditEventModal } from "./EditEventModal";
-import { TicketsPanel }   from "./TicketsPanel";
-import VendorsPanel       from "./VendorsPanel";
-import { ScanPanel }      from "./ScanPanel";
+import { TicketsPanel } from "./TicketsPanel";
+import VendorsPanel from "./VendorsPanel";
+import { ScanPanel } from "./ScanPanel";
+import { SharePanel } from "@/components/SharePanel";
 
 type DetailTab = "overview" | "analytics" | "attendees" | "revenue" | "tickets" | "promos" | "vendors" | "scan";
 
 const TABS: { key: DetailTab; label: string; icon: React.ElementType }[] = [
-  { key: "overview",  label: "Overview",  icon: BarChart2  },
-  { key: "analytics", label: "Insights",  icon: Activity   },
-  { key: "attendees", label: "Attendees", icon: Users      },
-  { key: "revenue",   label: "Revenue",   icon: TrendingUp },
-  { key: "tickets",   label: "Tickets",   icon: Ticket     },
-  { key: "promos",    label: "Promos",    icon: Tag        },
-  { key: "vendors",   label: "Vendors",   icon: Store      },
-  { key: "scan",      label: "Scan",      icon: ScanLine   },
+  { key: "overview", label: "Overview", icon: BarChart2 },
+  { key: "analytics", label: "Insights", icon: Activity },
+  { key: "attendees", label: "Attendees", icon: Users },
+  { key: "revenue", label: "Revenue", icon: TrendingUp },
+  { key: "tickets", label: "Tickets", icon: Ticket },
+  { key: "promos", label: "Promos", icon: Tag },
+  { key: "vendors", label: "Vendors", icon: Store },
+  { key: "scan", label: "Scan", icon: ScanLine },
 ];
 
 export function EventRow({
@@ -40,15 +41,15 @@ export function EventRow({
   event: ManagedEvent;
   onDelete: (id: string) => void;
 }) {
-  const [event,       setEvent]       = useState(initialEvent);
+  const [event, setEvent] = useState(initialEvent);
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
-  const [expanded,    setExpanded]    = useState(false);
-  const [tab,         setTab]         = useState<DetailTab>("overview");
-  const [showEdit,    setShowEdit]    = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [tab, setTab] = useState<DetailTab>("overview");
+  const [showEdit, setShowEdit] = useState(false);
   const isPast = event.stats.isPast;
 
   const handleDelete = async () => {
-    if (deleteState === "idle")       { setDeleteState("confirming"); return; }
+    if (deleteState === "idle") { setDeleteState("confirming"); return; }
     if (deleteState === "confirming") {
       setDeleteState("deleting");
       await onDelete(event.id);
@@ -57,16 +58,16 @@ export function EventRow({
   };
 
   const handleTicketsChanged = (tickets: TicketStat[]) => {
-    const isRsvp        = tickets.length === 1 && tickets[0].type === "RSVP";
+    const isRsvp = tickets.length === 1 && tickets[0].type === "RSVP";
     const totalCapacity = tickets.reduce((s, t) => s + t.capacity, 0);
     const ticketRevenue = isRsvp
       ? 0
       : tickets.reduce((s, t) => {
-          const price = parseFloat(t.price.replace(/[^0-9.]/g, "")) || 0;
-          return s + price;
-        }, 0);
+        const price = parseFloat(t.price.replace(/[^0-9.]/g, "")) || 0;
+        return s + price;
+      }, 0);
     const spotsRemaining = Math.max(0, totalCapacity - event.attendees);
-    const fillRate       = totalCapacity > 0 ? Math.round((event.attendees / totalCapacity) * 100) : 0;
+    const fillRate = totalCapacity > 0 ? Math.round((event.attendees / totalCapacity) * 100) : 0;
 
     setEvent((prev) => ({
       ...prev,
@@ -85,11 +86,10 @@ export function EventRow({
 
   return (
     <>
-      <div className={`rounded-2xl overflow-hidden border transition duration-300 ${
-        isPast
-          ? "bg-gray-900 border-gray-400/10 opacity-70"
-          : "bg-gray-900 border-gray-400/20 hover:border-[var(--brand-purple)]/40"
-      }`}>
+      <div className={`rounded-2xl overflow-hidden border transition duration-300 ${isPast
+        ? "bg-gray-900 border-gray-400/10 opacity-70"
+        : "bg-gray-900 border-gray-400/20 hover:border-[var(--brand-purple)]/40"
+        }`}>
 
         {/* Hero image */}
         <div className="relative h-44 sm:h-56 overflow-hidden">
@@ -137,22 +137,22 @@ export function EventRow({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatCard icon={Users}    iconColor="text-[var(--brand-purple)]" label="Attending"    value={String(event.attendees)} />
-            <StatCard icon={Package}  iconColor="text-[var(--muted)]"        label="Capacity"     value={String(event.stats.totalCapacity)} />
+            <StatCard icon={Users} iconColor="text-[var(--brand-purple)]" label="Attending" value={String(event.attendees)} />
+            <StatCard icon={Package} iconColor="text-[var(--muted)]" label="Capacity" value={String(event.stats.totalCapacity)} />
             <StatCard
               icon={Ticket}
               iconColor="text-[var(--muted)]"
               label="Spots left"
               value={event.stats.spotsRemaining === 0 ? "Sold out" : String(event.stats.spotsRemaining)}
               valueColor={
-                event.stats.spotsRemaining === 0  ? "text-red-400"
-                : event.stats.spotsRemaining < 20 ? "text-orange-400"
-                :                                   "text-[var(--foreground)]"
+                event.stats.spotsRemaining === 0 ? "text-red-400"
+                  : event.stats.spotsRemaining < 20 ? "text-orange-400"
+                    : "text-[var(--foreground)]"
               }
             />
             {event.stats.isRsvp
-              ? <StatCard icon={Zap}        iconColor="text-[var(--brand-purple)]" label="Type"         value="Free RSVP" />
-              : <StatCard icon={TrendingUp} iconColor="text-[var(--brand-green)]"  label="Est. revenue" value={`KES ${event.stats.ticketRevenue.toLocaleString()}`} valueColor="text-[var(--brand-green)]" />
+              ? <StatCard icon={Zap} iconColor="text-[var(--brand-purple)]" label="Type" value="Free RSVP" />
+              : <StatCard icon={TrendingUp} iconColor="text-[var(--brand-green)]" label="Est. revenue" value={`KES ${event.stats.ticketRevenue.toLocaleString()}`} valueColor="text-[var(--brand-green)]" />
             }
           </div>
 
@@ -168,63 +168,93 @@ export function EventRow({
               <Link href={`/events/${event.id}`} className="contents">
                 <ActionBtn icon={Eye} label="View Event" fullWidth />
               </Link>
-              <ActionBtn icon={Pencil} label="Edit" onClick={() => setShowEdit(true)} fullWidth />
+
+              <ActionBtn
+                icon={Pencil}
+                label="Edit"
+                onClick={() => setShowEdit(true)}
+                fullWidth
+              />
             </div>
+
             <div className="grid grid-cols-2 gap-2">
+              <SharePanel
+                shortCode={event.shortCode}
+                compact
+              />
+
               <button
                 onClick={() => setExpanded((v) => !v)}
-                className={`flex items-center justify-center gap-2 w-full text-sm font-semibold rounded-xl px-3 py-2.5 border transition duration-300 ${
-                  expanded
-                    ? "bg-purple-700 border-purple-600 text-white"
-                    : "bg-purple-600 border-purple-600 text-white hover:bg-purple-700"
-                }`}
+                className={`flex items-center justify-center gap-2 w-full text-sm font-semibold rounded-xl px-3 py-2.5 border transition duration-300 ${expanded
+                  ? "bg-purple-700 border-purple-600 text-white"
+                  : "bg-purple-600 border-purple-600 text-white hover:bg-purple-700"
+                  }`}
               >
                 <BarChart2 className="w-4 h-4 shrink-0" />
                 <span>{expanded ? "Close" : "Manage"}</span>
-                <ChevronDown className={`w-4 h-4 shrink-0 ml-auto transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+                <ChevronDown
+                  className={`w-4 h-4 shrink-0 ml-auto transition-transform duration-200 ${expanded ? "rotate-180" : ""
+                    }`}
+                />
               </button>
+            </div>
 
-              {deleteState === "confirming" ? (
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    onClick={() => setDeleteState("idle")}
-                    className="flex items-center justify-center text-xs font-medium rounded-xl py-2.5 border border-gray-400/50 text-[var(--muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition duration-300"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    className="flex items-center justify-center gap-1 text-xs font-semibold rounded-xl py-2.5 bg-red-700 border border-red-600 text-white hover:bg-red-800 transition duration-300"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Sure?
-                  </button>
-                </div>
-              ) : (
+            {deleteState === "confirming" ? (
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={() => setDeleteState("idle")}
+                  className="flex items-center justify-center text-xs font-medium rounded-xl py-2.5 border border-gray-400/50 text-[var(--muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition duration-300"
+                >
+                  Cancel
+                </button>
+
                 <button
                   onClick={handleDelete}
-                  disabled={deleteState === "deleting"}
-                  className="flex items-center justify-center gap-2 w-full text-sm font-medium rounded-xl px-3 py-2.5 border border-gray-400/50 text-[var(--muted)] hover:border-red-600 hover:text-red-400 transition duration-300 disabled:opacity-40"
+                  className="flex items-center justify-center gap-1 text-xs font-semibold rounded-xl py-2.5 bg-red-700 border border-red-600 text-white hover:bg-red-800 transition duration-300"
                 >
-                  {deleteState === "deleting"
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : <Trash2 className="w-4 h-4" />
-                  }
-                  Delete
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Sure?
                 </button>
-              )}
-            </div>
+              </div>
+            ) : (
+              <button
+                onClick={handleDelete}
+                disabled={deleteState === "deleting"}
+                className="flex items-center justify-center gap-2 w-full text-sm font-medium rounded-xl px-3 py-2.5 border border-gray-400/50 text-[var(--muted)] hover:border-red-600 hover:text-red-400 transition duration-300 disabled:opacity-40"
+              >
+                {deleteState === "deleting"
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Trash2 className="w-4 h-4" />
+                }
+                Delete
+              </button>
+            )}
           </div>
 
           {/* Desktop actions */}
           <div className="hidden sm:flex items-center gap-2 flex-wrap">
-            <Link href={`/events/${event.id}`}><ActionBtn icon={Eye} label="View Event" /></Link>
-            <ActionBtn icon={Pencil} label="Edit" onClick={() => setShowEdit(true)} />
             <ActionBtn
               icon={ChevronDown}
               label={expanded ? "Close" : "Manage"}
               onClick={() => setExpanded((v) => !v)}
               active={expanded}
-              iconClass={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+              iconClass={`transition-transform duration-200 ${expanded ? "rotate-180" : ""
+                }`}
+            />
+            <Link href={`/events/${event.id}`}>
+              <ActionBtn icon={Eye} label="View Event" />
+            </Link>
+
+            <ActionBtn
+              icon={Pencil}
+              label="Edit"
+              onClick={() => setShowEdit(true)}
+            />
+
+
+            <SharePanel
+              shortCode={event.shortCode}
+              compact
             />
             <div className="ml-auto flex items-center gap-2">
               {deleteState === "confirming" && (
@@ -238,11 +268,10 @@ export function EventRow({
               <button
                 onClick={handleDelete}
                 disabled={deleteState === "deleting"}
-                className={`flex items-center gap-1.5 text-sm font-medium rounded-xl px-3 py-1.5 border transition duration-300 ${
-                  deleteState === "confirming"
-                    ? "bg-red-700 border-red-600 text-white"
-                    : "border-gray-400/50 text-[var(--muted)] hover:border-red-600 hover:text-red-400"
-                }`}
+                className={`flex items-center gap-1.5 text-sm font-medium rounded-xl px-3 py-1.5 border transition duration-300 ${deleteState === "confirming"
+                  ? "bg-red-700 border-red-600 text-white"
+                  : "border-gray-400/50 text-[var(--muted)] hover:border-red-600 hover:text-red-400"
+                  }`}
               >
                 {deleteState === "deleting"
                   ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -264,11 +293,10 @@ export function EventRow({
                 <button
                   key={key}
                   onClick={() => setTab(key)}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition duration-300 ${
-                    tab === key
-                      ? "border-purple-600 text-[var(--foreground)]"
-                      : "border-transparent text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-white/3"
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition duration-300 ${tab === key
+                    ? "border-purple-600 text-[var(--foreground)]"
+                    : "border-transparent text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-white/3"
+                    }`}
                 >
                   <Icon className="w-4 h-4" />{label}
                 </button>
@@ -276,14 +304,14 @@ export function EventRow({
             </div>
 
             <div className="p-4 lg:p-6">
-              {tab === "overview"  && <OverviewPanel event={event} />}
-              {tab === "revenue"   && <RevenuePanel event={event} />}
-              {tab === "tickets"   && <TicketsPanel event={event} onTicketsChanged={handleTicketsChanged} />}
-              {tab === "promos"    && <PromoPanel eventId={String(event.id)} />}
+              {tab === "overview" && <OverviewPanel event={event} />}
+              {tab === "revenue" && <RevenuePanel event={event} />}
+              {tab === "tickets" && <TicketsPanel event={event} onTicketsChanged={handleTicketsChanged} />}
+              {tab === "promos" && <PromoPanel eventId={String(event.id)} />}
               {tab === "analytics" && <AnalyticsPanel event={event} />}
               {tab === "attendees" && <AttendeePanel event={event} />}
-              {tab === "vendors"   && <VendorsPanel eventId={String(event.id)} />}
-              {tab === "scan"      && <ScanPanel event={event} />}
+              {tab === "vendors" && <VendorsPanel eventId={String(event.id)} />}
+              {tab === "scan" && <ScanPanel event={event} />}
             </div>
           </div>
         )}
@@ -329,15 +357,15 @@ function OverviewPanel({ event }: { event: ManagedEvent }) {
       <section className="flex flex-col gap-3">
         <p className="text-[var(--muted)] font-bold text-xs uppercase tracking-widest">Attendance</p>
         <div className="flex flex-col gap-2.5">
-          <MetaRow label="Confirmed"      value={String(event.attendees)} />
+          <MetaRow label="Confirmed" value={String(event.attendees)} />
           <MetaRow label="Total Capacity" value={String(event.stats.totalCapacity)} />
           <MetaRow
             label="Spots Remaining"
             value={event.stats.spotsRemaining === 0 ? "SOLD OUT" : String(event.stats.spotsRemaining)}
             valueColor={
-              event.stats.spotsRemaining === 0  ? "text-red-400"
-              : event.stats.spotsRemaining < 20 ? "text-orange-400"
-              :                                   "text-[var(--foreground)]"
+              event.stats.spotsRemaining === 0 ? "text-red-400"
+                : event.stats.spotsRemaining < 20 ? "text-orange-400"
+                  : "text-[var(--foreground)]"
             }
           />
           <FillBar rate={event.stats.fillRate} />
@@ -347,8 +375,8 @@ function OverviewPanel({ event }: { event: ManagedEvent }) {
       <section className="flex flex-col gap-3">
         <p className="text-[var(--muted)] font-bold text-xs uppercase tracking-widest">Event Info</p>
         <div className="flex flex-col gap-2.5">
-          <InfoRow icon={CalendarDays} color="text-purple-600"          text={`${event.date} · ${event.time}`} />
-          <InfoRow icon={MapPin}       color="text-[var(--muted)]"      text={event.location} />
+          <InfoRow icon={CalendarDays} color="text-purple-600" text={`${event.date} · ${event.time}`} />
+          <InfoRow icon={MapPin} color="text-[var(--muted)]" text={event.location} />
           {!event.stats.isRsvp && (
             <InfoRow icon={TrendingUp} color="text-[var(--brand-green)]" text={`KES ${event.stats.ticketRevenue.toLocaleString()} estimated revenue`} />
           )}
@@ -369,10 +397,10 @@ function OverviewPanel({ event }: { event: ManagedEvent }) {
 function Badge({ variant, children }: { variant: string; children: React.ReactNode }) {
   const styles: Record<string, string> = {
     purple: "bg-purple-900/70 text-purple-300 border-purple-700/60",
-    blue:   "bg-blue-900/70   text-blue-300   border-blue-700/60",
-    red:    "bg-red-900/70    text-red-300    border-red-700/60",
+    blue: "bg-blue-900/70   text-blue-300   border-blue-700/60",
+    red: "bg-red-900/70    text-red-300    border-red-700/60",
     orange: "bg-orange-900/70 text-orange-300 border-orange-700/60",
-    gray:   "bg-gray-700/80   text-gray-400   border-gray-600/60",
+    gray: "bg-gray-700/80   text-gray-400   border-gray-600/60",
   };
   return (
     <span className={`text-xs font-semibold border px-2.5 py-1 rounded-lg ${styles[variant] ?? styles.gray}`}>
@@ -400,13 +428,11 @@ function ActionBtn({ icon: Icon, label, onClick, active, iconClass, fullWidth }:
   return (
     <button
       onClick={onClick}
-      className={`flex items-center justify-center gap-1.5 text-sm font-medium rounded-xl px-3 py-2.5 border transition duration-300 ${
-        fullWidth ? "w-full" : ""
-      } ${
-        active
+      className={`flex items-center justify-center gap-1.5 text-sm font-medium rounded-xl px-3 py-2.5 border transition duration-300 ${fullWidth ? "w-full" : ""
+        } ${active
           ? "bg-purple-600 border-purple-600 text-white hover:bg-purple-700"
           : "border-gray-400/50 text-[var(--muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-      }`}
+        }`}
     >
       <Icon className={`w-3.5 h-3.5 ${iconClass ?? ""}`} />
       {label}

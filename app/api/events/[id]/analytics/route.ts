@@ -1,175 +1,189 @@
 // app/api/events/[id]/analytics/route.ts
+// All numbers come from the database. Nothing is simulated.
+
 import { NextResponse, NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
+const COMMISSION = 0.05;
+
 export async function GET(
-  request: NextRequest,
-  // context: { params: { id: string } }
-  context: { params: Promise<{ id: string }> }
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const { id } = await context.params;
-    if (!session?.user?.email) {
+    if (!session?.user?.email)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (!id || !id.trim()) {
+
+    const { id: eventId } = await params;
+    if (!eventId?.trim())
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
-    }
-    const eventId = id;
-    if (!eventId) {
-      return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
-    }
 
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where:  { email: session.user.email },
       select: { id: true },
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const event = await prisma.event.findUnique({
-      where: { id: eventId },
+      where:   { id: eventId },
       include: { tickets: true },
     });
-    if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
-    if (event.createdById !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    if (!event)                        return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    if (event.createdById !== user.id) return NextResponse.json({ error: "Forbidden" },      { status: 403 });
 
-    // ── Compute real stats from DB ────────────────────────────────────────
-    const isRsvp = event.tickets.length === 1 && event.tickets[0].type === "RSVP";
+    // ── Fetch all real data in parallel ──────────────────────────────────
+    const [orders, orderItems, views] = await Promise.all([
+      prisma.order.findMany({
+        where:   { eventId, status: "confirmed" },
+        select:  { id: true, email: true, name: true, totalAmount: true, isRsvp: true, createdAt: true },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.orderItem.findMany({
+        where:  { order: { eventId, status: "confirmed" } },
+        select: { ticketType: true, quantity: true, price: true, ticketId: true },
+      }),
+      prisma.eventView.findMany({
+        where:  { eventId },
+        select: { ref: true, createdAt: true },
+      }),
+    ]);
 
-    // Capacity from encoded link field "capacity:N"
-    const totalCapacity = event.tickets.reduce((sum, t) => {
+    // ── Basic event fields ────────────────────────────────────────────────
+    const isRsvp          = event.tickets.length === 1 && event.tickets[0].type === "RSVP";
+    const now             = Date.now();
+    const daysUntilEvent  = Math.ceil((new Date(event.date).getTime() - now) / 86400000);
+    const isPast          = daysUntilEvent < 0;
+    const daysSinceCreated = Math.max(1, Math.ceil((now - new Date(event.createdAt).getTime()) / 86400000));
+
+    const totalCapacity = event.tickets.reduce((s, t) => {
       const m = t.link.match(/^capacity:(\d+)$/);
-      return sum + (m ? parseInt(m[1]) : 0);
+      return s + (m ? parseInt(m[1]) : 0);
     }, 0);
-
-    // Revenue: sum of (price × attendees proportionally per ticket type)
-    // Until a purchases table exists we distribute attendees evenly across ticket types
-    const ticketCount = event.tickets.filter((t) => t.type !== "RSVP").length;
-    const attendeesPerTicket = ticketCount > 0
-      ? Math.floor(event.attendees / ticketCount)
-      : 0;
-
-    const grossRevenue = event.tickets.reduce((sum, t) => {
-      if (t.type === "RSVP") return sum;
-      const price = parseFloat(t.price.replace(/[^0-9.]/g, "")) || 0;
-      return sum + price * attendeesPerTicket;
-    }, 0);
-
-    const PLATFORM_COMMISSION = 0.05;
-    const commission = grossRevenue * PLATFORM_COMMISSION;
-    const netRevenue = grossRevenue - commission;
-
-    const fillRate = totalCapacity > 0
-      ? Math.round((event.attendees / totalCapacity) * 100)
-      : 0;
-
     const spotsRemaining = Math.max(0, totalCapacity - event.attendees);
-    const daysUntilEvent = Math.ceil(
-      (new Date(event.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-    );
-    const isPast = daysUntilEvent < 0;
+    const fillRate       = totalCapacity > 0 ? Math.round((event.attendees / totalCapacity) * 100) : 0;
 
-    // ── Simulated real-time stats ─────────────────────────────────────────
-    // Replace with real tracking (e.g. Plausible, PostHog, or a custom views table)
-    // seeded deterministically from eventId so they're stable per event
-    const seed = String(eventId).split("").reduce((s, c) => s + c.charCodeAt(0), 0) * 7;
-    const viewsLast24h = Math.floor((seed % 80) + 20 + event.attendees * 0.4);
-    const avgTimeOnPageSeconds = Math.floor(45 + (seed % 90));
-    const uniqueVisitorsTotal = Math.floor(viewsLast24h * 4.2 + event.attendees * 2.1);
-    const conversionRate = uniqueVisitorsTotal > 0
-      ? ((event.attendees / uniqueVisitorsTotal) * 100).toFixed(1)
-      : "0.0";
-    const bounceRate = Math.floor(30 + (seed % 35));
-    const returningVisitors = Math.floor(uniqueVisitorsTotal * 0.18);
-    const shareClicks = Math.floor(viewsLast24h * 0.12);
-    const checkoutAbandonment = Math.floor(25 + (seed % 30));
-    const avgTicketsPerOrder = isRsvp ? 1 : (1.4 + (seed % 10) / 10).toFixed(1);
-
-    // Revenue projections
-    const projectedFullRevenue = event.tickets.reduce((sum, t) => {
-      if (t.type === "RSVP") return sum;
+    // ── Revenue (real, from orders) ───────────────────────────────────────
+    const grossRevenue        = orders.reduce((s, o) => s + o.totalAmount, 0);
+    const commission          = grossRevenue * COMMISSION;
+    const netRevenue          = grossRevenue - commission;
+    const projectedFullRevenue = event.tickets.reduce((s, t) => {
+      if (t.type === "RSVP") return s;
       const price = parseFloat(t.price.replace(/[^0-9.]/g, "")) || 0;
-      const cap = (() => { const m = t.link.match(/^capacity:(\d+)$/); return m ? parseInt(m[1]) : 0; })();
-      return sum + price * cap;
+      const cap   = (() => { const m = t.link.match(/^capacity:(\d+)$/); return m ? parseInt(m[1]) : 0; })();
+      return s + price * cap;
     }, 0);
-    const projectedNet = projectedFullRevenue * (1 - PLATFORM_COMMISSION);
+    const projectedNet = projectedFullRevenue * (1 - COMMISSION);
 
-    // Ticket breakdown per type
+    // ── Ticket breakdown (real, from orderItems) ──────────────────────────
     const ticketBreakdown = event.tickets.map((t) => {
-      const price = parseFloat(t.price.replace(/[^0-9.]/g, "")) || 0;
-      const cap = (() => { const m = t.link.match(/^capacity:(\d+)$/); return m ? parseInt(m[1]) : 0; })();
-      const sold = t.type === "RSVP" ? event.attendees : attendeesPerTicket;
-      const revenue = price * sold;
-      const net = revenue * (1 - PLATFORM_COMMISSION);
+      const cap      = (() => { const m = t.link.match(/^capacity:(\d+)$/); return m ? parseInt(m[1]) : 0; })();
+      const items    = orderItems.filter((i) => i.ticketId === t.id);
+      const sold     = items.reduce((s, i) => s + i.quantity, 0);
+      const revenue  = items.reduce((s, i) => {
+        const p = parseFloat(i.price.replace(/[^0-9.]/g, "")) || 0;
+        return s + p * i.quantity;
+      }, 0);
+      const net = revenue * (1 - COMMISSION);
       return {
-        id: t.id,
-        type: t.type,
-        price: t.price,
-        capacity: cap,
-        sold,
-        revenue,
-        net,
+        id: t.id, type: t.type, price: t.price,
+        capacity: cap, sold, revenue, net,
         fillRate: cap > 0 ? Math.round((sold / cap) * 100) : 0,
       };
     });
 
-    // Velocity: tickets sold per day since event was created
-    const daysSinceCreated = Math.max(
-      1,
-      Math.ceil((Date.now() - new Date(event.createdAt).getTime()) / (1000 * 60 * 60 * 24))
-    );
-    const salesVelocity = (event.attendees / daysSinceCreated).toFixed(1);
+    // ── Sales over time (daily, real) ─────────────────────────────────────
+    const salesByDay: Record<string, { orders: number; revenue: number }> = {};
+    for (const o of orders) {
+      const day = o.createdAt.toISOString().slice(0, 10);
+      if (!salesByDay[day]) salesByDay[day] = { orders: 0, revenue: 0 };
+      salesByDay[day].orders++;
+      salesByDay[day].revenue += o.totalAmount;
+    }
+    const salesTimeline = Object.entries(salesByDay)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, v]) => ({ date, ...v }));
 
-    // Peak sales day (simulated)
-    const peakDaysAgo = Math.floor(seed % 7) + 1;
+    // ── Peak sales day (real) ─────────────────────────────────────────────
+    const peakDay = salesTimeline.reduce(
+      (best, d) => d.orders > best.orders ? d : best,
+      { date: "", orders: 0, revenue: 0 }
+    );
+
+    // ── Sales velocity (real) ─────────────────────────────────────────────
+    const salesVelocity = (orders.length / daysSinceCreated).toFixed(1);
+
+    // ── Avg tickets per order (real) ──────────────────────────────────────
+    const totalItemsSold    = orderItems.reduce((s, i) => s + i.quantity, 0);
+    const avgTicketsPerOrder = orders.length > 0
+      ? (totalItemsSold / orders.length).toFixed(1)
+      : "0";
+
+    // ── Top buyers (real, by spend) ───────────────────────────────────────
+    const buyerMap: Record<string, { name: string; email: string; spend: number; orders: number }> = {};
+    for (const o of orders) {
+      if (!buyerMap[o.email]) buyerMap[o.email] = { name: o.name, email: o.email, spend: 0, orders: 0 };
+      buyerMap[o.email].spend  += o.totalAmount;
+      buyerMap[o.email].orders += 1;
+    }
+    const topBuyers = Object.values(buyerMap)
+      .sort((a, b) => b.spend - a.spend)
+      .slice(0, 5);
+
+    // ── Page views & referrers (real, from EventView) ─────────────────────
+    const totalViews = views.length;
+    const refCounts: Record<string, number> = {};
+    for (const v of views) {
+      refCounts[v.ref] = (refCounts[v.ref] ?? 0) + 1;
+    }
+    const referrers = Object.entries(refCounts)
+      .sort(([, a], [, b]) => b - a)
+      .map(([ref, count]) => ({
+        ref,
+        count,
+        pct: totalViews > 0 ? Math.round((count / totalViews) * 100) : 0,
+        // conversion: how many orders came after a view with this ref
+        // approximated as: (orders / totalViews) * refViews
+        conversions: totalViews > 0 ? Math.round((orders.length / totalViews) * count) : 0,
+      }));
+
+    // ── Conversion rate (real: orders / views) ────────────────────────────
+    const conversionRate = totalViews > 0
+      ? ((orders.length / totalViews) * 100).toFixed(1)
+      : "0.0";
 
     return NextResponse.json({
       // Core
-      eventId,
-      isRsvp,
-      isPast,
-      daysUntilEvent,
+      isRsvp, isPast, daysUntilEvent, daysSinceCreated,
 
       // Attendance
-      attendees: event.attendees,
-      totalCapacity,
-      spotsRemaining,
-      fillRate,
+      attendees: event.attendees, totalCapacity, spotsRemaining, fillRate,
 
       // Revenue
-      grossRevenue,
-      commission,
-      netRevenue,
-      projectedFullRevenue,
-      projectedNet,
-      commissionRate: PLATFORM_COMMISSION * 100,
+      grossRevenue, commission, netRevenue,
+      projectedFullRevenue, projectedNet,
+      commissionRate: COMMISSION * 100,
       ticketBreakdown,
 
-      // Traffic
-      viewsLast24h,
-      uniqueVisitorsTotal,
-      avgTimeOnPageSeconds,
-      bounceRate,
-      returningVisitors,
-      shareClicks,
-
-      // Conversion
-      conversionRate,
-      checkoutAbandonment,
-      avgTicketsPerOrder,
-
-      // Velocity
+      // Sales
+      salesTimeline,
+      peakDay,
       salesVelocity,
-      daysSinceCreated,
-      peakDaysAgo,
+      avgTicketsPerOrder,
+      totalOrders: orders.length,
+
+      // Top buyers
+      topBuyers,
+
+      // Traffic & referrers
+      totalViews,
+      referrers,
+      conversionRate,
     });
-  } catch (error: any) {
-    console.error("Analytics error:", error);
-    return NextResponse.json({ error: error?.message ?? "Internal server error" }, { status: 500 });
+  } catch (err: any) {
+    console.error("Analytics error:", err);
+    return NextResponse.json({ error: err.message ?? "Internal server error" }, { status: 500 });
   }
 }

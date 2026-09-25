@@ -107,6 +107,9 @@ model Event {
   rsvpTierPayment    RsvpTierPayment?
   ticketCapacities   TicketCapacity[]
   showAttendees      Boolean             @default(false)
+  pageViews          Int                 @default(0)
+  shortCode          String?             @unique
+  views              EventView[]
 }
 
 model EventCategory {
@@ -116,6 +119,18 @@ model EventCategory {
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@id([eventId, categoryId])
+}
+
+model EventView {
+  id        String   @id @default(cuid())
+  eventId   String
+  ref       String   @default("direct") // "whatsapp" | "instagram" | "twitter" | "facebook" | "tiktok" | "direct" | "other"
+  createdAt DateTime @default(now())
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([ref])
+  @@index([createdAt])
 }
 
 model Ticket {

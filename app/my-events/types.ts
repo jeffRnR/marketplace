@@ -37,6 +37,7 @@ export interface ManagedEvent {
   categories: { id: string; name: string; icon?: string; iconColor?: string }[];
   tickets: TicketStat[];
   stats: EventStats;
+  shortCode: string;
 }
 
 export interface Summary {

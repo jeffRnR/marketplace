@@ -68,7 +68,8 @@ export async function GET() {
         description:   event.description,
         host:          event.host,
         attendees:     event.attendees,
-        showAttendees: event.showAttendees,   // ← was missing
+        showAttendees: event.showAttendees, 
+        shortCode:     event.shortCode ?? "",
         mapUrl:        event.mapUrl,
         categories,
         tickets: event.tickets.map((t) => ({

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { nanoid } from "nanoid";
 
 export async function POST(req: Request) {
   try {
@@ -83,6 +84,7 @@ export async function POST(req: Request) {
         description: fullDescription,
         mapUrl,
         createdById: user.id,
+        shortCode: nanoid(8),
         tickets: {
           create: isRsvp
             ? [{ type: "RSVP", price: "Free", link: `capacity:${capacity ?? 0}` }]

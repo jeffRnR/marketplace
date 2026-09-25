@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import EventCard from "@/components/EventCard";
 import EventVendors from "@/components/EventVendors";
+import TrackView from "@/components/TrackView";         // ← new (client component)
 import { categories as staticCategories } from "@/data/categories";
 
 interface PageProps { params: Promise<{ id: string }> }
@@ -37,6 +38,9 @@ export default async function EventDetailPage({ params }: PageProps) {
 
   return (
     <div className="p-4 lg:w-[70%] min-h-screen mt-14 w-full mx-auto">
+      {/* Fires one POST to /api/events/[id]/track?ref=... on mount */}
+      <TrackView eventId={event.id} />
+
       <EventCard
         eventId={String(event.id)}
         createdById={event.createdById}
@@ -57,7 +61,6 @@ export default async function EventDetailPage({ params }: PageProps) {
         description={event.description}
         mapUrl={event.mapUrl ?? ""}
         host={event.host}
-        // Pass null when the organiser has hidden the count from the public
         attendees={event.showAttendees ? event.attendees : null}
         category={{
           id:        primaryCategory.id,
