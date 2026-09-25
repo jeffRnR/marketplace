@@ -180,6 +180,7 @@ model Order {
   totalAmount        Float           @default(0)
   isRsvp             Boolean         @default(false)
   status             String          @default("confirmed")
+  ref                String          @default("direct") // 👈 add this
   createdAt          DateTime        @default(now())
   eventId            String
   event              Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
