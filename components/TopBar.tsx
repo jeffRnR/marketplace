@@ -451,7 +451,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                         closeMobileMenu();
                         setShowSignInModal(true);
                       }}
-                      className="w-full rounded-lg bg-[var(--brand-purple)] px-4 py-2.5 text-left text-sm font-semibold transition hover:bg-[var(--brand-purple)]/50 hover:text-white"
+                      className="w-full rounded-lg bg-[var(--brand-purple)] px-4 py-2.5 text-left text-sm font-semibold transition hover:bg-[var(--brand-purple)]/50 text-white"
                     >
                       Sign In
                     </button>
