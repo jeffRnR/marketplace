@@ -33,6 +33,12 @@ export async function POST(req: Request) {
     if (!title?.trim() || !description?.trim() || !category || !priceType)
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
 
+    const categoryExists = await prisma.category.findFirst({
+      where: { name: String(category).trim(), kind: "MARKETPLACE" },
+      select: { id: true },
+    });
+    if (!categoryExists) return NextResponse.json({ error: "Invalid marketplace category" }, { status: 400 });
+
     const listing = await prisma.marketListing.create({
       data: {
         profileId:   profile.id,
@@ -67,6 +73,14 @@ export async function PATCH(req: Request) {
 
     const listing = await prisma.marketListing.findFirst({ where: { id, profileId: profile.id } });
     if (!listing) return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+
+    if (updates.category !== undefined) {
+      const categoryExists = await prisma.category.findFirst({
+        where: { name: String(updates.category).trim(), kind: "MARKETPLACE" },
+        select: { id: true },
+      });
+      if (!categoryExists) return NextResponse.json({ error: "Invalid marketplace category" }, { status: 400 });
+    }
 
     const updated = await prisma.marketListing.update({
       where: { id },

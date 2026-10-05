@@ -1,34 +1,16 @@
 "use client";
 // app/marketplace/create-profile/page.tsx
 
-import React, { useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
   Store, MapPin, Phone, Mail, Globe, Instagram, Twitter, Facebook,
   Image as ImageIcon, ChevronRight, Loader2, CheckCircle, Upload, X,
-  Music2, Utensils, Wine, Mic2, Users, Camera, Tent, Truck,
-  Lightbulb, Drama, Car, Flower2, Shield, Printer, Wifi, Package,
+  Music2,
 } from "lucide-react";
-
-const CATEGORIES = [
-  { label: "Venue",            icon: Tent },
-  { label: "Sound & Lighting", icon: Lightbulb },
-  { label: "Catering",         icon: Utensils },
-  { label: "Bar & Alcohol",    icon: Wine },
-  { label: "DJ Services",      icon: Music2 },
-  { label: "Live Music",       icon: Mic2 },
-  { label: "Photography",      icon: Camera },
-  { label: "Staffing & HR",    icon: Users },
-  { label: "Decor & Florals",  icon: Flower2 },
-  { label: "Entertainment",    icon: Drama },
-  { label: "Transport",        icon: Car },
-  { label: "Logistics",        icon: Truck },
-  { label: "Security",         icon: Shield },
-  { label: "Tech & AV",        icon: Wifi },
-  { label: "Print & Branding", icon: Printer },
-  { label: "Merchandise",      icon: Package },
-];
+import type { CategoryRecord } from "@/types/category";
+import { getCategoryIcon } from "@/lib/categoryIcons";
 
 const STEPS = ["Category", "Business Info", "Contact", "Media"];
 
@@ -155,6 +137,9 @@ export default function CreateProfilePage() {
   const [saving, setSaving] = useState(false);
   const [done,   setDone]   = useState(false);
   const [error,  setError]  = useState("");
+  const [categories, setCategories] = useState<CategoryRecord[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState("");
 
   const [form, setForm] = useState({
     category: "", subCategory: "", businessName: "", tagline: "",
@@ -164,6 +149,17 @@ export default function CreateProfilePage() {
   });
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    fetch("/api/categories?kind=MARKETPLACE")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Could not load categories.");
+        const data: CategoryRecord[] = await response.json();
+        setCategories(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setCategoriesError("Could not load marketplace categories."))
+      .finally(() => setCategoriesLoading(false));
+  }, []);
 
   const canNext = () => {
     if (step === 0) return !!form.category;
@@ -248,23 +244,31 @@ export default function CreateProfilePage() {
             <div>
               <h2 className="text-[var(--foreground)] font-bold text-xl mb-1">What do you offer?</h2>
               <p className="text-[var(--muted)] text-sm mb-6">Choose the category that best describes your business</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {CATEGORIES.map(cat => {
-                  const Icon   = cat.icon;
-                  const active = form.category === cat.label;
-                  return (
-                    <button key={cat.label} onClick={() => set("category", cat.label)}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-sm font-semibold ${
-                        active
-                          ? "border-purple-600 bg-purple-600/20 text-purple-400"
-                          : "border-gray-400/30 bg-white/2 text-[var(--muted)] hover:border-purple-600 hover:text-[var(--foreground)]"
-                      }`}>
-                      <Icon className="w-6 h-6" />
-                      <span className="text-center leading-tight">{cat.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              {categoriesLoading ? (
+                <p className="py-6 text-sm text-[var(--muted)]">Loading categories...</p>
+              ) : categoriesError ? (
+                <p role="alert" className="py-6 text-sm text-red-400">{categoriesError}</p>
+              ) : categories.length === 0 ? (
+                <p className="py-6 text-sm text-[var(--muted)]">No marketplace categories are available.</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {categories.map(category => {
+                    const Icon = getCategoryIcon(category.icon);
+                    const active = form.category === category.name;
+                    return (
+                      <button key={category.id} onClick={() => set("category", category.name)}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-sm font-semibold ${
+                          active
+                            ? "border-purple-600 bg-purple-600/20 text-purple-400"
+                            : "border-gray-400/30 bg-white/2 text-[var(--muted)] hover:border-purple-600 hover:text-[var(--foreground)]"
+                        }`}>
+                        <Icon className="w-6 h-6" style={{ color: category.iconColor ?? undefined }} />
+                        <span className="text-center leading-tight">{category.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {form.category && (
                 <div className="mt-5">
                   <label className="block text-[var(--muted)] text-sm mb-2">

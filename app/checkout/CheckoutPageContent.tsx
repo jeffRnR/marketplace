@@ -4,6 +4,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
+import { normalizeMpesaPhone } from "@/lib/mpesaPhone";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -142,9 +143,9 @@ export default function CheckoutPageContent() {
     setErrorMsg("");
     if (!name.trim())  { setErrorMsg("Please enter your name."); return; }
     if (!email.trim()) { setErrorMsg("Please enter your email address."); return; }
-    if (!phone.trim()) { setErrorMsg("Please enter your phone number."); return; }
-    if (!/^\+?\d{9,15}$/.test(phone.replace(/\s/g, ""))) {
-      setErrorMsg("Please enter a valid phone number (e.g. +254712345678)."); return;
+    const normalizedPhone = normalizeMpesaPhone(phone);
+    if (!normalizedPhone) {
+      setErrorMsg("Enter a valid Kenyan M-Pesa number starting with 07 or 01."); return;
     }
     if (!eventId)          { setErrorMsg("Event ID is missing. Please go back."); return; }
     if (!cartItems.length) { setErrorMsg("No tickets selected."); return; }
@@ -159,7 +160,7 @@ export default function CheckoutPageContent() {
           eventId,
           name:      name.trim(),
           email:     email.trim(),
-          phone:     phone.trim(),
+          phone:     normalizedPhone,
           tickets:   cartItems,
           promoCode: promoApplied?.code ?? null,
           ref,          // ← pass referrer platform to checkout API
@@ -363,17 +364,17 @@ export default function CheckoutPageContent() {
           {[
             { label: "Full Name",       icon: User,  type: "text",  ph: "Jane Doe",             value: name,  set: setName  },
             { label: "Email Address",   icon: Mail,  type: "email", ph: "jane@example.com",      value: email, set: setEmail },
-            { label: "Phone Number",    icon: Phone, type: "tel",   ph: "+254 712 345 678",      value: phone, set: setPhone },
+            { label: "M-Pesa Number",   icon: Phone, type: "tel",   ph: "0712 345 678",          value: phone, set: setPhone  },
           ].map(({ label, icon: Icon, type, ph, value, set }) => (
             <div key={label} className="flex flex-col gap-1">
               <label className="text-xs text-gray-500 flex items-center gap-1">
                 <Icon className="w-3 h-3" /> {label} *
               </label>
-              <input type={type} placeholder={ph} value={value}
+              <input type={type} inputMode={type === "tel" ? "numeric" : undefined} autoComplete={type === "tel" ? "tel" : undefined} placeholder={ph} value={value}
                 onChange={e => set(e.target.value)} className={INPUT} />
             </div>
           ))}
-          <p className="text-gray-700 text-xs">Include country code e.g. +254 for Kenya</p>
+          <p className="text-gray-700 text-xs">Enter your Kenyan number starting with 07 or 01; we’ll add the country code.</p>
         </div>
 
         {!isRsvp && (

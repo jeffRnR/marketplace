@@ -1,40 +1,42 @@
 // prisma/seed.ts
 
 import { PrismaClient } from '@prisma/client'
-import { categories as localCategories } from '../data/categories';
+import { eventCategorySeeds, marketplaceCategorySeeds } from './categorySeedData';
 
 const prisma = new PrismaClient()
+const categorySeeds = [...eventCategorySeeds, ...marketplaceCategorySeeds];
 
 async function main() {
   console.log(`\nStarting category seeding...`);
-  console.log(`Loaded ${localCategories.length} categories from file.`);
+  console.log(`Loaded ${categorySeeds.length} category seeds.`);
   console.log(`---------------------------------`);
 
-  for (const category of localCategories) {
+  for (const category of categorySeeds) {
     console.log(`Attempting to seed: ${category.name}`);
     try {
       await prisma.category.upsert({
-        where: { id: category.id },
+        where: { name: category.name },
         update: {
           name:      category.name,
-          icon:      category.iconName,
+          kind:      category.kind,
+          icon:      category.icon,
           iconColor: category.iconColor,
         },
         create: {
-          id:        category.id,
           name:      category.name,
-          icon:      category.iconName,
+          kind:      category.kind,
+          icon:      category.icon,
           iconColor: category.iconColor,
         },
       });
-      console.log(`Upserted: ${category.name} (ID: ${category.id})`);
+      console.log(`Upserted: ${category.name}`);
     } catch (error) {
-      console.error(`FAILED: ${category.name} (ID: ${category.id})`, error);
+      console.error(`FAILED: ${category.name}`, error);
     }
   }
 
   console.log(`\n---------------------------------`);
-  console.log(`Done. ${localCategories.length} records processed.`);
+  console.log(`Done. ${categorySeeds.length} records processed.`);
 }
 
 main()

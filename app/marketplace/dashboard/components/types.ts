@@ -51,13 +51,6 @@ export interface WalletData {
 
 export const PRICE_TYPES = ["fixed", "hourly", "daily", "negotiable", "free"];
 
-export const LISTING_CATEGORIES = [
-  "Venue","Sound & Lighting","Catering","Bar & Alcohol","DJ Services",
-  "Live Music","Photography","Staffing & HR","Decor & Florals",
-  "Entertainment","Transport","Logistics","Security","Tech & AV",
-  "Print & Branding","Merchandise","Other",
-];
-
 export const STATUS_STYLES: Record<string, string> = {
   unread:  "bg-purple-900/30 border-purple-700/50 text-purple-400",
   read:    "bg-gray-800 border-gray-700 text-gray-500",

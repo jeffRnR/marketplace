@@ -1,0 +1,32 @@
+export const eventCategorySeeds = [
+  { name: "Music & Entertainment", icon: "Music", iconColor: "#099409", kind: "EVENT" as const },
+  { name: "Arts & Culture", icon: "Palette", iconColor: "#946809", kind: "EVENT" as const },
+  { name: "Conferences & Networking", icon: "Users", iconColor: "#093c94", kind: "EVENT" as const },
+  { name: "Food & Drink", icon: "Utensils", iconColor: "#366b33", kind: "EVENT" as const },
+  { name: "Sports & Fitness", icon: "Dumbbell", iconColor: "#6a701a", kind: "EVENT" as const },
+  { name: "Community & Lifestyle", icon: "Group", iconColor: "#6e4f1e", kind: "EVENT" as const },
+  { name: "Health & Wellness", icon: "Heart", iconColor: "#821515", kind: "EVENT" as const },
+  { name: "Special Occasions", icon: "Gift", iconColor: "#6e1582", kind: "EVENT" as const },
+  { name: "Technology & Education", icon: "Cpu", iconColor: "#153282", kind: "EVENT" as const },
+  { name: "Niche / Emerging", icon: "Sparkles", iconColor: "#158275", kind: "EVENT" as const },
+];
+
+export const marketplaceCategorySeeds = [
+  { name: "Venue", icon: "Tent", iconColor: "#247653", kind: "MARKETPLACE" as const },
+  { name: "Sound & Lighting", icon: "Lightbulb", iconColor: "#d6a629", kind: "MARKETPLACE" as const },
+  { name: "Catering", icon: "Utensils", iconColor: "#b45a3c", kind: "MARKETPLACE" as const },
+  { name: "Bar & Alcohol", icon: "Wine", iconColor: "#8d465f", kind: "MARKETPLACE" as const },
+  { name: "DJ Services", icon: "Music2", iconColor: "#247653", kind: "MARKETPLACE" as const },
+  { name: "Live Music", icon: "Mic2", iconColor: "#247653", kind: "MARKETPLACE" as const },
+  { name: "Photography", icon: "Camera", iconColor: "#486c8b", kind: "MARKETPLACE" as const },
+  { name: "Staffing & HR", icon: "Users", iconColor: "#486c8b", kind: "MARKETPLACE" as const },
+  { name: "Decor & Florals", icon: "Flower2", iconColor: "#72964b", kind: "MARKETPLACE" as const },
+  { name: "Entertainment", icon: "Drama", iconColor: "#8d465f", kind: "MARKETPLACE" as const },
+  { name: "Transport", icon: "Car", iconColor: "#486c8b", kind: "MARKETPLACE" as const },
+  { name: "Logistics", icon: "Truck", iconColor: "#486c8b", kind: "MARKETPLACE" as const },
+  { name: "Security", icon: "Shield", iconColor: "#52665e", kind: "MARKETPLACE" as const },
+  { name: "Tech & AV", icon: "Wifi", iconColor: "#3f7890", kind: "MARKETPLACE" as const },
+  { name: "Print & Branding", icon: "Printer", iconColor: "#486c8b", kind: "MARKETPLACE" as const },
+  { name: "Merchandise", icon: "Package", iconColor: "#b45a3c", kind: "MARKETPLACE" as const },
+  { name: "Other", icon: "Store", iconColor: "#52665e", kind: "MARKETPLACE" as const },
+];

@@ -6,13 +6,22 @@ import prisma from "@/lib/prisma";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcrypt";
+import { consumeAuthAttempt, clearAuthAttempts } from "@/lib/authRateLimit";
+import { normalizeAccountEmail } from "@/lib/ticketOwnership";
+
+let dummyPasswordHashPromise: Promise<string> | undefined;
+
+function getDummyPasswordHash(): Promise<string> {
+  dummyPasswordHashPromise ??= bcrypt.hash("not-a-valid-user-password", 12);
+  return dummyPasswordHashPromise;
+}
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
 
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 hours
+    maxAge: 8 * 60 * 60,
   },
 
   providers: [
@@ -22,27 +31,30 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Missing email or password");
-        }
+      async authorize(credentials, req) {
+        const email = normalizeAccountEmail(credentials?.email);
+        const password = credentials?.password;
+        if (!email || !password || new TextEncoder().encode(password).length > 72) return null;
+
+        const emailLimitKey = `signin:email:${email}`;
+        const emailAllowed = await consumeAuthAttempt(emailLimitKey, 10, 15 * 60);
+        const requestHeaders = req.headers ?? {};
+        const clientIp = requestHeaders["x-real-ip"]?.trim()
+          || requestHeaders["x-forwarded-for"]?.split(",").at(-1)?.trim();
+        const ipAllowed = clientIp
+          ? await consumeAuthAttempt(`signin:ip:${clientIp}`, 60, 15 * 60)
+          : true;
+        if (!emailAllowed || !ipAllowed) return null;
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email.toLowerCase() },
+          where: { email },
         });
 
-        if (!user || !user.password) {
-          throw new Error("No user found with this email");
-        }
+        const passwordHash = user?.password ?? await getDummyPasswordHash();
+        const isValid = await bcrypt.compare(password, passwordHash);
+        if (!user?.password || !isValid) return null;
 
-        const isValid = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
-        
-        if (!isValid) {
-          throw new Error("Invalid password");
-        }
+        await clearAuthAttempts(emailLimitKey);
 
         return {
           id: user.id,
@@ -56,7 +68,6 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      allowDangerousEmailAccountLinking: true,
     }),
   ],
 

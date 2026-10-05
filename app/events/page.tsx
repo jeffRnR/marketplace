@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { formatDbEvent, Event } from "@/data/events";
-import { categories as staticCategories, Category } from "@/data/categories";
+import type { CategoryRecord } from "@/types/category";
 import SignInModal from "@/components/SignInModal";
 
 import CreateEventCTA from "./_components/CreateEventCTA";
@@ -36,7 +36,9 @@ export default function EventsPage() {
   const { status } = useSession();
 
   const [events, setEvents] = useState<EventWithDistance[]>([]);
-  const [categories, setCategories] = useState<Category[]>(staticCategories);
+  const [categories, setCategories] = useState<CategoryRecord[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSignInModal, setShowSignInModal] = useState(false);
@@ -86,25 +88,22 @@ export default function EventsPage() {
       ? b.attendees - a.attendees
       : new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  // Fetch live category counts
+  // Load event categories directly from the database.
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/categories");
-        if (!res.ok) return;
-        const live: { id: string; name: string; eventsCount: number }[] = await res.json();
-
-
-
-        console.log("DB categories:", live); // check IDs here
-        setCategories(prev =>
-          live.flatMap(l => {
-            const staticMatch = prev.find(s => s.name === l.name); // match by name
-            return staticMatch ? [{ ...staticMatch, id: l.id, eventsCount: l.eventsCount }] : [];
-          })
-        );
-      } catch { /* keep static */ }
+        const res = await fetch("/api/categories?kind=EVENT");
+        if (!res.ok) throw new Error("Could not load event categories.");
+        const data: CategoryRecord[] = await res.json();
+        if (!cancelled) setCategories(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancelled) setCategoriesError("Could not load categories.");
+      } finally {
+        if (!cancelled) setCategoriesLoading(false);
+      }
     })();
+    return () => { cancelled = true; };
   }, []);
 
   return (
@@ -195,7 +194,7 @@ export default function EventsPage() {
           {!loading && !error && visibleEvents.length > 0 && <div className="event-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{visibleEvents.slice(0, 6).map(event => <EventListCard key={event.id} event={event} />)}</div>}
         </section>
 
-        <div className="border-t border-[var(--border)] pt-10"><CategoryBrowser categories={categories} /></div>
+        <div className="border-t border-[var(--border)] pt-10"><CategoryBrowser categories={categories} loading={categoriesLoading} error={categoriesError} /></div>
         <div className="border-t border-[var(--border)] pt-10"><LocationBrowser events={events} loading={loading} /></div>
         <CreateEventCTA
           isAuthenticated={isAuthenticated}

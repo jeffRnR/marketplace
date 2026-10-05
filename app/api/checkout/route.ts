@@ -9,6 +9,7 @@ import { initiateStkPush } from "@/lib/intasend";
 import { sendTicketEmail, sendSMS } from "@/lib/notifications";
 import { notifyTicketOrder } from "@/lib/createNotification";
 import { resolveOrderOwnerId } from "@/lib/ticketOwnership";
+import { normalizeMpesaPhone } from "@/lib/mpesaPhone";
 
 const VALID_REFS = new Set(["whatsapp","instagram","twitter","facebook","tiktok","linkedin","telegram","direct","other"]);
 
@@ -22,15 +23,16 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const {
-      eventId: eventIdValue, name, email, phone,
+      eventId: eventIdValue, name, email, phone: phoneInput,
       tickets: cartItems, promoCode,
       ref: rawRef,           // ← referrer platform from checkout page
     } = body;
 
     const eventId = String(eventIdValue ?? "");
     const ref     = VALID_REFS.has(rawRef) ? rawRef : "direct";
+    const phone = typeof phoneInput === "string" ? normalizeMpesaPhone(phoneInput) : null;
 
-    if (!eventId || !name?.trim() || !email?.trim() || !phone?.trim() || !cartItems?.length) {
+    if (!eventId || !name?.trim() || !email?.trim() || !phone || !cartItems?.length) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 

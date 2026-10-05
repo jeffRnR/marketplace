@@ -3,7 +3,8 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
-import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
+import { getPasswordPolicyError, MIN_PASSWORD_LENGTH } from "@/lib/passwordPolicy";
 
 interface SignInModalProps {
   onClose: () => void;
@@ -13,11 +14,11 @@ export default function SignInModal({ onClose }: SignInModalProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const router = useRouter();
 
   // ── Sign in ──────────────────────────────────────────────────────────────────
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -31,7 +32,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
         password,
       });
       if (result?.error) {
-        setError(result.error);
+        setError("Invalid email or password, or please wait before trying again.");
       } else {
         onClose();
         // Full reload so TopBar and session-dependent UI update immediately
@@ -56,21 +57,9 @@ export default function SignInModal({ onClose }: SignInModalProps) {
       return;
     }
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-    // if (password.length < 6)          { setError("Password must be at least 6 characters"); return; }
-
-    const strongPassword =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{6,}$/;
-
-    if (!strongPassword.test(password)) {
-      setError(
-        "Password must be at least 6 characters and include uppercase, lowercase, number, and special character",
-      );
-      return;
-    }
+    if (password !== confirmPassword) { setError("Passwords do not match"); return; }
+    const passwordPolicyError = getPasswordPolicyError(password);
+    if (passwordPolicyError) { setError(passwordPolicyError); return; }
 
     setIsLoading(true);
     try {
@@ -97,16 +86,14 @@ export default function SignInModal({ onClose }: SignInModalProps) {
       });
 
       if (signInResult?.error) {
-        setError(
-          "Account created but sign in failed. Please try signing in manually.",
-        );
+        setError("Invalid email or password. Check your details and try again.");
       } else {
         onClose();
         // Full reload so TopBar reflects the new session immediately
         window.location.reload();
       }
-    } catch (err: any) {
-      setError(`Network error: ${err.message}`);
+    } catch {
+      setError("Could not create your account. Check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -121,6 +108,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
     setError("");
     setEmail("");
     setPassword("");
+    setShowPassword(false);
     setConfirmPassword("");
     setAgreedToTerms(false);
   };
@@ -164,23 +152,31 @@ export default function SignInModal({ onClose }: SignInModalProps) {
             />
           </div>
 
-          <div>
+          <div className="relative">
             <label htmlFor="password" className="sr-only">
               Password
             </label>
             <input
               id="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
               className="w-full rounded-lg border border-purple-800 p-3 text-gray-800 outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-800/50 transition"
               required
               disabled={isLoading}
-              minLength={6}
+              minLength={isSignUp ? MIN_PASSWORD_LENGTH : undefined}
+              maxLength={72}
               autoComplete={isSignUp ? "new-password" : "current-password"}
             />
+            <button type="button" onClick={() => setShowPassword((visible) => !visible)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900">
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
+
+          {isSignUp && <p className="-mt-2 text-xs text-gray-600">Use at least 15 characters. A memorable passphrase is easier to remember and harder to guess.</p>}
 
           {isSignUp && (
             <>
@@ -190,14 +186,15 @@ export default function SignInModal({ onClose }: SignInModalProps) {
                 </label>
                 <input
                   id="confirmPassword"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm Password"
                   className="w-full rounded-lg border border-purple-800 p-3 text-gray-800 outline-none focus:border-purple-800 focus:ring-2 focus:ring-purple-800/50 transition"
                   required
                   disabled={isLoading}
-                  minLength={6}
+                  minLength={MIN_PASSWORD_LENGTH}
+                  maxLength={72}
                   autoComplete="new-password"
                 />
               </div>
@@ -247,7 +244,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
 
           <button type="submit"
             disabled={isLoading || (isSignUp && !agreedToTerms)}
-            className="w-full rounded-lg bg-purple-800 text-gray-100 py-3 font-semibold hover:bg-purple-600 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+            className="w-full rounded-lg bg-purple-800 text-white py-3 font-semibold hover:bg-purple-600 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
                 <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

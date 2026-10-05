@@ -49,6 +49,13 @@ export async function POST(req: Request) {
         { status: 400 }
       );
 
+    const validCategories = await prisma.category.count({
+      where: { id: { in: categoryIds }, kind: "EVENT" },
+    });
+    if (validCategories !== new Set(categoryIds as string[]).size) {
+      return NextResponse.json({ error: "One or more event categories are invalid" }, { status: 400 });
+    }
+
     // Allow manual locations without coordinates, but validate if coordinates are provided
     const hasCoordinates = lat && lng;
     if (!hasCoordinates) {

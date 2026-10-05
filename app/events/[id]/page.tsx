@@ -5,7 +5,6 @@ import prisma from "@/lib/prisma";
 import EventCard from "@/components/EventCard";
 import EventVendors from "@/components/EventVendors";
 import TrackView from "@/components/TrackView";
-import { categories as staticCategories } from "@/data/categories";
 
 interface PageProps { params: Promise<{ id: string }> }
 
@@ -76,8 +75,6 @@ export default async function EventDetailPage({ params }: PageProps) {
 
   const eventCategories = event.categories.map((ec) => ec.category);
   const primaryCategory = eventCategories[0];
-  const localCategory   = primaryCategory
-    ? staticCategories.find((c) => c.id === primaryCategory.id) : null;
   if (!primaryCategory) notFound();
 
   const formattedDate = new Date(event.date).toLocaleDateString("en-US", {
@@ -112,8 +109,8 @@ export default async function EventDetailPage({ params }: PageProps) {
         category={{
           id:        primaryCategory.id,
           name:      primaryCategory.name,
-          iconName:  localCategory?.iconName  ?? "",
-          iconColor: localCategory?.iconColor ?? primaryCategory.iconColor ?? "",
+          iconName:  primaryCategory.icon ?? "",
+          iconColor: primaryCategory.iconColor ?? "",
         }}
       />
 

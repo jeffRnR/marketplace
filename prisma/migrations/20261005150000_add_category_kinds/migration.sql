@@ -1,0 +1,4 @@
+CREATE TYPE "CategoryKind" AS ENUM ('EVENT', 'MARKETPLACE');
+
+ALTER TABLE "Category"
+ADD COLUMN "kind" "CategoryKind" NOT NULL DEFAULT 'EVENT';

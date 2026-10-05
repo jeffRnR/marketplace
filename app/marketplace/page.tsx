@@ -6,32 +6,10 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
   Search, SlidersHorizontal, Star, MapPin, ChevronRight,
-  BadgeCheck, Store, X, UserCheck, Music2, Utensils, Wine,
-  Mic2, Users, Camera, Tent, Truck, Lightbulb, Drama, Car,
-  Flower2, Shield, Printer, Wifi, Package,
+  BadgeCheck, Store, X, UserCheck,
 } from "lucide-react";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const CATEGORIES = [
-  { label: "All",             icon: Store,     value: "" },
-  { label: "Venues",          icon: Tent,      value: "Venue" },
-  { label: "Sound & Lighting",icon: Lightbulb, value: "Sound & Lighting" },
-  { label: "Catering",        icon: Utensils,  value: "Catering" },
-  { label: "Bar & Alcohol",   icon: Wine,      value: "Bar & Alcohol" },
-  { label: "DJ Services",     icon: Music2,    value: "DJ Services" },
-  { label: "Live Music",      icon: Mic2,      value: "Live Music" },
-  { label: "Photography",     icon: Camera,    value: "Photography" },
-  { label: "Staffing & HR",   icon: Users,     value: "Staffing & HR" },
-  { label: "Decor & Florals", icon: Flower2,   value: "Decor & Florals" },
-  { label: "Entertainment",   icon: Drama,     value: "Entertainment" },
-  { label: "Transport",       icon: Car,       value: "Transport" },
-  { label: "Logistics",       icon: Truck,     value: "Logistics" },
-  { label: "Security",        icon: Shield,    value: "Security" },
-  { label: "Tech & AV",       icon: Wifi,      value: "Tech & AV" },
-  { label: "Print & Branding",icon: Printer,   value: "Print & Branding" },
-  { label: "Merchandise",     icon: Package,   value: "Merchandise" },
-];
+import type { CategoryRecord } from "@/types/category";
+import { getCategoryIcon } from "@/lib/categoryIcons";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -75,9 +53,8 @@ function PriceBadge({ listing }: { listing: Listing }) {
 
 // ─── Profile Card ─────────────────────────────────────────────────────────────
 
-function ProfileCard({ profile, isMyProfile }: { profile: Profile; isMyProfile: boolean }) {
-  const catIcon   = CATEGORIES.find((c) => c.value === profile.category);
-  const Icon      = catIcon?.icon ?? Store;
+function ProfileCard({ profile, isMyProfile, categoryRecord }: { profile: Profile; isMyProfile: boolean; categoryRecord?: CategoryRecord }) {
+  const Icon      = getCategoryIcon(categoryRecord?.icon);
   const topListing = profile.listings[0];
 
   return (
@@ -177,6 +154,9 @@ export default function MarketplacePage() {
   const [debouncedSearch, setDebounced] = useState("");
   const [showFilters,     setShowFilters] = useState(false);
   const [myProfile,       setMyProfile] = useState<Profile | null>(null);
+  const [categories,      setCategories] = useState<CategoryRecord[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState("");
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 350);
@@ -196,6 +176,17 @@ export default function MarketplacePage() {
   }, [category, debouncedSearch]);
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
+
+  useEffect(() => {
+    fetch("/api/categories?kind=MARKETPLACE")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Could not load marketplace categories.");
+        const data: CategoryRecord[] = await response.json();
+        setCategories(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setCategoriesError("Could not load marketplace categories."))
+      .finally(() => setCategoriesLoading(false));
+  }, []);
 
   useEffect(() => {
     if (!session?.user) return;
@@ -248,7 +239,7 @@ export default function MarketplacePage() {
                   <p className="text-[var(--muted)] text-xs">Vendors</p>
                 </div>
                 <div className="bg-gray-900 border border-gray-400/20 rounded-xl px-4 py-2 flex-1">
-                  <p className="text-[var(--foreground)] font-bold text-lg">{CATEGORIES.length - 1}</p>
+                  <p className="text-[var(--foreground)] font-bold text-lg">{categoriesLoading ? "..." : categories.length}</p>
                   <p className="text-[var(--muted)] text-xs">Categories</p>
                 </div>
               </div>
@@ -296,25 +287,36 @@ export default function MarketplacePage() {
 
         {/* Category pills */}
         <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-hide">
-          {CATEGORIES.map((cat) => {
-            const CIcon  = cat.icon;
-            const active = category === cat.value;
+          <button
+            onClick={() => setCategory("")}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition duration-300 shrink-0 ${
+              !category
+                ? "bg-purple-600 border-purple-600 text-white"
+                : "bg-white/5 border-gray-400/50 text-[var(--muted)] hover:border-purple-600 hover:text-[var(--foreground)]"
+            }`}
+          >
+            <Store className="w-3.5 h-3.5" /> All
+          </button>
+          {categories.map((cat) => {
+            const Icon = getCategoryIcon(cat.icon);
+            const active = category === cat.name;
             return (
               <button
-                key={cat.value}
-                onClick={() => setCategory(cat.value)}
+                key={cat.id}
+                onClick={() => setCategory(cat.name)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition duration-300 shrink-0 ${
                   active
                     ? "bg-purple-600 border-purple-600 text-white"
                     : "bg-white/5 border-gray-400/50 text-[var(--muted)] hover:border-purple-600 hover:text-[var(--foreground)]"
                 }`}
               >
-                <CIcon className="w-3.5 h-3.5" />
-                {cat.label}
+                <Icon className="w-3.5 h-3.5" style={{ color: cat.iconColor ?? undefined }} />
+                {cat.name}
               </button>
             );
           })}
         </div>
+        {categoriesError && <p role="alert" className="-mt-4 mb-5 text-xs text-red-400">{categoriesError}</p>}
 
         {/* Active filter summary */}
         {(category || debouncedSearch) && (
@@ -370,7 +372,7 @@ export default function MarketplacePage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {profiles.map((p) => (
-              <ProfileCard key={p.id} profile={p} isMyProfile={myProfile?.id === p.id} />
+              <ProfileCard key={p.id} profile={p} isMyProfile={myProfile?.id === p.id} categoryRecord={categories.find(c => c.name === p.category)} />
             ))}
           </div>
         )}

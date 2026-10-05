@@ -1,10 +1,11 @@
 "use client";
 // app/marketplace/dashboard/components/ListingForm.tsx
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Save } from "lucide-react";
-import { Listing, PRICE_TYPES, LISTING_CATEGORIES } from "./types";
+import { Listing, PRICE_TYPES } from "./types";
 import { MultiImageUpload } from "./ImageUploads";
+import type { CategoryRecord } from "@/types/category";
 
 interface Props {
   initial?: Partial<Listing>;
@@ -15,6 +16,8 @@ interface Props {
 }
 
 export default function ListingForm({ initial, profileCategory, onSave, onCancel, saving }: Props) {
+  const [categories, setCategories] = useState<CategoryRecord[]>([]);
+  const [categoriesError, setCategoriesError] = useState("");
   const [form, setForm] = useState({
     title:       initial?.title       ?? "",
     description: initial?.description ?? "",
@@ -24,6 +27,17 @@ export default function ListingForm({ initial, profileCategory, onSave, onCancel
     images:      initial?.images ?? [] as string[],
     tags:        initial?.tags?.join(", ") ?? "",
   });
+
+  useEffect(() => {
+    fetch("/api/categories?kind=MARKETPLACE")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Could not load categories.");
+        const data: CategoryRecord[] = await response.json();
+        setCategories(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setCategoriesError("Could not load listing categories."));
+  }, []);
+
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
   return (
@@ -38,9 +52,12 @@ export default function ListingForm({ initial, profileCategory, onSave, onCancel
         <div>
           <label className="block text-gray-400 text-xs mb-1.5">Category</label>
           <select value={form.category} onChange={e => set("category", e.target.value)}
-            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-gray-200 text-sm focus:outline-none focus:border-purple-600">
-            {LISTING_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+            disabled={categories.length === 0}
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-gray-200 text-sm focus:outline-none focus:border-purple-600 disabled:opacity-50">
+            {categories.length === 0 && <option value="">{categoriesError || "Loading categories..."}</option>}
+            {categories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}
           </select>
+          {categoriesError && <p role="alert" className="mt-1 text-xs text-red-400">{categoriesError}</p>}
         </div>
       </div>
 

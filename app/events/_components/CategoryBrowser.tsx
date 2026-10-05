@@ -7,21 +7,25 @@ import { MapPin, Loader2, X } from "lucide-react";
 import CategoryPreviewCard from "@/components/CategoryPreviewCard";
 import EventPreviewCard from "@/components/EventPreviewCard";
 import { Event, formatDbEvent } from "@/data/events";
-import { Category } from "@/data/categories";
+import type { CategoryRecord } from "@/types/category";
+import { getCategoryIcon } from "@/lib/categoryIcons";
 
 type EventWithDistance = Event & { distance?: number };
 
 interface Props {
-  categories: Category[];
+  categories: CategoryRecord[];
+  loading: boolean;
+  error: string;
 }
 
-export default function CategoryBrowser({ categories }: Props) {
+export default function CategoryBrowser({ categories, loading, error }: Props) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [categoryEvents,     setCategoryEvents]     = useState<EventWithDistance[]>([]);
   const [categoryLoading,    setCategoryLoading]    = useState(false);
   const categoryResultsRef = useRef<HTMLDivElement>(null);
 
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
+  const SelectedCategoryIcon = getCategoryIcon(selectedCategory?.icon);
 
   const handleCategoryClick = useCallback(async (categoryId: string) => {
     if (selectedCategoryId === categoryId) {
@@ -54,20 +58,28 @@ export default function CategoryBrowser({ categories }: Props) {
       <h2 className="text-[var(--foreground)] font-bold text-[1.5rem] mb-4">Browse by Category</h2>
 
       {/* Category cards */}
-      <div className="flex gap-4 overflow-x-auto pb-4 lg:grid lg:grid-cols-3 lg:gap-6 lg:overflow-visible">
-        {categories.map(category => (
-          <CategoryPreviewCard
-            key={category.id}
-            name={category.name}
-            eventsCount={category.eventsCount}
-            icon={category.iconComponent}
-            iconColor={category.iconColor}
-            selected={selectedCategoryId === category.id}
-            onClick={() => handleCategoryClick(category.id)}
-            className="border-[0.5px] border-[var(--brand-purple)]/35 bg-[var(--surface)] transition duration-300 hover:-translate-y-1 hover:border-[var(--brand-purple)]"
-          />
-        ))}
-      </div>
+      {loading ? (
+        <p className="py-6 text-sm text-[var(--muted)]">Loading categories...</p>
+      ) : error ? (
+        <p role="alert" className="py-6 text-sm text-red-400">{error}</p>
+      ) : categories.length === 0 ? (
+        <p className="py-6 text-sm text-[var(--muted)]">No categories are available.</p>
+      ) : (
+        <div className="flex gap-4 overflow-x-auto pb-4 lg:grid lg:grid-cols-3 lg:gap-6 lg:overflow-visible">
+          {categories.map(category => (
+            <CategoryPreviewCard
+              key={category.id}
+              name={category.name}
+              eventsCount={category.eventsCount}
+              icon={getCategoryIcon(category.icon)}
+              iconColor={category.iconColor ?? undefined}
+              selected={selectedCategoryId === category.id}
+              onClick={() => handleCategoryClick(category.id)}
+              className="border-[0.5px] border-[var(--brand-purple)]/35 bg-[var(--surface)] transition duration-300 hover:-translate-y-1 hover:border-[var(--brand-purple)]"
+            />
+          ))}
+        </div>
+      )}
 
       {/* Category results */}
       {selectedCategoryId !== null && (
@@ -77,8 +89,8 @@ export default function CategoryBrowser({ categories }: Props) {
             <div className="flex items-center gap-3">
               {selectedCategory && (
                 <span className="flex items-center justify-center w-8 h-8">
-                  <selectedCategory.iconComponent
-                    style={{ color: selectedCategory.iconColor, width: "1.5rem", height: "1.5rem" }}
+                  <SelectedCategoryIcon
+                    style={{ color: selectedCategory.iconColor ?? undefined, width: "1.5rem", height: "1.5rem" }}
                   />
                 </span>
               )}
