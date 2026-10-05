@@ -3,6 +3,7 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -25,6 +26,7 @@ const INPUT =
 export default function CheckoutPageContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
 
   const title        = searchParams.get("title")    ?? "";
   const image        = searchParams.get("image")    ?? "";
@@ -72,6 +74,11 @@ export default function CheckoutPageContent() {
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
+
+  useEffect(() => {
+    if (session?.user?.email) setEmail((current) => current || session.user.email!);
+    if (session?.user?.name) setName((current) => current || session.user.name!);
+  }, [session?.user?.email, session?.user?.name]);
 
   function startPolling(ref: string) {
     let elapsed = 0;

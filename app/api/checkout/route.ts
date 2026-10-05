@@ -1,11 +1,14 @@
 // app/api/checkout/route.ts
 
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { randomUUID }   from "crypto";
 import prisma           from "@/lib/prisma";
+import { authOptions } from "@/lib/auth";
 import { initiateStkPush } from "@/lib/intasend";
 import { sendTicketEmail, sendSMS } from "@/lib/notifications";
 import { notifyTicketOrder } from "@/lib/createNotification";
+import { resolveOrderOwnerId } from "@/lib/ticketOwnership";
 
 const VALID_REFS = new Set(["whatsapp","instagram","twitter","facebook","tiktok","linkedin","telegram","direct","other"]);
 
@@ -36,6 +39,11 @@ export async function POST(req: Request) {
       select: { title: true, date: true, location: true, time: true, attendees: true, createdById: true },
     });
     if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
+
+    const session = await getServerSession(authOptions);
+    const accountUserId = await resolveOrderOwnerId(session?.user?.email, (email) =>
+      prisma.user.findUnique({ where: { email }, select: { id: true } }),
+    );
 
     const ticketIds = cartItems.map((i: any) => String(i.ticketId));
     const dbTickets = await prisma.ticket.findMany({ where: { id: { in: ticketIds } } });
@@ -106,6 +114,7 @@ export async function POST(req: Request) {
             totalAmount: 0,
             isRsvp:      true,
             status:      "confirmed",
+            userId:      accountUserId,
             ref,                       // ← store referrer
             items:       { create: orderItems },
           },
@@ -163,6 +172,7 @@ export async function POST(req: Request) {
           totalAmount,
           isRsvp:      false,
           status:      "pending",
+          userId:      accountUserId,
           ref,                         // ← store referrer
           items:       { create: orderItems },
         },

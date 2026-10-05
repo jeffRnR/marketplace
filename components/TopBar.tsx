@@ -17,6 +17,8 @@ import {
   X,
   MessageCircle,
   ShoppingCart,
+  TicketCheck,
+  MoreHorizontal,
   Sun,
   Moon,
   Monitor,
@@ -168,7 +170,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
 
           {/* Search + Events */}
           <div className="flex min-w-0 flex-1 items-center gap-2 lg:ml-8 lg:gap-3">
-            <Link href="/events/all" className="hidden lg:block">
+            <Link href="/events/all" className="hidden xl:block">
               <button className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--brand-green)] hover:text-[var(--brand-green)]">
                 <Telescope className="h-4 w-4" />
                 <span>Events</span>
@@ -198,7 +200,7 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
 
                 {/* Desktop greeting */}
                 {firstName && (
-                  <span className="hidden pr-2 text-sm text-[var(--muted)] lg:block">
+                  <span className="hidden pr-2 text-sm text-[var(--muted)] 2xl:block">
                     Hi,{" "}
                     <span className="font-semibold text-[var(--brand-green)]">
                       {firstName}
@@ -212,54 +214,49 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                 </div>
 
                 {/* Desktop navigation */}
-                <div className="hidden items-center gap-1 bg-transparent p-1 lg:flex">
+                <div className="hidden items-center gap-0.5 bg-transparent p-1 lg:flex">
                   <Link href="/events/create">
-                    <button className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]">
+                    <button aria-label="Create Event" title="Create Event" className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-semibold text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)] xl:h-auto xl:w-auto xl:justify-start xl:gap-2 xl:px-3 xl:py-2">
                       <CalendarPlus className="h-4 w-4" />
-                      <span>Create Event</span>
+                      <span className="hidden xl:inline">Create Event</span>
                     </button>
                   </Link>
 
-                  <Link href="/my-events">
-                    <button className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]">
-                      <Ticket className="h-4 w-4" />
-                      <span>My Events</span>
+                  <Link href="/my-tickets">
+                    <button aria-label="My Tickets" title="My Tickets" className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-semibold text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)] xl:h-auto xl:w-auto xl:justify-start xl:gap-2 xl:px-3 xl:py-2">
+                      <TicketCheck className="h-4 w-4" />
+                      <span className="hidden xl:inline">My Tickets</span>
                     </button>
                   </Link>
 
                   <Link href="/marketplace">
-                    <button className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]">
+                    <button aria-label="Marketplace" title="Marketplace" className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-semibold text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)] xl:h-auto xl:w-auto xl:justify-start xl:gap-2 xl:px-3 xl:py-2">
                       <Store className="h-4 w-4" />
-                      <span>Marketplace</span>
+                      <span className="hidden xl:inline">Marketplace</span>
                     </button>
                   </Link>
 
-                  <Link href="/messages">
-                    <button className="relative flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]">
-                      <MessageCircle className="h-4 w-4" />
-                      <span>Messages</span>
-
-                      {unreadMessages > 0 && (
-                        <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
-                          {unreadMessages > 9 ? "9+" : unreadMessages}
-                        </span>
-                      )}
-                    </button>
-                  </Link>
-
-                  <Link href="/bookings">
-                    <button className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]">
-                      <ShoppingCart className="h-4 w-4" />
-                      <span>Bookings</span>
-                    </button>
-                  </Link>
-
-                  <button
-                    onClick={handleSignOut}
-                    className="rounded-xl bg-red-600/50 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-700/50"
-                  >
-                    Sign Out
-                  </button>
+                  <details className="group relative">
+                    <summary aria-label="More navigation" title="More navigation" className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)] [&::-webkit-details-marker]:hidden">
+                      <MoreHorizontal className="h-5 w-5" />
+                    </summary>
+                    <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-xl">
+                      <Link href="/my-events" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]">
+                        <Ticket className="h-4 w-4 text-[var(--muted)]" /> My Events
+                      </Link>
+                      <Link href="/messages" className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]">
+                        <span className="flex items-center gap-3"><MessageCircle className="h-4 w-4 text-[var(--muted)]" /> Messages</span>
+                        {unreadMessages > 0 && <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{unreadMessages > 9 ? "9+" : unreadMessages}</span>}
+                      </Link>
+                      <Link href="/bookings" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]">
+                        <ShoppingCart className="h-4 w-4 text-[var(--muted)]" /> Bookings
+                      </Link>
+                      <div className="my-1 border-t border-[var(--border)]" />
+                      <button onClick={handleSignOut} className="w-full rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-red-500 transition hover:bg-red-500/10">
+                        Sign Out
+                      </button>
+                    </div>
+                  </details>
                 </div>
 
                 {/* Mobile theme */}
@@ -389,6 +386,16 @@ export default function TopBar({ onViewEvents }: TopBarProps) {
                       <button className="flex w-full items-center gap-3 rounded-lg p-2.5 text-left text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)] hover:text-purple-500">
                         <Ticket className="h-5 w-5" />
                         <span>My Events</span>
+                      </button>
+                    </Link>
+
+                    <Link
+                      href="/my-tickets"
+                      onClick={closeMobileMenu}
+                    >
+                      <button className="flex w-full items-center gap-3 rounded-lg p-2.5 text-left text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-muted)] hover:text-purple-500">
+                        <TicketCheck className="h-5 w-5" />
+                        <span>My Tickets</span>
                       </button>
                     </Link>
 

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { nanoid } from "nanoid";
+import { sendBookingEmail } from "@/lib/notifications";
 
 export async function POST(req: Request) {
   try {
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
     // 2. Fetch user
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true },
+      select: { id: true, name: true, email: true },
     });
     if (!user)
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -106,11 +107,20 @@ export async function POST(req: Request) {
       },
     });
 
+    await sendBookingEmail({
+      to: user.email,
+      name: user.name ?? "there",
+      subject: `Your event is live: ${event.title}`,
+      body: `Your event, ${event.title}, was created successfully and is now available to attendees.`,
+      ctaUrl: `${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:4000"}/events/${event.id}`,
+      ctaLabel: "View your event",
+    });
+
     return NextResponse.json({ event }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Event creation error:", error);
     return NextResponse.json(
-      { error: error?.message ?? "Internal server error" },
+      { error: error instanceof Error ? error.message : "Internal server error" },
       { status: 500 }
     );
   }

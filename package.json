@@ -7,6 +7,7 @@
     "dev": "next dev -p 4000",
     "build": "next build --turbopack --no-lint",
     "start": "next start",
+    "test": "tsx --test tests/ticket-ownership.test.ts",
     "lint": "eslint",
     "seed:categories": "node --loader ts-node/esm --loader ./node_modules/tsconfig-paths/register.js scripts/seedCategories.ts",
     "db:seed": "npx prisma db seed",

@@ -33,6 +33,7 @@ model User {
   conversationsAsBuyer Conversation[]    @relation("ConversationBuyer")
   sentMessages         Message[]
   notifications        Notification[]
+  orders               Order[]
 }
 
 model Account {
@@ -183,12 +184,15 @@ model Order {
   ref                String          @default("direct") // 👈 add this
   createdAt          DateTime        @default(now())
   eventId            String
+  userId             String?
   event              Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user               User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
   items              OrderItem[]
   paymentRecord      PaymentRecord?
   reminderDeliveries EventReminder[]
 
   @@index([eventId])
+  @@index([userId])
   @@index([status])
   @@index([email])
 }

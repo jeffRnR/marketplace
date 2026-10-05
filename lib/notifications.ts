@@ -13,15 +13,30 @@ function getTransporter() {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
 
-  if (!user || !pass) {
-    console.warn("⚠️  Email skipped: GMAIL_USER or GMAIL_APP_PASSWORD not set");
-    return null;
+  if (user && pass) {
+    return nodemailer.createTransport({
+      service: "gmail",
+      auth: { user, pass },
+    });
   }
 
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: { user, pass },
-  });
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const resendFromEmail = process.env.RESEND_FROM_EMAIL;
+  if (resendApiKey && resendFromEmail) {
+    return nodemailer.createTransport({
+      host: "smtp.resend.com",
+      port: 465,
+      secure: true,
+      auth: { user: "resend", pass: resendApiKey },
+    });
+  }
+
+  console.error("Email skipped: configure Gmail credentials or RESEND_API_KEY and RESEND_FROM_EMAIL");
+  return null;
+}
+
+function getFromAddress() {
+  return process.env.GMAIL_USER ?? process.env.RESEND_FROM_EMAIL;
 }
 
 // ─── Generate ticket PDF ────────────────────────────────────────────────────
@@ -115,7 +130,7 @@ export async function sendTicketEmail({
 
   try {
     const info = await transporter.sendMail({
-      from: `"Noizy Hub" <${process.env.GMAIL_USER}>`,
+      from: `"Noizy Hub" <${getFromAddress()}>`,
       to,
       subject: `Your ticket for ${eventTitle} 🎟`,
       html: `
@@ -204,7 +219,7 @@ export async function sendVendingConfirmationEmail({
 
   try {
     const info = await transporter.sendMail({
-      from: `"Noizy Hub" <${process.env.GMAIL_USER}>`,
+      from: `"Noizy Hub" <${getFromAddress()}>`,
       to,
       subject: `Vending slot confirmed — ${eventTitle} 🛒`,
       html: `
@@ -270,7 +285,7 @@ export async function sendBookingEmail({
 
   try {
     const info = await transporter.sendMail({
-      from: `"Noizy Hub" <${process.env.GMAIL_USER}>`,
+      from: `"Noizy Hub" <${getFromAddress()}>`,
       to,
       subject,
       html: `
@@ -333,7 +348,7 @@ export async function sendScannerLinkEmail({
 
   try {
     const info = await transporter.sendMail({
-      from: `"Noizy Hub" <${process.env.GMAIL_USER}>`,
+      from: `"Noizy Hub" <${getFromAddress()}>`,
       to,
       subject: `Scanner access for ${eventTitle} 🎫`,
       html: `
