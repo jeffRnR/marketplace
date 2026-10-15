@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
+import { safeEventAccentColor } from "@/lib/eventAppearance";
 
 const EventsMap = dynamic(() => import("@/components/EventsMap"), {
   ssr: false,
@@ -45,6 +46,10 @@ interface EventCardProps {
   eventId: string;
   createdById: string;
   image: string;
+  accentColor: string;
+  pageLayout: "classic" | "immersive";
+  ticketStyle: "classic" | "minimal";
+  listingCurrency: "KES" | "USDC";
   title: string;
   date: string;
   time: string;
@@ -77,9 +82,10 @@ function getCapacity(link: string): number {
 // ── Component ─────────────────────────────────────────────────────────────
 
 function EventCard({
-  eventId, createdById, image, title, date, time,
+  eventId, createdById, image, accentColor: rawAccentColor, pageLayout, ticketStyle, listingCurrency, title, date, time,
   location, tickets, description, host, attendees, category,
 }: EventCardProps) {
+  const accentColor = safeEventAccentColor(rawAccentColor);
   // Only show tickets that are currently live
   const liveTickets = tickets.filter(isTicketLive);
   const soldOutTickets = tickets.filter((t) => !isTicketLive(t) && t.isActive === undefined
@@ -153,12 +159,24 @@ function EventCard({
   );
 
   return (
-    <div className="w-full overflow-hidden gap-8 flex flex-col lg:flex-row mb-4">
+    <div className={`w-full overflow-hidden gap-8 flex flex-col mb-4 ${pageLayout === "immersive" ? "" : "lg:flex-row"}`}>
 
       {/* Left */}
-      <div className="lg:w-1/2 flex flex-col gap-4">
+      <div className={`${pageLayout === "immersive" ? "w-full" : "lg:w-1/2"} flex flex-col gap-4`}>
         <div className="relative">
-          <img src={image} alt={title} className="w-full h-100 object-cover rounded-lg" />
+          <img
+            src={image}
+            alt={title}
+            className={`w-full object-cover rounded-2xl ${pageLayout === "immersive" ? "h-[22rem] sm:h-[30rem]" : "h-100"}`}
+          />
+          {pageLayout === "immersive" && (
+            <div className="absolute inset-0 flex items-end rounded-2xl bg-gradient-to-t from-black/85 via-black/15 to-transparent p-6 sm:p-10">
+              <div>
+                <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-white/80" style={{ color: accentColor }}>{host}</p>
+                <h1 className="max-w-4xl text-3xl font-bold text-white sm:text-5xl">{title}</h1>
+              </div>
+            </div>
+          )}
         </div>
         <div className="hidden lg:flex flex-col gap-4">
           <CategoryMeta />
@@ -166,11 +184,11 @@ function EventCard({
       </div>
 
       {/* Right */}
-      <div className="lg:w-1/2 w-full flex flex-col gap-4">
-        <h2 className="text-[2.5rem] font-bold text-[var(--foreground)]">{title}</h2>
+      <div className={`${pageLayout === "immersive" ? "w-full" : "lg:w-1/2"} flex flex-col gap-4`}>
+        {pageLayout === "classic" && <h2 className="text-[2.5rem] font-bold text-[var(--foreground)]" style={{ color: accentColor }}>{title}</h2>}
 
         <div className="text-md text-[var(--muted)] flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-purple-500" />
+          <MapPin className="h-4 w-4" style={{ color: accentColor }} />
           <span className="font-semibold">{location}</span>
         </div>
 
@@ -187,7 +205,7 @@ function EventCard({
 
         {/* ── Tickets section ── */}
         <div className="my-4">
-          <h3 className="text-lg font-bold text-gray-300 mb-3">Tickets</h3>
+          <h3 className="text-lg font-bold text-gray-300 mb-3" style={{ color: accentColor }}>Tickets</h3>
 
           {isOwner ? (
             <div className="flex flex-col items-center justify-center gap-3 py-8 border border-dashed border-gray-600 rounded-xl">
@@ -217,14 +235,15 @@ function EventCard({
                     const isRsvpTicket = ticket.type === "RSVP" || ticket.price === " " || ticket.price === "0";
                     return (
                       <li key={idx}
-                        className="flex items-center justify-between bg-white/2 px-3 py-2 rounded-2xl border border-gray-400/50">
-                        <span className="text-md text-gray-300 font-semibold">
-                          {ticket.type} — {ticket.price}
+                        className={`flex items-center justify-between bg-white/2 px-3 py-2 border border-gray-400/50 ${ticketStyle === "minimal" ? "rounded-md" : "rounded-2xl"}`}
+                        style={{ borderColor: `${accentColor}66` }}>
+                        <span className="text-md text-gray-300 font-semibold" style={{ color: accentColor }}>
+                          {ticket.type} — {isRsvpTicket ? ticket.price : `${listingCurrency} ${ticket.price}`}
                         </span>
                         {isRsvpTicket ? (
                           /* RSVP — fixed qty of 1, no controls */
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-purple-400 font-semibold border border-purple-700/50 bg-purple-900/20 px-3 py-1 rounded-lg">
+                            <span className="text-xs font-semibold border px-3 py-1 rounded-lg" style={{ color: accentColor, borderColor: `${accentColor}80`, backgroundColor: `${accentColor}22` }}>
                               1 per person
                             </span>
                           </div>
@@ -264,7 +283,8 @@ function EventCard({
               {liveTickets.length > 0 && (
                 <>
                   <button onClick={handleBuy}
-                    className="w-full bg-[(var)] text-gray-100 font-semibold px-3 py-2 rounded-lg hover:cursor-pointer hover:bg-purple-700 transition">
+                    className="w-full text-white font-semibold px-3 py-2 rounded-lg hover:cursor-pointer transition"
+                    style={{ backgroundColor: accentColor }}>
                     Proceed to Checkout
                   </button>
                   {errorMessage && (

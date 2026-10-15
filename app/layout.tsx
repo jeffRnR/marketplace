@@ -2,7 +2,7 @@
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
-import TopBarClient    from "@/components/TopBarClient";
+import TopBar from "@/components/TopBar";
 import FooterClient    from "@/components/FooterClient";
 import NextAuthProvider from "@/components/NextAuthProvider";
 import BackButton      from "@/components/BackButton";
@@ -38,7 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         ) : (
           <ThemeProvider>
             <NextAuthProvider>
-              <TopBarClient />
+              <TopBar />
               <BackButton />
               <main className="page-reveal mt-0 flex-grow pt-24">{children}</main>
               <FooterClient />

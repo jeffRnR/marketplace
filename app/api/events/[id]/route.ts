@@ -7,6 +7,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import nodemailer from "nodemailer";
+import {
+  isEventAccentColor,
+  isEventPageLayout,
+  isEventTicketStyle,
+} from "@/lib/eventAppearance";
 
 function getTransporter() {
   const user = process.env.GMAIL_USER;
@@ -35,7 +40,7 @@ async function sendUpdateEmail({
 
   try {
     await transporter.sendMail({
-      from:    `"Noizy Hub" <${process.env.GMAIL_USER}>`,
+      from: `"Noizy Hub" <${process.env.GMAIL_USER}>`,
       to,
       subject: `Update: ${eventTitle} has changed`,
       html: `
@@ -90,7 +95,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const user = await prisma.user.findUnique({
-      where:  { email: session.user.email },
+      where: { email: session.user.email },
       select: { id: true },
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -101,17 +106,20 @@ export async function PATCH(
 
     // Verify ownership
     const existing = await prisma.event.findUnique({
-      where:  { id: eventId },
+      where: { id: eventId },
       select: {
-        createdById:   true,
-        title:         true,
-        date:          true,
-        time:          true,
-        location:      true,
-        description:   true,
-        host:          true,
-        image:         true,
+        createdById: true,
+        title: true,
+        date: true,
+        time: true,
+        location: true,
+        description: true,
+        host: true,
+        image: true,
         showAttendees: true,   // ← included
+        accentColor: true,
+        pageLayout: true,
+        ticketStyle: true,
       },
     });
     if (!existing)
@@ -125,19 +133,35 @@ export async function PATCH(
       startDate, startTime, endDate, endTime,
       lat, lng,
       showAttendees,   // ← accepted from body
+      accentColor,
+      pageLayout,
+      ticketStyle,
     } = body;
+    const timeLabel =
+      endDate && endTime
+        ? endDate === startDate
+          ? `${startTime} to ${endTime}`
+          : `${startTime} to ${endTime} (${endDate})`
+        : startTime;
 
     // If this is a visibility-only PATCH (just showAttendees), handle it directly
     if (typeof showAttendees === "boolean" && Object.keys(body).length === 1) {
       const updated = await prisma.event.update({
         where: { id: eventId },
-        data:  { showAttendees },
+        data: { showAttendees },
       });
       return NextResponse.json({ event: updated });
     }
 
     if (!title?.trim())
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
+    if (
+      (accentColor !== undefined && !isEventAccentColor(accentColor)) ||
+      (pageLayout !== undefined && !isEventPageLayout(pageLayout)) ||
+      (ticketStyle !== undefined && !isEventTicketStyle(ticketStyle))
+    ) {
+      return NextResponse.json({ error: "Invalid event appearance settings" }, { status: 400 });
+    }
 
     // Build updated fields
     const newDate = startDate && startTime
@@ -158,7 +182,7 @@ export async function PATCH(
     const changes: { field: string; from: string; to: string }[] = [];
 
     const oldDateStr = existing.date.toLocaleDateString("en-KE", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-    const newDateStr = newDate.toLocaleDateString("en-KE",        { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const newDateStr = newDate.toLocaleDateString("en-KE", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
     if (oldDateStr !== newDateStr)
       changes.push({ field: "date", from: oldDateStr, to: newDateStr });
 
@@ -169,39 +193,42 @@ export async function PATCH(
       changes.push({ field: "venue", from: existing.location, to: newLocation });
 
     const updateData: any = {
-      title:         title.trim(),
-      host:          host?.trim()        ?? existing.host,
-      description:   description?.trim() ?? existing.description,
-      location:      newLocation,
-      date:          newDate,
-      time:          newTime,
-      image:         image || existing.image,
+      title: title.trim(),
+      host: host?.trim() ?? existing.host,
+      description: description?.trim() ?? existing.description,
+      location: newLocation,
+      date: newDate,
+      time: newTime,
+      image: image || existing.image,
       showAttendees: typeof showAttendees === "boolean" ? showAttendees : existing.showAttendees,
+      accentColor: accentColor ?? existing.accentColor,
+      pageLayout: pageLayout ?? existing.pageLayout,
+      ticketStyle: ticketStyle ?? existing.ticketStyle,
     };
     if (newMapUrl) updateData.mapUrl = newMapUrl;
 
     const updated = await prisma.event.update({
       where: { id: eventId },
-      data:  updateData,
+      data: updateData,
     });
 
     // Email ticket holders if critical fields changed
     if (changes.length > 0) {
       const orders = await prisma.order.findMany({
-        where:  { eventId, status: "confirmed" },
+        where: { eventId, status: "confirmed" },
         select: { name: true, email: true },
       });
 
-      const unique  = Array.from(new Map(orders.map(o => [o.email, o])).values());
+      const unique = Array.from(new Map(orders.map(o => [o.email, o])).values());
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:4000";
 
       await Promise.all(unique.map(order =>
         sendUpdateEmail({
-          to:         order.email,
-          name:       order.name,
+          to: order.email,
+          name: order.name,
           eventTitle: updated.title,
           changes,
-          eventId:    String(eventId),
+          eventId: String(eventId),
           baseUrl,
         })
       ));

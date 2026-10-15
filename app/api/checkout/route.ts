@@ -5,8 +5,9 @@ import { getServerSession } from "next-auth";
 import { randomUUID }   from "crypto";
 import prisma           from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
-import { initiateStkPush } from "@/lib/intasend";
-import { sendTicketEmail, sendSMS } from "@/lib/notifications";
+import { assertStkPushConfigured, initiateStkPush } from "@/lib/daraja";
+import { sendSMS } from "@/lib/notifications";
+import { sendTicketEmailForOrder } from "@/lib/ticket-email-delivery";
 import { notifyTicketOrder } from "@/lib/createNotification";
 import { resolveOrderOwnerId } from "@/lib/ticketOwnership";
 import { normalizeMpesaPhone } from "@/lib/mpesaPhone";
@@ -14,9 +15,30 @@ import { normalizeMpesaPhone } from "@/lib/mpesaPhone";
 const VALID_REFS = new Set(["whatsapp","instagram","twitter","facebook","tiktok","linkedin","telegram","direct","other"]);
 
 function applyDiscount(price: number, discount: string): number {
-  if (discount.endsWith("%")) return price * (1 - parseFloat(discount) / 100);
+  if (discount.endsWith("%")) {
+    const percent = parseFloat(discount);
+    if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+      throw new Error("Promo code has an invalid discount");
+    }
+    return price * (1 - percent / 100);
+  }
   const flat = parseFloat(discount.replace(/[^0-9.]/g, "")) || 0;
+  if (!Number.isFinite(flat) || flat < 0) throw new Error("Promo code has an invalid discount");
   return Math.max(0, price - flat);
+}
+
+function parseTicketPrice(price: string): number | null {
+  const amount = Number(price.replace(/[^0-9.]/g, ""));
+  return Number.isSafeInteger(amount) && amount >= 0 ? amount : null;
+}
+
+function isValidDiscount(discount: string): boolean {
+  if (discount.endsWith("%")) {
+    const percent = parseFloat(discount);
+    return Number.isFinite(percent) && percent >= 0 && percent <= 100;
+  }
+  const flat = parseFloat(discount.replace(/[^0-9.]/g, ""));
+  return Number.isFinite(flat) && flat >= 0;
 }
 
 export async function POST(req: Request) {
@@ -32,7 +54,19 @@ export async function POST(req: Request) {
     const ref     = VALID_REFS.has(rawRef) ? rawRef : "direct";
     const phone = typeof phoneInput === "string" ? normalizeMpesaPhone(phoneInput) : null;
 
-    if (!eventId || !name?.trim() || !email?.trim() || !phone || !cartItems?.length) {
+    if (
+      !eventId ||
+      typeof name !== "string" ||
+      !name.trim() ||
+      typeof email !== "string" ||
+      !email.trim() ||
+      !phone ||
+      !Array.isArray(cartItems) ||
+      cartItems.length === 0 ||
+      cartItems.length > 50 ||
+      name.length > 160 ||
+      email.length > 254
+    ) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -47,9 +81,47 @@ export async function POST(req: Request) {
       prisma.user.findUnique({ where: { email }, select: { id: true } }),
     );
 
-    const ticketIds = cartItems.map((i: any) => String(i.ticketId));
-    const dbTickets = await prisma.ticket.findMany({ where: { id: { in: ticketIds } } });
-    const isRsvp    = dbTickets.every(t => t.type === "RSVP");
+    const requestedItems = cartItems.map((item: unknown) => {
+      if (!item || typeof item !== "object") return null;
+      const candidate = item as { ticketId?: unknown; quantity?: unknown };
+      const ticketId = typeof candidate.ticketId === "string" ? candidate.ticketId : "";
+      const quantity = Number(candidate.quantity);
+      return ticketId && Number.isSafeInteger(quantity) && quantity > 0 && quantity <= 100
+        ? { ticketId, quantity }
+        : null;
+    });
+    const validRequestedItems = requestedItems.filter(
+      (item): item is { ticketId: string; quantity: number } => item !== null,
+    );
+    if (validRequestedItems.length !== requestedItems.length) {
+      return NextResponse.json({ error: "Invalid ticket selection" }, { status: 400 });
+    }
+    const ticketIds = [...new Set(validRequestedItems.map((item) => item.ticketId))];
+    const dbTickets = await prisma.ticket.findMany({
+      where: { id: { in: ticketIds }, eventId, isActive: true },
+    });
+    if (dbTickets.length !== ticketIds.length) {
+      return NextResponse.json({ error: "One or more tickets are unavailable for this event" }, { status: 400 });
+    }
+    const ticketById = new Map(dbTickets.map((ticket) => [ticket.id, ticket]));
+    const purchaseItems = validRequestedItems.map((item) => {
+      const ticket = ticketById.get(item.ticketId)!;
+      return { ...item, ticketType: ticket.type, price: parseTicketPrice(ticket.price) };
+    });
+    if (purchaseItems.some((item) => item.price === null)) {
+      return NextResponse.json({ error: "Ticket price is invalid; contact the event organiser" }, { status: 400 });
+    }
+    const ticketStates = new Set(purchaseItems.map((item) => item.ticketType === "RSVP"));
+    if (ticketStates.size !== 1) {
+      return NextResponse.json({ error: "Free RSVP and paid tickets must be checked out separately" }, { status: 400 });
+    }
+    const isRsvp = ticketStates.has(true);
+    const now = new Date();
+    if (dbTickets.some((ticket) =>
+      (ticket.startsAt && ticket.startsAt > now) || (ticket.endsAt && ticket.endsAt <= now)
+    )) {
+      return NextResponse.json({ error: "One or more tickets are not currently on sale" }, { status: 409 });
+    }
 
     if (isRsvp) {
       const existing = await prisma.order.findFirst({
@@ -63,9 +135,14 @@ export async function POST(req: Request) {
     let promoRecord: { id: string; discount: string } | null = null;
     let discountLabel: string | null = null;
 
-    if (promoCode?.trim()) {
+    if (typeof promoCode === "string" && promoCode.trim()) {
       promoRecord = await prisma.promoCode.findFirst({
-        where: { eventId, code: promoCode.trim().toUpperCase(), active: true },
+        where: {
+          eventId,
+          code: promoCode.trim().toUpperCase(),
+          active: true,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
       });
       if (!promoRecord) {
         return NextResponse.json({ error: "Invalid or inactive promo code." }, { status: 400 });
@@ -75,23 +152,26 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "This promo code has reached its usage limit." }, { status: 400 });
       }
       discountLabel = promoRecord.discount;
+      if (!isValidDiscount(discountLabel)) {
+        return NextResponse.json({ error: "This promo code has an invalid discount." }, { status: 400 });
+      }
     }
 
     let totalAmount = 0;
     if (!isRsvp) {
-      for (const item of cartItems) {
-        const base = parseFloat(String(item.price).replace(/[^0-9.]/g, "")) || 0;
+      for (const item of purchaseItems) {
+        const base = item.price!;
         const disc = promoRecord ? applyDiscount(base, promoRecord.discount) : base;
         totalAmount += disc * item.quantity;
       }
     }
 
     const orderId    = randomUUID();
-    const orderItems = cartItems.map((item: any) => ({
+    const orderItems = purchaseItems.map((item) => ({
       id:         randomUUID(),
-      ticketId:   String(item.ticketId),
+      ticketId:   item.ticketId,
       ticketType: item.ticketType,
-      price:      item.price,
+      price:      String(item.price),
       quantity:   item.quantity,
       ticketCode: randomUUID(),
     }));
@@ -126,19 +206,19 @@ export async function POST(req: Request) {
         ] : []),
         prisma.event.update({
           where: { id: eventId },
-          data:  { attendees: { increment: cartItems.reduce((s: number, i: any) => s + i.quantity, 0) } },
+          data:  { attendees: { increment: validRequestedItems.reduce((sum, item) => sum + item.quantity, 0) } },
         }),
       ]);
 
-      await sendTicketEmail({
-        to: email.trim(), name: name.trim(),
-        eventTitle: event.title, eventDate, eventLocation: event.location,
-        items: orderItems.map((oi: any) => ({
-          ticketType: oi.ticketType, quantity: oi.quantity,
-          price: oi.price, ticketCode: oi.ticketCode,
-        })),
-        totalAmount: 0, isRsvp: true, orderId, baseUrl,
-      });
+      let ticketEmailSent = false;
+      try {
+        ticketEmailSent = await sendTicketEmailForOrder(orderId, baseUrl);
+      } catch (error) {
+        console.error("Unable to send RSVP ticket email; scheduled retry will handle delivery", {
+          orderId,
+          error,
+        });
+      }
 
       void sendSMS(phone.trim(),
         `Hi ${name.trim()}! Your RSVP for ${event.title} on ${eventDate} is confirmed. View your ticket: ${baseUrl}/ticket/${orderItems[0].ticketCode}`
@@ -147,18 +227,55 @@ export async function POST(req: Request) {
       notifyTicketOrder({
         ownerId: event.createdById ?? "", buyerName: name.trim(),
         eventTitle: event.title,
-        quantity: cartItems.reduce((s: number, i: any) => s + i.quantity, 0),
+        quantity: validRequestedItems.reduce((sum, item) => sum + item.quantity, 0),
         ticketType: "RSVP", isRsvp: true,
       });
 
       return NextResponse.json({
-        success: true, type: "rsvp", orderId,
-        ticketCodes: orderItems.map((i: any) => i.ticketCode),
+        success: true, type: "rsvp", orderId, ticketEmailSent,
+        ticketCodes: orderItems.map((item) => item.ticketCode),
         totalAmount: 0,
       });
     }
 
+    if (!Number.isSafeInteger(totalAmount)) {
+      return NextResponse.json({ error: "M-Pesa checkout requires a whole-KES total" }, { status: 400 });
+    }
+
+    const existingPendingOrder = await prisma.order.findFirst({
+      where: {
+        eventId,
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+        isRsvp: false,
+        status: "pending",
+      },
+      include: { paymentRecord: true, items: { select: { ticketId: true, quantity: true } } },
+      orderBy: { createdAt: "desc" },
+    });
+    if (existingPendingOrder?.paymentRecord?.status === "pending") {
+      const cartKey = (items: { ticketId: string; quantity: number }[]) =>
+        items.map(({ ticketId, quantity }) => `${ticketId}:${quantity}`).sort().join("|");
+      if (
+        cartKey(existingPendingOrder.items) !== cartKey(validRequestedItems) ||
+        existingPendingOrder.totalAmount !== totalAmount
+      ) {
+        return NextResponse.json({
+          error: "You already have a pending payment for this event. Check its status before starting another order.",
+        }, { status: 409 });
+      }
+      return NextResponse.json({
+        success: true,
+        type: "mpesa",
+        txRef: existingPendingOrder.paymentRecord.txRef,
+        orderId: existingPendingOrder.id,
+        totalAmount: existingPendingOrder.totalAmount,
+        message: "This order already has a pending M-Pesa payment. Check its status before trying again.",
+      });
+    }
+
     // ── Paid tickets ──────────────────────────────────────────────────────────
+    assertStkPushConfigured();
     const txRef = randomUUID();
 
     await prisma.$transaction([
@@ -187,7 +304,7 @@ export async function POST(req: Request) {
       ] : []),
       prisma.event.update({
         where: { id: eventId },
-        data:  { attendees: { increment: cartItems.reduce((s: number, i: any) => s + i.quantity, 0) } },
+        data:  { attendees: { increment: validRequestedItems.reduce((sum, item) => sum + item.quantity, 0) } },
       }),
     ]);
 
@@ -202,27 +319,35 @@ export async function POST(req: Request) {
     });
 
     if (!stkResult.success) {
-      await prisma.$transaction([
-        prisma.paymentRecord.update({ where: { txRef }, data: { status: "failed" } }),
-        prisma.order.update({ where: { id: orderId }, data: { status: "failed" } }),
-      ]);
-      return NextResponse.json(
-        { error: `Could not initiate M-Pesa payment: ${stkResult.message}` },
-        { status: 502 }
-      );
+      console.error("Daraja STK outcome is unknown; retaining the pending order for reconciliation", {
+        paymentRef: txRef,
+        error: stkResult.message,
+      });
+      return NextResponse.json({
+        success: true,
+        type: "mpesa",
+        txRef,
+        orderId,
+        totalAmount,
+        message: "Payment request is awaiting Daraja confirmation. Do not start another payment.",
+      }, { status: 202 });
     }
 
-    if (stkResult.invoiceId) {
-      await prisma.paymentRecord.update({ where: { txRef }, data: { flwRef: stkResult.invoiceId } });
-    }
+    await prisma.paymentRecord.update({
+      where: { txRef },
+      data: {
+        checkoutRequestId: stkResult.checkoutRequestId,
+        merchantRequestId: stkResult.merchantRequestId,
+      },
+    });
 
     return NextResponse.json({
       success: true, type: "mpesa", txRef, orderId, totalAmount,
       message: "Check your phone and enter your M-Pesa PIN to complete payment.",
     });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("❌ Checkout error:", err);
-    return NextResponse.json({ error: err.message ?? "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal server error" }, { status: 500 });
   }
 }

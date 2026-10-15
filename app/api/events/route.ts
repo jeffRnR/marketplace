@@ -4,6 +4,13 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { nanoid } from "nanoid";
 import { sendBookingEmail } from "@/lib/notifications";
+import {
+  DEFAULT_EVENT_ACCENT_COLOR,
+  isEventAccentColor,
+  isEventPageLayout,
+  isEventTicketStyle,
+  isEventTicketTheme,
+} from "@/lib/eventAppearance";
 
 export async function POST(req: Request) {
   try {
@@ -33,6 +40,11 @@ export async function POST(req: Request) {
       country,
       location,
       description,
+      accentColor,
+      pageLayout,
+      ticketStyle,
+      ticketTheme,
+      listingCurrency,
       requireApproval,
       isRsvp,
       capacity,
@@ -48,6 +60,17 @@ export async function POST(req: Request) {
         { error: "Missing required fields: title, startDate, startTime, location, categoryIds" },
         { status: 400 }
       );
+    if (listingCurrency !== undefined && listingCurrency !== "KES" && listingCurrency !== "USDC") {
+      return NextResponse.json({ error: "Invalid ticket currency" }, { status: 400 });
+    }
+    if (
+      (accentColor !== undefined && !isEventAccentColor(accentColor)) ||
+      (pageLayout !== undefined && !isEventPageLayout(pageLayout)) ||
+      (ticketStyle !== undefined && !isEventTicketStyle(ticketStyle)) ||
+      (ticketTheme !== undefined && !isEventTicketTheme(ticketTheme))
+    ) {
+      return NextResponse.json({ error: "Invalid event appearance settings" }, { status: 400 });
+    }
 
     const validCategories = await prisma.category.count({
       where: { id: { in: categoryIds }, kind: "EVENT" },
@@ -85,6 +108,11 @@ export async function POST(req: Request) {
       data: {
         image,
         title,
+        accentColor: accentColor ?? DEFAULT_EVENT_ACCENT_COLOR,
+        pageLayout: pageLayout ?? "classic",
+        ticketStyle: ticketStyle ?? "classic",
+        ticketTheme: ticketTheme ?? "midnight",
+        listingCurrency: !isRsvp && listingCurrency === "USDC" ? "USDC" : "KES",
         host,
         date: eventDate,
         time: timeLabel,

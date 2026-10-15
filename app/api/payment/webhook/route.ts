@@ -1,287 +1,347 @@
-// app/api/payment/webhook/route.ts
-// Unified IntaSend webhook handler — tickets + vending slot payments.
-//
-// IntaSend webhook payload shape:
-// {
-//   "invoice_id": "BRZKGPR",
-//   "state": "COMPLETE" | "FAILED" | "PROCESSING" | "PENDING",
-//   "api_ref": "<our UUID stored in PaymentRecord.txRef>",
-//   "value": "1500.00",
-//   "currency": "KES",
-//   "account": "254712...",
-//   "challenge": "<your INTASEND_WEBHOOK_CHALLENGE string>",
-//   "failed_reason": null,
-//   ...
-// }
-//
-// SECURITY:
-//   1. Verify challenge field (constant-time) before touching DB
-//   2. Re-verify transaction with IntaSend status API
-//   3. Amount sanity check
-//   4. Idempotent — safe to receive duplicate webhook events
-//   5. All DB mutations inside prisma.$transaction()
-
-import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { verifyWebhookChallenge, verifyTransaction } from "@/lib/intasend";
-import { creditWallet } from "@/lib/wallet";
+import { verifyTransaction } from "@/lib/daraja";
+import { creditWalletInTransaction } from "@/lib/wallet";
+import { confirmPayment } from "@/lib/ledger";
+import { failLedgerDarajaPayment, failPaymentRecord } from "@/lib/daraja-reconciliation";
+import { normalizeMpesaPhone } from "@/lib/mpesaPhone";
+import { sendTicketEmailForOrder } from "@/lib/ticket-email-delivery";
 import {
-  sendTicketEmail,
   sendVendingConfirmationEmail,
+  sendBookingEmail,
   sendSMS,
 } from "@/lib/notifications";
 import {
   notifyTicketOrder,
   notifyVendingConfirmed,
+  notifyBookingConfirmed,
 } from "@/lib/createNotification";
 
-export async function POST(req: Request) {
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+type CallbackItem = { Name?: string; Value?: string | number };
+type DarajaCallback = {
+  Body?: {
+    stkCallback?: {
+      MerchantRequestID?: string;
+      CheckoutRequestID?: string;
+      ResultCode?: number | string;
+      ResultDesc?: string;
+      CallbackMetadata?: { Item?: CallbackItem[] };
+    };
+  };
+};
 
-  // 1. Verify webhook challenge
-  const challenge = body.challenge as string | undefined;
-  if (!verifyWebhookChallenge(challenge)) {
-    console.warn("❌ Webhook: invalid challenge", { received: challenge });
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // IntaSend fires webhooks on every state change — only act on terminal states
-  const state     = String(body.state ?? "").toUpperCase();
-  const invoiceId = String(body.invoice_id ?? "");
-  const apiRef    = String(body.api_ref    ?? "");  // our UUID (txRef)
-
-  if (!invoiceId || !apiRef) {
-    console.error("❌ Webhook: missing invoice_id or api_ref", body);
-    return NextResponse.json({ error: "Missing fields" }, { status: 400 });
-  }
-
-  // Ignore non-terminal states — IntaSend also fires PENDING and PROCESSING
-  if (state !== "COMPLETE" && state !== "FAILED") {
-    return NextResponse.json({ received: true, note: `Ignored state: ${state}` });
-  }
-
-  // 2. Look up our PaymentRecord by api_ref (= txRef)
-  const record = await prisma.paymentRecord.findUnique({ where: { txRef: apiRef } });
-  if (!record) {
-    console.warn(`❌ Webhook: no PaymentRecord for api_ref=${apiRef}`);
-    return NextResponse.json({ received: true });
-  }
-
-  // 3. Idempotency — already processed
-  if (record.status === "successful") {
-    console.log(`ℹ️  Webhook: api_ref=${apiRef} already processed`);
-    return NextResponse.json({ received: true });
-  }
-
-  // 4. Re-verify with IntaSend API — never trust webhook payload alone
-  const verified = await verifyTransaction(invoiceId);
-
-  if (!verified.success || verified.state !== "COMPLETE") {
-    await prisma.paymentRecord.update({
-      where: { id: record.id },
-      data:  { status: "failed" },
-    });
-    console.warn(`❌ Webhook: transaction ${invoiceId} state=${verified.state}`);
-    return NextResponse.json({ received: true });
-  }
-
-  // 5. Amount sanity check — allow KES 1 rounding tolerance
-  const amountMatch = Math.abs(verified.amount - record.amount) < 1;
-  if (!amountMatch) {
-    console.error(
-      `❌ Webhook: amount mismatch api_ref=${apiRef}. ` +
-      `Expected ${record.amount}, got ${verified.amount}`
-    );
-    await prisma.paymentRecord.update({
-      where: { id: record.id },
-      data:  { status: "failed" },
-    });
-    return NextResponse.json({ received: true });
-  }
-
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-
-  // 6. Route to correct handler based on payment type
-  if (record.type === "ticket" && record.orderId) {
-    await handleTicketPayment(record, invoiceId, baseUrl);
-  } else if (record.type === "vending_slot" && record.slotApplicationId) {
-    await handleVendingPayment(record, invoiceId, baseUrl);
-  } else {
-    console.error(`❌ Webhook: unknown type=${record.type} for api_ref=${apiRef}`);
-  }
-
-  return NextResponse.json({ received: true });
+function getMetadata(items: CallbackItem[] | undefined) {
+  return new Map((items ?? []).map((item) => [item.Name ?? "", item.Value]));
 }
 
-// ─── Ticket payment confirmed ─────────────────────────────────────────────────
+export async function POST(req: Request) {
+  let payload: DarajaCallback;
+  try {
+    const contentLength = Number(req.headers.get("content-length") ?? 0);
+    if (contentLength > 32_768) return Response.json({ error: "Callback too large" }, { status: 413 });
+    const raw = await req.text();
+    if (raw.length > 32_768) return Response.json({ error: "Callback too large" }, { status: 413 });
+    payload = JSON.parse(raw) as DarajaCallback;
+  } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
-async function handleTicketPayment(
-  record: { id: string; orderId: string | null; txRef: string; amount: number },
-  invoiceId: string,
-  baseUrl: string
-) {
-  const order = await prisma.order.findUnique({
-    where:   { id: record.orderId! },
+  const callback = payload.Body?.stkCallback;
+  const checkoutRequestId = callback?.CheckoutRequestID;
+  const merchantRequestId = callback?.MerchantRequestID;
+  if (
+    !callback ||
+    typeof checkoutRequestId !== "string" ||
+    !checkoutRequestId ||
+    checkoutRequestId.length > 200 ||
+    typeof merchantRequestId !== "string" ||
+    !merchantRequestId ||
+    merchantRequestId.length > 200
+  ) {
+    return Response.json({ error: "Missing Daraja callback identifiers" }, { status: 400 });
+  }
+
+  const ledgerPayment = await prisma.payment.findUnique({ where: { checkoutRequestId } });
+  const payment = ledgerPayment
+    ? null
+    : await prisma.paymentRecord.findUnique({ where: { checkoutRequestId } });
+  if (!payment && !ledgerPayment) {
+    console.warn("Daraja callback does not match a payment record", { checkoutRequestId });
+    return Response.json({ error: "Payment not yet correlated" }, { status: 503 });
+  }
+  if (ledgerPayment) {
+    if (ledgerPayment.merchantRequestId !== merchantRequestId) {
+      console.error("Daraja merchant request ID mismatch", { paymentId: ledgerPayment.id });
+      return Response.json({ error: "Callback identifier mismatch" }, { status: 400 });
+    }
+    if (ledgerPayment.status !== "INITIATED") return Response.json({ received: true, duplicate: true });
+    const metadata = getMetadata(callback.CallbackMetadata?.Item);
+    const callbackAmount = metadata.get("Amount");
+    const amount = typeof callbackAmount === "number" ? callbackAmount : Number(callbackAmount);
+    const callbackPhone = metadata.get("PhoneNumber");
+    if (callbackPhone !== undefined) {
+      const order = await prisma.order.findUnique({
+        where: { id: ledgerPayment.orderId },
+        select: { phone: true },
+      });
+      if (normalizeMpesaPhone(String(callbackPhone)) !== normalizeMpesaPhone(order?.phone ?? "")) {
+        console.error("Daraja callback phone does not match payment", { paymentId: ledgerPayment.id });
+        return Response.json({ error: "Callback phone does not match payment" }, { status: 400 });
+      }
+    }
+    const expectedAmount = Number(ledgerPayment.grossMinor / BigInt(100));
+    if (Number.isFinite(amount) && amount !== expectedAmount) {
+      console.error("Daraja callback amount mismatch", { paymentId: ledgerPayment.id, expected: expectedAmount, received: amount });
+      return Response.json({ error: "Callback amount mismatch" }, { status: 400 });
+    }
+    let verified;
+    try {
+      verified = await verifyTransaction(checkoutRequestId);
+    } catch (error) {
+      console.error("Daraja STK status query failed", { paymentId: ledgerPayment.id, error });
+      return Response.json({ error: "Daraja status verification failed" }, { status: 503 });
+    }
+    if (verified.CheckoutRequestID !== checkoutRequestId || (
+      verified.MerchantRequestID && verified.MerchantRequestID !== merchantRequestId
+    )) {
+      return Response.json({ error: "Daraja status response mismatch" }, { status: 503 });
+    }
+    if (verified.ResultCode === undefined) {
+      return Response.json({ error: "Daraja has not returned a terminal payment result" }, { status: 503 });
+    }
+    if (verified.ResultCode !== 0) {
+      await failLedgerDarajaPayment(ledgerPayment.id, ledgerPayment.orderId);
+      return Response.json({ received: true, status: "failed" });
+    }
+    if (!Number.isFinite(amount) || amount !== expectedAmount) {
+      return Response.json({ error: "Verified payment amount is unavailable or mismatched" }, { status: 400 });
+    }
+    const receipt = metadata.get("MpesaReceiptNumber");
+    await confirmPayment(ledgerPayment.id, typeof receipt === "string" ? receipt : checkoutRequestId);
+    return Response.json({ received: true, status: "successful" });
+  }
+  if (!payment) return Response.json({ error: "Payment not found" }, { status: 503 });
+  if (payment.merchantRequestId !== merchantRequestId) {
+    console.error("Daraja merchant request ID mismatch", { txRef: payment.txRef });
+    return Response.json({ error: "Callback identifier mismatch" }, { status: 400 });
+  }
+  if (payment.status !== "pending") return Response.json({ received: true, duplicate: true });
+
+  const metadata = getMetadata(callback.CallbackMetadata?.Item);
+  const callbackAmount = metadata.get("Amount");
+  const amount = typeof callbackAmount === "number" ? callbackAmount : Number(callbackAmount);
+  const callbackPhone = metadata.get("PhoneNumber");
+  if (
+    callbackPhone !== undefined &&
+    normalizeMpesaPhone(String(callbackPhone)) !== normalizeMpesaPhone(payment.phone)
+  ) {
+    console.error("Daraja callback phone does not match payment", { txRef: payment.txRef });
+    return Response.json({ error: "Callback phone does not match payment" }, { status: 400 });
+  }
+  if (Number.isFinite(amount) && amount !== payment.amount) {
+    console.error("Daraja callback amount mismatch", { txRef: payment.txRef, expected: payment.amount, received: amount });
+    return Response.json({ error: "Callback amount mismatch" }, { status: 400 });
+  }
+
+  let verified;
+  try {
+    verified = await verifyTransaction(checkoutRequestId);
+  } catch (error) {
+    console.error("Daraja STK status query failed", { txRef: payment.txRef, error });
+    return Response.json({ error: "Daraja status verification failed" }, { status: 503 });
+  }
+
+  if (verified.CheckoutRequestID !== checkoutRequestId || (
+    verified.MerchantRequestID && verified.MerchantRequestID !== merchantRequestId
+  )) {
+    console.error("Daraja status response ID mismatch", { txRef: payment.txRef });
+    return Response.json({ error: "Daraja status response mismatch" }, { status: 503 });
+  }
+
+  if (verified.ResultCode === undefined) {
+    return Response.json({ error: "Daraja has not returned a terminal payment result" }, { status: 503 });
+  }
+  if (verified.ResultCode !== 0) {
+    await failPaymentRecord(payment.id, callback.ResultDesc ?? verified.ResultDesc);
+    return Response.json({ received: true, status: "failed" });
+  }
+
+  if (!Number.isFinite(amount) || amount !== payment.amount) {
+    console.error("Daraja success callback did not contain the expected amount", { txRef: payment.txRef });
+    return Response.json({ error: "Verified payment amount is unavailable or mismatched" }, { status: 400 });
+  }
+
+  const receipt = metadata.get("MpesaReceiptNumber");
+  const finalized = await finalizePayment(
+    payment.id,
+    payment.txRef,
+    typeof receipt === "string" ? receipt : checkoutRequestId,
+    payment.amount,
+  );
+  if (!finalized) return Response.json({ received: true, duplicate: true });
+
+  await sendConfirmation(payment, finalized, req);
+  return Response.json({ received: true, status: "successful" });
+}
+
+type FinalizedPayment =
+  | { kind: "ticket"; order: Awaited<ReturnType<typeof getTicketOrder>> }
+  | { kind: "vending"; application: Awaited<ReturnType<typeof getVendingApplication>> }
+  | { kind: "booking"; booking: Awaited<ReturnType<typeof getBooking>> }
+  | null;
+
+async function finalizePayment(paymentId: string, txRef: string, providerRef: string, amount: number): Promise<FinalizedPayment | false> {
+  return prisma.$transaction(async (tx) => {
+    const payment = await tx.paymentRecord.findUniqueOrThrow({ where: { id: paymentId } });
+    const claimed = await tx.paymentRecord.updateMany({
+      where: { id: paymentId, status: "pending" },
+      data: { status: "successful", providerRef },
+    });
+    if (!claimed.count) return false;
+
+    if (payment.orderId) {
+      const order = await tx.order.findUnique({
+        where: { id: payment.orderId },
+        include: { event: { select: { title: true, createdById: true } } },
+      });
+      if (!order) throw new Error(`Paid order ${payment.orderId} was not found`);
+      await tx.order.update({ where: { id: order.id }, data: { status: "confirmed" } });
+      await creditWalletInTransaction(tx, {
+        ownerUserId: order.event.createdById,
+        grossAmount: amount,
+        description: `Ticket sales — ${order.event.title}`,
+        paymentTxRef: txRef,
+      });
+      return { kind: "ticket", order: await getTicketOrder(order.id) };
+    }
+
+    if (payment.slotApplicationId) {
+      const application = await tx.slotApplication.findUnique({
+        where: { id: payment.slotApplicationId },
+        include: { slot: { include: { event: { select: { title: true, date: true, location: true, createdById: true } } } } },
+      });
+      if (!application) throw new Error(`Paid application ${payment.slotApplicationId} was not found`);
+      await tx.slotApplication.update({ where: { id: application.id }, data: { status: "confirmed" } });
+      const confirmedCount = await tx.slotApplication.count({ where: { slotId: application.slotId, status: "confirmed" } });
+      if (confirmedCount >= application.slot.totalSlots) {
+        await tx.vendingSlot.update({ where: { id: application.slotId }, data: { status: "closed" } });
+      }
+      await creditWalletInTransaction(tx, {
+        ownerUserId: application.slot.event.createdById,
+        grossAmount: amount,
+        description: `Vending slot — ${application.slot.title} @ ${application.slot.event.title}`,
+        paymentTxRef: txRef,
+      });
+      return { kind: "vending", application: await getVendingApplication(application.id) };
+    }
+
+    if (payment.serviceBookingId) {
+      const booking = await tx.serviceBooking.findUnique({
+        where: { id: payment.serviceBookingId },
+        include: {
+          listing: { select: { title: true, profile: { select: { userId: true, businessName: true } } } },
+          conversation: { select: { buyer: { select: { name: true, email: true } } } },
+        },
+      });
+      if (!booking) throw new Error(`Paid booking ${payment.serviceBookingId} was not found`);
+      await tx.serviceBooking.update({ where: { id: booking.id }, data: { status: "confirmed" } });
+      await creditWalletInTransaction(tx, {
+        ownerUserId: booking.listing.profile.userId,
+        grossAmount: amount,
+        description: `Marketplace booking — ${booking.listing.title}`,
+        paymentTxRef: txRef,
+      });
+      return { kind: "booking", booking: await getBooking(booking.id) };
+    }
+
+    throw new Error(`Payment record ${paymentId} has no supported linked purchase`);
+  }, { maxWait: 10_000, timeout: 30_000 });
+}
+
+async function getTicketOrder(orderId: string) {
+  return prisma.order.findUniqueOrThrow({
+    where: { id: orderId },
     include: {
       items: true,
       event: { select: { title: true, date: true, location: true, createdById: true } },
     },
   });
-
-  if (!order) {
-    console.error(`❌ handleTicketPayment: order ${record.orderId} not found`);
-    return;
-  }
-
-  await prisma.$transaction(async (tx) => {
-    await tx.paymentRecord.update({
-      where: { id: record.id },
-      data:  { status: "successful", flwRef: invoiceId },  // flwRef repurposed as gatewayRef
-    });
-    await tx.order.update({
-      where: { id: order.id },
-      data:  { status: "confirmed" },
-    });
-  });
-
-  await creditWallet({
-    ownerUserId:  order.event.createdById,
-    grossAmount:  record.amount,
-    description:  `Ticket sales — ${order.event.title}`,
-    paymentTxRef: record.txRef,
-  });
-
-  const eventDate = new Date(order.event.date).toLocaleDateString("en-KE", {
-    month: "long", day: "numeric", year: "numeric",
-  });
-
-  await sendTicketEmail({
-    to:            order.email,
-    name:          order.name,
-    eventTitle:    order.event.title,
-    eventDate,
-    eventLocation: order.event.location,
-    items:         order.items.map((i) => ({
-      ticketType: i.ticketType,
-      quantity:   i.quantity,
-      price:      i.price,
-      ticketCode: i.ticketCode,
-    })),
-    totalAmount: order.totalAmount,
-    isRsvp:      false,
-    orderId:     order.id,
-    baseUrl,
-  });
-
-  const smsText = `Hi ${order.name}! Tickets for ${order.event.title} (${eventDate}) confirmed. KES ${order.totalAmount.toLocaleString()} paid. View: ${baseUrl}/ticket/${order.items[0]?.ticketCode}`;
-  void sendSMS(order.phone, smsText);
-
-  // In-app notification for event owner
-  const firstItem = order.items[0];
-  notifyTicketOrder({
-    ownerId:    order.event.createdById,
-    buyerName:  order.name,
-    eventTitle: order.event.title,
-    quantity:   order.items.reduce((s, i) => s + i.quantity, 0),
-    ticketType: firstItem?.ticketType ?? "Ticket",
-    isRsvp:     false,
-  });
-
-  console.log(`✅ Ticket payment confirmed: order=${order.id} invoice=${invoiceId}`);
 }
 
-// ─── Vending slot payment confirmed ──────────────────────────────────────────
+async function getVendingApplication(applicationId: string) {
+  return prisma.slotApplication.findUniqueOrThrow({
+    where: { id: applicationId },
+    include: { slot: { include: { event: { select: { title: true, date: true, location: true, createdById: true } } } } },
+  });
+}
 
-async function handleVendingPayment(
-  record: { id: string; slotApplicationId: string | null; txRef: string; amount: number },
-  invoiceId: string,
-  baseUrl: string
-) {
-  const application = await prisma.slotApplication.findUnique({
-    where:   { id: record.slotApplicationId! },
+async function getBooking(bookingId: string) {
+  return prisma.serviceBooking.findUniqueOrThrow({
+    where: { id: bookingId },
     include: {
-      slot: {
-        include: {
-          event: {
-            select: { title: true, date: true, location: true, createdById: true },
-          },
-        },
-      },
+      listing: { select: { title: true, profile: { select: { userId: true, businessName: true } } } },
+      conversation: { select: { buyerId: true, buyer: { select: { name: true, email: true } } } },
     },
   });
+}
 
-  if (!application) {
-    console.error(`❌ handleVendingPayment: application ${record.slotApplicationId} not found`);
+async function sendConfirmation(payment: NonNullable<Awaited<ReturnType<typeof prisma.paymentRecord.findUnique>>>, finalized: Exclude<FinalizedPayment, false | null>, req: Request) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? new URL(req.url).origin;
+  if (finalized.kind === "ticket") {
+    const { order } = finalized;
+    const eventDate = new Date(order.event.date).toLocaleDateString("en-KE", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+    await sendTicketEmailForOrder(order.id, baseUrl);
+    void sendSMS(order.phone, `Hi ${order.name}! Tickets for ${order.event.title} (${eventDate}) confirmed. KES ${order.totalAmount.toLocaleString()} paid. View: ${baseUrl}/ticket/${order.items[0]?.ticketCode}`);
+    notifyTicketOrder({
+      ownerId: order.event.createdById,
+      buyerName: order.name,
+      eventTitle: order.event.title,
+      quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
+      ticketType: order.items[0]?.ticketType ?? "Ticket",
+      isRsvp: false,
+    });
+    return;
+  }
+  if (finalized.kind === "vending") {
+    const { application } = finalized;
+    const eventDate = new Date(application.slot.event.date).toLocaleDateString("en-KE", { month: "long", day: "numeric", year: "numeric" });
+    await sendVendingConfirmationEmail({
+      to: application.contactEmail,
+      name: application.contactName,
+      eventTitle: application.slot.event.title,
+      eventDate,
+      eventLocation: application.slot.event.location,
+      slotTitle: application.slot.title,
+      amount: payment.amount,
+      applicationId: application.id,
+      baseUrl,
+    });
+    void sendSMS(application.contactPhone, `Hi ${application.contactName}! Vending slot (${application.slot.title}) at ${application.slot.event.title} on ${eventDate} confirmed. KES ${payment.amount.toLocaleString()} paid. Ref: ${application.id.slice(0, 8).toUpperCase()}`);
+    notifyVendingConfirmed({
+      ownerId: application.slot.event.createdById,
+      businessName: application.businessName,
+      slotTitle: application.slot.title,
+      eventTitle: application.slot.event.title,
+      amount: payment.amount,
+    });
     return;
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.paymentRecord.update({
-      where: { id: record.id },
-      data:  { status: "successful", flwRef: invoiceId },
-    });
-
-    await tx.slotApplication.update({
-      where: { id: application.id },
-      data:  { status: "confirmed" },
-    });
-
-    const slot = await tx.vendingSlot.findUnique({
-      where:  { id: application.slotId },
-      select: { totalSlots: true, id: true },
-    });
-    if (slot) {
-      const confirmedCount = await tx.slotApplication.count({
-        where: { slotId: slot.id, status: "confirmed" },
-      });
-      if (confirmedCount >= slot.totalSlots) {
-        await tx.vendingSlot.update({
-          where: { id: slot.id },
-          data:  { status: "closed" },
-        });
-      }
-    }
+  const { booking } = finalized;
+  await sendBookingEmail({
+    to: booking.conversation.buyer.email,
+    subject: `Booking confirmed — ${booking.listing.title}`,
+    name: booking.conversation.buyer.name ?? "there",
+    body: `Your booking for "${booking.listing.title}" has been confirmed after M-Pesa payment.`,
+    ctaUrl: `${baseUrl}/messages`,
+    ctaLabel: "View booking",
   });
-
-  await creditWallet({
-    ownerUserId:  application.slot.event.createdById,
-    grossAmount:  record.amount,
-    description:  `Vending slot — ${application.slot.title} @ ${application.slot.event.title}`,
-    paymentTxRef: record.txRef,
+  notifyBookingConfirmed({
+    buyerUserId: booking.conversation.buyerId,
+    listingTitle: booking.listing.title,
+    vendorName: booking.listing.profile.businessName,
   });
-
-  const eventDate = new Date(application.slot.event.date).toLocaleDateString("en-KE", {
-    month: "long", day: "numeric", year: "numeric",
-  });
-
-  await sendVendingConfirmationEmail({
-    to:            application.contactEmail,
-    name:          application.contactName,
-    eventTitle:    application.slot.event.title,
-    eventDate,
-    eventLocation: application.slot.event.location,
-    slotTitle:     application.slot.title,
-    amount:        record.amount,
-    applicationId: application.id,
-    baseUrl,
-  });
-
-  const smsText = `Hi ${application.contactName}! Vending slot (${application.slot.title}) at ${application.slot.event.title} on ${eventDate} confirmed. KES ${record.amount.toLocaleString()} paid. Ref: ${application.id.slice(0, 8).toUpperCase()}`;
-  void sendSMS(application.contactPhone, smsText);
-
-  // In-app notification for event owner
-  notifyVendingConfirmed({
-    ownerId:      application.slot.event.createdById,
-    businessName: application.businessName,
-    slotTitle:    application.slot.title,
-    eventTitle:   application.slot.event.title,
-    amount:       record.amount,
-  });
-
-  console.log(`✅ Vending payment confirmed: application=${application.id} invoice=${invoiceId}`);
 }

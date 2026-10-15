@@ -12,6 +12,7 @@ import SignInModal from "@/components/SignInModal";
 
 interface Event {
   id: string; title: string; image: string; date: string; location: string;
+  listingCurrency?: "KES" | "USDC";
   tickets: { type: string; price: string }[];
   categories: { category: { name: string } }[];
 }
@@ -31,14 +32,14 @@ function formatDate(dateStr: string) {
   });
 }
 
-function eventPrice(tickets: { type: string; price: string }[]) {
+function eventPrice(tickets: { type: string; price: string }[], currency: "KES" | "USDC" = "KES") {
   if (!tickets?.length) return "Free";
   if (tickets[0]?.type === "RSVP") return "RSVP";
   const prices = tickets
     .map(t => parseFloat(t.price.replace(/[^0-9.]/g, "")))
     .filter(Boolean);
   if (!prices.length) return "Free";
-  return `From KES ${Math.min(...prices).toLocaleString()}`;
+  return `From ${currency} ${Math.min(...prices).toLocaleString()}`;
 }
 
 function BannerSlider({
@@ -157,7 +158,7 @@ function BannerSlider({
                             ? "bg-green-600 text-white"
                             : "bg-green-600 text-white"
                         }`}>
-                          {eventPrice(currentEvent.tickets)}
+                          {eventPrice(currentEvent.tickets, currentEvent.listingCurrency)}
                         </span>
                       </div>
                     </div>

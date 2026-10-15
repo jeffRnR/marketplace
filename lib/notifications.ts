@@ -1,15 +1,35 @@
 // lib/notifications.ts
-// Email via Nodemailer + Gmail (no domain needed, free, sends to anyone)
+// Transactional email via Resend SMTP or Gmail SMTP.
 // SMS via Africa's Talking sandbox
 
-import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
 import nodemailer from "nodemailer";
+import QRCode from "qrcode";
+import { signTicket } from "@/lib/ticketSigning";
+import { safeEventAccentColor } from "@/lib/eventAppearance";
 export { sendSMS } from "@/lib/at-sms";
 
 // ─── Gmail transporter ────────────────────────────────────────────────────────
 
 function getTransporter() {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const resendFromEmail = process.env.RESEND_FROM_EMAIL;
+  if (resendApiKey && resendFromEmail) {
+    const senderDomain = resendFromEmail.split("@").pop()?.toLowerCase();
+    if (process.env.NODE_ENV === "production" && senderDomain === "resend.dev") {
+      throw new Error("Production ticket email requires a sender address on your verified domain, not resend.dev");
+    }
+    return nodemailer.createTransport({
+      host: "smtp.resend.com",
+      port: 465,
+      secure: true,
+      auth: { user: "resend", pass: resendApiKey },
+    });
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Production ticket email requires Resend credentials and a verified sender domain");
+  }
+
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
 
@@ -20,40 +40,23 @@ function getTransporter() {
     });
   }
 
-  const resendApiKey = process.env.RESEND_API_KEY;
-  const resendFromEmail = process.env.RESEND_FROM_EMAIL;
-  if (resendApiKey && resendFromEmail) {
-    return nodemailer.createTransport({
-      host: "smtp.resend.com",
-      port: 465,
-      secure: true,
-      auth: { user: "resend", pass: resendApiKey },
-    });
-  }
-
-  console.error("Email skipped: configure Gmail credentials or RESEND_API_KEY and RESEND_FROM_EMAIL");
   return null;
 }
 
 function getFromAddress() {
-  return process.env.GMAIL_USER ?? process.env.RESEND_FROM_EMAIL;
+  return process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL
+    ? process.env.RESEND_FROM_EMAIL
+    : process.env.GMAIL_USER;
 }
 
-// ─── Generate ticket PDF ────────────────────────────────────────────────────
-
-async function generateTicketPDF(ticketCode: string, baseUrl: string): Promise<Buffer> {
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    executablePath: await chromium.executablePath(),
-    headless: true,
-  });
-  try {
-    const page = await browser.newPage();
-    await page.goto(`${baseUrl}/ticket/${ticketCode}`, { waitUntil: "networkidle0" });
-    return Buffer.from(await page.pdf({ format: "A4", printBackground: true }));
-  } finally {
-    await browser.close();
-  }
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[character] ?? character);
 }
 
 // ─── Ticket confirmation email ────────────────────────────────────────────────
@@ -63,6 +66,9 @@ export interface TicketEmailItem {
   quantity: number;
   price: string;
   ticketCode: string;
+  eventId: string;
+  accentColor: string;
+  ticketStyle: "classic" | "minimal";
 }
 
 export async function sendTicketEmail({
@@ -89,105 +95,137 @@ export async function sendTicketEmail({
   baseUrl: string;
 }): Promise<void> {
   const transporter = getTransporter();
-  if (!transporter) return;
+  const fromAddress = getFromAddress();
+  if (!transporter || !fromAddress) {
+    throw new Error("Ticket email is not configured; set RESEND_API_KEY and RESEND_FROM_EMAIL or Gmail SMTP credentials");
+  }
+
+  const safeBaseUrl = baseUrl.replace(/\/+$/, "");
+  const attachmentGroups = await Promise.all(items.map(async (item) => {
+    const qrPng = await QRCode.toBuffer(
+      signTicket(item.ticketCode, item.eventId),
+      { width: 320, margin: 2, color: { dark: "#111827", light: "#ffffff" } },
+    );
+    return [
+      {
+        filename: `ticket-${item.ticketCode}-qr.png`,
+        content: qrPng,
+        contentType: "image/png",
+        cid: `ticket-${item.ticketCode}`,
+        contentDisposition: "inline" as const,
+      },
+      {
+        filename: `ticket-${item.ticketCode}.png`,
+        content: qrPng,
+        contentType: "image/png",
+        contentDisposition: "attachment" as const,
+      },
+    ];
+  }));
+  const attachments = attachmentGroups.flat();
+  const accentColor = safeEventAccentColor(items[0]?.accentColor);
+  const ticketShape = items[0]?.ticketStyle === "minimal" ? "4px" : "12px";
 
   const ticketRows = items
     .map((item) => {
-      const ticketUrl = `${baseUrl}/ticket/${item.ticketCode}`;
+      const ticketUrl = `${safeBaseUrl}/ticket/${encodeURIComponent(item.ticketCode)}`;
       return `
     <tr>
-      <td style="padding:10px 0;border-bottom:1px solid #2d2d2d;">
-        <strong style="color:#e2e8f0;">${item.ticketType}</strong><br/>
-        <span style="color:#718096;font-size:13px;">
-          Qty: ${item.quantity} · ${isRsvp ? "Free RSVP" : item.price}
-        </span><br/>
-        <a href="${ticketUrl}"
-           style="color:#a78bfa;font-size:12px;text-decoration:none;word-break:break-all;">
-          🔗 ${ticketUrl}
-        </a>
+      <td style="padding:18px 0;border-bottom:1px solid #e5e7eb;">
+        <table role="presentation" style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="vertical-align:top;">
+              <strong style="color:#111827;font-size:16px;">${escapeHtml(item.ticketType)}</strong><br/>
+              <span style="color:#4b5563;font-size:13px;">
+                Quantity: ${item.quantity} · ${isRsvp ? "Free RSVP" : escapeHtml(item.price)}
+              </span><br/>
+              <a href="${escapeHtml(ticketUrl)}" style="color:${accentColor};font-size:13px;text-decoration:underline;">
+                Open ticket online
+              </a>
+            </td>
+            <td style="width:150px;text-align:right;vertical-align:top;">
+              <img src="cid:ticket-${escapeHtml(item.ticketCode)}" width="136" height="136"
+                   alt="Scannable entry QR code for ${escapeHtml(item.ticketType)} ticket"
+                   style="display:block;width:136px;height:136px;border:8px solid #fff;border-radius:${ticketShape};" />
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>
   `;
     })
     .join("");
 
-  // Generate PDF attachments
-  const attachments = [];
-  for (const item of items) {
-    try {
-      const pdfBuffer = await generateTicketPDF(item.ticketCode, baseUrl);
-      attachments.push({
-        filename: `ticket-${item.ticketCode}.pdf`,
-        content: Buffer.from(pdfBuffer),
-      });
-    } catch (err) {
-      console.error(
-        `❌ Failed to generate PDF for ticket ${item.ticketCode}:`,
-        err,
-      );
-    }
-  }
+  const textTickets = items.map((item) =>
+    `${item.ticketType} — ${item.quantity} ticket(s)\n${safeBaseUrl}/ticket/${encodeURIComponent(item.ticketCode)}`,
+  ).join("\n\n");
+  const safeEventTitle = escapeHtml(eventTitle);
+  const safeName = escapeHtml(name);
+  const safeEventDate = escapeHtml(eventDate);
+  const safeEventLocation = escapeHtml(eventLocation);
+  const safeOrderId = escapeHtml(orderId);
 
   try {
     const info = await transporter.sendMail({
-      from: `"Noizy Hub" <${getFromAddress()}>`,
+      from: `"${process.env.EMAIL_FROM_NAME ?? "Noizy Hub"}" <${fromAddress}>`,
       to,
-      subject: `Your ticket for ${eventTitle} 🎟`,
+      subject: `Your ${isRsvp ? "RSVP" : "ticket"} for ${eventTitle}`,
+      text: `Hi ${name},\n\nYour ${isRsvp ? "RSVP" : "ticket order"} for ${eventTitle} is confirmed.\n\nDate: ${eventDate}\nLocation: ${eventLocation}\n\nYour ticket QR code is included in this email. Show it directly from your inbox or download the attached PNG to save it to your device.\n\n${textTickets}\n\nOrder reference: ${orderId}\n\nNoizy Hub`,
       html: `
 <!DOCTYPE html>
 <html>
-<body style="margin:0;padding:0;background:#0f0f0f;font-family:system-ui,sans-serif;">
-  <div style="max-width:560px;margin:40px auto;background:#1a1a2e;border-radius:16px;
-              overflow:hidden;border:1px solid #2d2d4e;">
-    <div style="background:linear-gradient(135deg,#4c1d95,#7c3aed);padding:32px;text-align:center;">
-      <p style="color:#ddd6fe;font-size:13px;margin:0 0 8px;">YOUR TICKET</p>
-      <h1 style="color:#fff;margin:0;font-size:26px;">${eventTitle}</h1>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+  <div style="max-width:640px;margin:24px auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:${accentColor};padding:28px 24px;text-align:center;">
+      <p style="color:#ede9fe;font-size:12px;font-weight:bold;letter-spacing:2px;margin:0 0 8px;">NOIZY HUB · ENTRY PASS</p>
+      <h1 style="color:#fff;margin:0;font-size:24px;line-height:1.3;">${safeEventTitle}</h1>
     </div>
-    <div style="padding:28px;">
-      <p style="color:#a0aec0;margin:0 0 20px;">
-        Hi <strong style="color:#e2e8f0;">${name}</strong>,
+    <div style="padding:24px;">
+      <p style="color:#374151;margin:0 0 20px;">
+        Hi <strong>${safeName}</strong>,
         your ${isRsvp ? "RSVP" : "order"} is confirmed!
       </p>
-      <div style="background:#111827;border-radius:12px;padding:16px;margin-bottom:20px;">
-        <p style="color:#718096;font-size:12px;margin:0 0 4px;
-                  text-transform:uppercase;letter-spacing:1px;">Event Details</p>
-        <p style="color:#e2e8f0;margin:4px 0;">📅 ${eventDate}</p>
-        <p style="color:#e2e8f0;margin:4px 0;">📍 ${eventLocation}</p>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:20px;">
+        <p style="color:#6b7280;font-size:12px;font-weight:bold;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">Event details</p>
+        <p style="color:#111827;margin:6px 0;"><strong>Date:</strong> ${safeEventDate}</p>
+        <p style="color:#111827;margin:6px 0;"><strong>Venue:</strong> ${safeEventLocation}</p>
       </div>
-      <p style="color:#718096;font-size:12px;margin:0 0 8px;
-                text-transform:uppercase;letter-spacing:1px;">Your Tickets</p>
+      <p style="color:#374151;font-size:14px;font-weight:bold;margin:0 0 8px;">Your scannable ticket${items.length === 1 ? "" : "s"}</p>
+      <p style="color:#6b7280;font-size:13px;line-height:1.5;margin:0 0 8px;">
+        Show the QR code${items.length === 1 ? "" : "s"} below directly from this email at the entrance, or download the attached PNG${items.length === 1 ? "" : "files"} to save it to your device.
+      </p>
       <table style="width:100%;border-collapse:collapse;">${ticketRows}</table>
       ${
         !isRsvp
           ? `
-      <div style="background:#111827;border-radius:12px;padding:16px;
-                  margin-top:20px;text-align:right;">
-        <span style="color:#718096;">Total paid: </span>
-        <strong style="color:#68d391;font-size:18px;">
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-top:20px;text-align:right;">
+        <span style="color:#4b5563;">Total paid: </span>
+        <strong style="color:#15803d;font-size:18px;">
           KES ${totalAmount.toLocaleString()}
         </strong>
       </div>`
           : ""
       }
-      <div style="margin-top:24px;padding-top:20px;border-top:1px solid #2d2d2d;">
-        <p style="color:#a0aec0;font-size:12px;margin:8px 0 0;">
-          Your ticket PDF${items.length > 1 ? "s are" : " is"} attached to this email.
-          You can also view ${items.length > 1 ? "them" : "it"} online using the link${items.length > 1 ? "s" : ""} above.
-        </p>
-      </div>
-      <p style="color:#4a5568;font-size:12px;margin-top:24px;text-align:center;">
-        Present your ticket QR code at the entrance.<br/>Order ID: <span style="font-weight:bold; text-color:#e2e8f0;">${orderId}</span>
+      <p style="color:#6b7280;font-size:12px;margin:22px 0 0;text-align:center;line-height:1.6;">
+        Keep this email available when you arrive.<br/>Order reference: <strong style="color:#374151;">${safeOrderId}</strong>
       </p>
+    </div>
+    <div style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;color:#6b7280;font-size:12px;">
+      Sent by Noizy Hub · <a href="${escapeHtml(safeBaseUrl)}" style="color:${accentColor};">Visit Noizy Hub</a>
     </div>
   </div>
 </body>
 </html>`,
       attachments,
     });
+    if (!info.accepted.some((recipient) => String(recipient).toLowerCase() === to.toLowerCase())) {
+      throw new Error("Ticket email was not accepted by the configured mail server");
+    }
 
-    console.log("✅ Ticket email sent:", info.messageId);
+    console.log("Ticket email sent", { messageId: info.messageId });
   } catch (err) {
-    console.error("❌ Email exception:", err);
+    console.error("Ticket email delivery failed", err);
+    throw err;
   }
 }
 

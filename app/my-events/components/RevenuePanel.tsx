@@ -1,7 +1,7 @@
 "use client";
 // app/my-events/components/RevenuePanel.tsx
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import {
   Send, CheckCircle, Mail, Wallet, ArrowDownCircle,
   TrendingUp, Clock, AlertTriangle, Loader2, ShieldCheck,
@@ -82,10 +82,11 @@ function WithdrawModal({ balance, onClose, onSuccess }: {
   const [showPhone,  setShowPhone]  = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState("");
+  const idempotencyRef = useRef<{ key: string; amount: number; phone: string } | null>(null);
 
   function validate(): string | null {
     const num = Number(amount);
-    if (!amount || isNaN(num))     return "Enter a valid amount.";
+    if (!amount || !Number.isSafeInteger(num)) return "Enter a whole-KES amount.";
     if (num < 100)                 return "Minimum withdrawal is KES 100.";
     if (num > balance)             return `Amount exceeds your balance of ${fmt(balance)}.`;
     if (!phone.trim())             return "Enter your M-Pesa phone number.";
@@ -104,17 +105,26 @@ function WithdrawModal({ balance, onClose, onSuccess }: {
 
   async function handleConfirm() {
     setError(""); setSubmitting(true);
+    const normalizedPhone = phone.trim().replace(/^\+/, "").replace(/\s/g, "");
+    const requestAmount = Number(amount);
+    const previous = idempotencyRef.current;
+    const key = previous?.amount === requestAmount && previous.phone === normalizedPhone
+      ? previous.key
+      : globalThis.crypto.randomUUID();
+    idempotencyRef.current = { key, amount: requestAmount, phone: normalizedPhone };
     try {
       const res  = await fetch("/api/vending/withdraw", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: Number(amount),
-          phone:  phone.trim().replace(/^\+/, "").replace(/\s/g, ""),
+          phone: normalizedPhone,
+          idempotencyKey: key,
         }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Withdrawal failed."); setStep("form"); return; }
+      idempotencyRef.current = null;
       setStep("done");
     } catch {
       setError("Network error. Please try again.");

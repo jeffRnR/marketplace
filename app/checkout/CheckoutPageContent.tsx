@@ -19,7 +19,7 @@ interface CartItem {
   quantity:   number;
 }
 
-type CheckoutStatus = "idle" | "loading" | "waiting_mpesa" | "success" | "error";
+type CheckoutStatus = "idle" | "loading" | "waiting_mpesa" | "pending_confirmation" | "success" | "error";
 
 const INPUT =
   "w-full bg-gray-800 text-gray-300 rounded-xl border border-gray-700 px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none transition placeholder-gray-600";
@@ -39,7 +39,7 @@ export default function CheckoutPageContent() {
   const ref          = searchParams.get("ref")      ?? "direct";
 
   const [cartItems,     setCartItems]     = useState<CartItem[]>([]);
-  const [eventId,       setEventId]       = useState(eventIdParam);
+  const [eventId]       = useState(eventIdParam);
   const [name,          setName]          = useState("");
   const [email,         setEmail]         = useState("");
   const [phone,         setPhone]         = useState("");
@@ -50,6 +50,7 @@ export default function CheckoutPageContent() {
   const [status,        setStatus]        = useState<CheckoutStatus>("idle");
   const [errorMsg,      setErrorMsg]      = useState("");
   const [ticketCodes,   setTicketCodes]   = useState<string[]>([]);
+  const [ticketEmailSent, setTicketEmailSent] = useState(false);
   const [parseError,    setParseError]    = useState("");
   const [txRef,         setTxRef]         = useState<string | null>(null);
   const [pollSeconds,   setPollSeconds]   = useState(0);
@@ -59,14 +60,27 @@ export default function CheckoutPageContent() {
   useEffect(() => {
     try {
       if (!ticketsJSON) { setParseError("No ticket data. Please go back."); return; }
-      const parsed = JSON.parse(decodeURIComponent(ticketsJSON));
+      const parsed: unknown = JSON.parse(decodeURIComponent(ticketsJSON));
       if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
-      setCartItems(parsed.map((item: any) => ({
-        ticketId:   item.ticketId   ?? item.id   ?? 0,
-        ticketType: item.ticketType ?? item.type ?? "Ticket",
-        price:      String(item.price ?? "0"),
-        quantity:   item.quantity ?? 1,
-      })));
+      setCartItems(parsed.map((item: unknown): CartItem => {
+        if (!item || typeof item !== "object") throw new Error();
+        const ticket = item as Record<string, unknown>;
+        const ticketId = ticket.ticketId ?? ticket.id;
+        const quantity = Number(ticket.quantity ?? 1);
+        if (
+          typeof ticketId !== "string" ||
+          !Number.isSafeInteger(quantity) ||
+          quantity <= 0
+        ) throw new Error();
+        return {
+          ticketId,
+          ticketType: typeof ticket.ticketType === "string"
+            ? ticket.ticketType
+            : typeof ticket.type === "string" ? ticket.type : "Ticket",
+          price: String(ticket.price ?? "0"),
+          quantity,
+        };
+      }));
     } catch {
       setParseError("Could not load ticket data. Please go back and try again.");
     }
@@ -83,29 +97,55 @@ export default function CheckoutPageContent() {
 
   function startPolling(ref: string) {
     let elapsed = 0;
+    let checking = false;
     pollRef.current = setInterval(async () => {
+      if (checking) return;
+      checking = true;
       elapsed += 3;
-      setPollSeconds(elapsed);
-      if (elapsed >= 180) {
-        clearInterval(pollRef.current!);
-        setStatus("error");
-        setErrorMsg("Payment timed out. If you completed the M-Pesa prompt, please contact support with your reference.");
-        return;
-      }
+      setPollSeconds(Math.min(elapsed, 60));
       try {
         const res  = await fetch(`/api/payment/status?txRef=${ref}`);
         const data = await res.json();
         if (data.status === "successful") {
           clearInterval(pollRef.current!);
           setTicketCodes(data.ticketCodes ?? []);
+          setTicketEmailSent(Boolean(data.ticketEmailSent));
           setStatus("success");
         } else if (data.status === "failed") {
           clearInterval(pollRef.current!);
           setStatus("error");
           setErrorMsg("Payment failed or was cancelled. Please try again.");
+        } else if (elapsed >= 60) {
+          clearInterval(pollRef.current!);
+          setStatus("pending_confirmation");
         }
-      } catch { /* keep polling */ }
+      } catch {
+        if (elapsed >= 60) {
+          clearInterval(pollRef.current!);
+          setStatus("pending_confirmation");
+        }
+      } finally {
+        checking = false;
+      }
     }, 3000);
+  }
+
+  async function refreshPaymentStatus() {
+    if (!txRef) return;
+    try {
+      const res = await fetch(`/api/payment/status?txRef=${encodeURIComponent(txRef)}`);
+      const data = await res.json();
+      if (data.status === "successful") {
+        setTicketCodes(data.ticketCodes ?? []);
+        setTicketEmailSent(Boolean(data.ticketEmailSent));
+        setStatus("success");
+      } else if (data.status === "failed") {
+        setStatus("error");
+        setErrorMsg("Daraja confirmed that the payment failed or was cancelled.");
+      }
+    } catch {
+      setErrorMsg("Could not check the payment status. Your payment remains pending; do not pay again.");
+    }
   }
 
   const handleApplyPromo = async () => {
@@ -171,14 +211,15 @@ export default function CheckoutPageContent() {
 
       if (data.type === "rsvp") {
         setTicketCodes(data.ticketCodes ?? []);
+        setTicketEmailSent(Boolean(data.ticketEmailSent));
         setStatus("success");
       } else if (data.type === "mpesa") {
         setTxRef(data.txRef);
         setStatus("waiting_mpesa");
         startPolling(data.txRef);
       }
-    } catch (err: any) {
-      setErrorMsg(err.message ?? "Something went wrong. Please try again.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       setStatus("error");
     }
   };
@@ -211,18 +252,37 @@ export default function CheckoutPageContent() {
             <div className="w-full bg-gray-800 rounded-full h-1.5">
               <div
                 className="bg-purple-500 h-1.5 rounded-full transition-all duration-1000"
-                style={{ width: `${Math.min((pollSeconds / 180) * 100, 100)}%` }}
+                style={{ width: `${Math.min((pollSeconds / 60) * 100, 100)}%` }}
               />
             </div>
-            <p className="text-gray-700 text-xs mt-2">{180 - pollSeconds}s remaining</p>
+            <p className="text-gray-700 text-xs mt-2">{60 - pollSeconds}s remaining</p>
           </div>
-          <p className="text-gray-600 text-xs">Don't close this page. You'll be redirected automatically once confirmed.</p>
+          <p className="text-gray-600 text-xs">Don&apos;t close this page. You&apos;ll be redirected automatically once confirmed.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "pending_confirmation") {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-16">
+        <div className="w-full max-w-md flex flex-col items-center gap-5 text-center">
+          <Smartphone className="w-10 h-10 text-purple-400" />
+          <div>
+            <h1 className="text-xl font-bold text-gray-100 mb-2">Payment is still being checked</h1>
+            <p className="text-gray-400 text-sm">
+              Daraja has not given us a final result yet. Your order remains pending; do not submit another payment.
+              We’ll confirm it once Safaricom sends a verified result.
+            </p>
+            {txRef && <p className="mt-3 text-xs text-gray-600">Reference: {txRef}</p>}
+          </div>
           <button
-            onClick={() => { if (pollRef.current) clearInterval(pollRef.current); setStatus("idle"); }}
-            className="text-gray-600 hover:text-gray-400 text-sm transition"
+            onClick={refreshPaymentStatus}
+            className="rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white hover:bg-purple-700"
           >
-            Cancel and go back
+            Check payment status
           </button>
+          {errorMsg && <p className="text-sm text-amber-300">{errorMsg}</p>}
         </div>
       </div>
     );
@@ -239,8 +299,9 @@ export default function CheckoutPageContent() {
           <div>
             <h1 className="text-2xl font-bold text-gray-100 mb-2">{isRsvp ? "You're in!" : "Order confirmed!"}</h1>
             <p className="text-gray-400 text-sm">
-              Confirmation sent to <strong className="text-gray-300">{email}</strong> and SMS to{" "}
-              <strong className="text-gray-300">{phone}</strong>.
+              {ticketEmailSent
+                ? <>Your scannable ticket email was sent to <strong className="text-gray-300">{email}</strong>.</>
+                : <>Your ticket is confirmed. Email delivery to <strong className="text-gray-300">{email}</strong> is being retried; you can use the ticket below now.</>}
             </p>
           </div>
           <div className="w-full bg-gray-900 border border-gray-700 rounded-2xl p-5 flex flex-col gap-3">
@@ -381,7 +442,7 @@ export default function CheckoutPageContent() {
           <div className="flex items-start gap-3 bg-blue-900/20 border border-blue-700/30 rounded-xl px-4 py-3">
             <Smartphone className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
             <p className="text-blue-300 text-sm">
-              After clicking pay, you'll receive an M-Pesa prompt on{" "}
+              After clicking pay, you&apos;ll receive an M-Pesa prompt on{" "}
               <strong>{phone || "your phone"}</strong>. Enter your PIN to complete.
             </p>
           </div>

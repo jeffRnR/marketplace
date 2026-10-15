@@ -31,7 +31,7 @@ interface MyApplication {
   businessName: string;
 }
 
-type PageView = "list" | "apply" | "waiting_mpesa" | "confirmed";
+type PageView = "list" | "apply" | "waiting_mpesa" | "payment_pending" | "confirmed";
 
 const INPUT =
   "w-full rounded-xl border border-[var(--brand-purple)]/25 bg-[var(--surface)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--brand-purple)] focus:ring-2 focus:ring-[var(--brand-purple)]/10";
@@ -201,15 +201,12 @@ export default function VendingPage() {
 
   function startPolling(ref: string) {
     let elapsed = 0;
+    let checking = false;
     pollRef.current = setInterval(async () => {
+      if (checking) return;
+      checking = true;
       elapsed += 3;
-      setPollSeconds(elapsed);
-      if (elapsed >= 180) {
-        clearInterval(pollRef.current!);
-        setView("list");
-        setSubmitError("Payment timed out. Please try again.");
-        return;
-      }
+      setPollSeconds(Math.min(elapsed, 60));
       try {
         const res = await fetch(`/api/payment/status?txRef=${ref}`);
         const data = await res.json();
@@ -222,9 +219,37 @@ export default function VendingPage() {
           clearInterval(pollRef.current!);
           setView("list");
           setSubmitError("Payment failed or was cancelled. Please try again.");
+        } else if (elapsed >= 60) {
+          clearInterval(pollRef.current!);
+          setView("payment_pending");
         }
-      } catch { /* keep polling */ }
+      } catch {
+        if (elapsed >= 60) {
+          clearInterval(pollRef.current!);
+          setView("payment_pending");
+        }
+      } finally {
+        checking = false;
+      }
     }, 3000);
+  }
+
+  async function refreshPaymentStatus() {
+    if (!txRef) return;
+    try {
+      const res = await fetch(`/api/payment/status?txRef=${encodeURIComponent(txRef)}`);
+      const data = await res.json();
+      if (data.status === "successful") {
+        const myRes = await fetch("/api/vending/applications?mine=true");
+        if (myRes.ok) setMyApps(await myRes.json());
+        setView("confirmed");
+      } else if (data.status === "failed") {
+        setView("list");
+        setSubmitError("Daraja confirmed that the payment failed or was cancelled.");
+      }
+    } catch {
+      setSubmitError("Could not check status. The payment remains pending; do not submit another payment.");
+    }
   }
 
   // ── Loading ──────────────────────────────────────────────────────────────────
@@ -266,17 +291,31 @@ export default function VendingPage() {
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--background)]">
               <div
                 className="h-1.5 rounded-full bg-[var(--brand-purple)] transition-all duration-1000"
-                style={{ width: `${Math.min((pollSeconds / 180) * 100, 100)}%` }}
+                style={{ width: `${Math.min((pollSeconds / 60) * 100, 100)}%` }}
               />
             </div>
-            <p className="mt-2 text-xs text-[var(--muted)]">{180 - pollSeconds}s remaining</p>
+            <p className="mt-2 text-xs text-[var(--muted)]">{60 - pollSeconds}s remaining</p>
           </div>
-          <button
-            onClick={() => { if (pollRef.current) clearInterval(pollRef.current); setView("list"); }}
-            className="text-sm text-[var(--muted)] transition hover:text-[var(--foreground)]"
-          >
-            Cancel
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "payment_pending") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4 py-16">
+        <div className="flex w-full max-w-md flex-col items-center gap-5 text-center">
+          <Smartphone className="h-10 w-10 text-purple-500" />
+          <div>
+            <h2 className="text-xl font-semibold text-[var(--foreground)]">Payment is still being checked</h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              Daraja has not returned a final result. Your application remains pending; do not pay again.
+            </p>
+          </div>
+          <button onClick={refreshPaymentStatus} className="rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white">
+            Check payment status
           </button>
+          {submitError && <p className="text-sm text-amber-300">{submitError}</p>}
         </div>
       </div>
     );

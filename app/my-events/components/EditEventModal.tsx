@@ -7,9 +7,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   X, Loader2, CheckCircle, AlertCircle, Upload,
-  Calendar, Clock, MapPin, Image as ImageIcon, Info,
+  Calendar, Clock, MapPin, Image as ImageIcon, Info, Palette,
 } from "lucide-react";
 import { ManagedEvent } from "../types";
+import { safeEventAccentColor } from "@/lib/eventAppearance";
 
 interface Props {
   event:   ManagedEvent;
@@ -73,6 +74,9 @@ export function EditEventModal({ event, onClose, onSaved }: Props) {
   const [lat,          setLat]         = useState<number | null>(null);
   const [lng,          setLng]         = useState<number | null>(null);
   const [image,        setImage]       = useState(event.image);
+  const [accentColor,  setAccentColor] = useState(safeEventAccentColor(event.accentColor));
+  const [pageLayout,   setPageLayout]  = useState<ManagedEvent["pageLayout"]>(event.pageLayout ?? "classic");
+  const [ticketStyle,  setTicketStyle] = useState<ManagedEvent["ticketStyle"]>(event.ticketStyle ?? "classic");
   const [imgPreview,   setImgPreview]  = useState(event.image);
   const [imgUploading, setImgUploading]= useState(false);
   const [saveState,    setSaveState]   = useState<SaveState>("idle");
@@ -165,7 +169,7 @@ export function EditEventModal({ event, onClose, onSaved }: Props) {
         body: JSON.stringify({
           title, host, description, location,
           image, startDate, startTime, endDate, endTime,
-          lat, lng,
+          lat, lng, accentColor, pageLayout, ticketStyle,
         }),
       });
       if (!res.ok) {
@@ -173,7 +177,7 @@ export function EditEventModal({ event, onClose, onSaved }: Props) {
         throw new Error(data.error ?? "Failed to save");
       }
       setSaveState("saved");
-      onSaved({ title, host, description, location, image, date: event.date });
+      onSaved({ title, host, description, location, image, date: event.date, accentColor, pageLayout, ticketStyle });
       setTimeout(onClose, 1200);
     } catch (err: any) {
       setErrorMsg(err.message ?? "Something went wrong");
@@ -348,6 +352,47 @@ export function EditEventModal({ event, onClose, onSaved }: Props) {
               placeholder="Tell people what to expect…"
               className={`${INPUT} resize-none`} />
           </div>
+
+          {/* Tickets note */}
+          <section className="space-y-4 rounded-2xl border border-violet-500/20 bg-violet-950/10 p-4">
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-bold text-gray-100">
+                <Palette className="h-4 w-4 text-violet-400" /> Event page & ticket design
+              </h3>
+              <p className="mt-1 text-xs text-gray-500">
+                These choices update the public event page and every ticket, including already-issued tickets.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-2 text-xs font-semibold text-gray-400">
+                Accent colour
+                <span className="flex items-center gap-3 rounded-xl border border-gray-700 bg-gray-800/60 px-3 py-2.5">
+                  <input
+                    aria-label="Event accent colour"
+                    type="color"
+                    value={accentColor}
+                    onChange={(e) => setAccentColor(e.target.value)}
+                    className="h-9 w-12 cursor-pointer rounded border-0 bg-transparent"
+                  />
+                  <span className="font-mono text-sm text-gray-200">{accentColor.toUpperCase()}</span>
+                </span>
+              </label>
+              <label className="space-y-2 text-xs font-semibold text-gray-400">
+                Event page layout
+                <select value={pageLayout} onChange={(e) => setPageLayout(e.target.value as ManagedEvent["pageLayout"])} className={INPUT}>
+                  <option value="classic">Classic — image beside details</option>
+                  <option value="immersive">Immersive — wide event banner</option>
+                </select>
+              </label>
+              <label className="space-y-2 text-xs font-semibold text-gray-400">
+                Ticket layout
+                <select value={ticketStyle} onChange={(e) => setTicketStyle(e.target.value as ManagedEvent["ticketStyle"])} className={INPUT}>
+                  <option value="classic">Classic — framed event pass</option>
+                  <option value="minimal">Minimal — clean, compact pass</option>
+                </select>
+              </label>
+            </div>
+          </section>
 
           {/* Tickets note */}
           <div className="flex items-center gap-2 bg-gray-800/40 border border-gray-700 rounded-xl px-4 py-3 text-gray-500 text-xs">

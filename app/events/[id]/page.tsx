@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import EventCard from "@/components/EventCard";
 import EventVendors from "@/components/EventVendors";
 import TrackView from "@/components/TrackView";
+import { getEventThemeStyle, safeEventTicketTheme } from "@/lib/eventAppearance";
 
 interface PageProps { params: Promise<{ id: string }> }
 
@@ -13,9 +14,9 @@ async function getEvent(id: string) {
     return await prisma.event.findUnique({
       where: { id },
       include: {
-        tickets:    true,
+        tickets: true,
         categories: { include: { category: true } },
-        createdBy:  { select: { id: true, name: true, email: true } },
+        createdBy: { select: { id: true, name: true, email: true } },
       },
     });
   } catch { return null; }
@@ -40,28 +41,28 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const description = `${formattedDate} · ${event.location}\n\n${event.description?.slice(0, 160) ?? ""}`;
 
   return {
-    title:       event.title,
+    title: event.title,
     description,
     openGraph: {
-      title:       event.title,
+      title: event.title,
       description,
-      url:         `${baseUrl}/events/${event.id}`,
-      siteName:    "Noizy Hub",
-      type:        "website",
+      url: `${baseUrl}/events/${event.id}`,
+      siteName: "Noizy Hub",
+      type: "website",
       images: [
         {
-          url:    event.image,   // your uploaded event image
-          width:  1200,
+          url: event.image,   // your uploaded event image
+          width: 1200,
           height: 630,
-          alt:    event.title,
+          alt: event.title,
         },
       ],
     },
     twitter: {
-      card:        "summary_large_image",
-      title:       event.title,
+      card: "summary_large_image",
+      title: event.title,
       description,
-      images:      [event.image],
+      images: [event.image],
     },
   };
 }
@@ -82,34 +83,43 @@ export default async function EventDetailPage({ params }: PageProps) {
   });
 
   return (
-    <div className="p-4 lg:w-[70%] min-h-screen mt-14 w-full mx-auto">
-      <TrackView eventId={event.id} />
+    <div
+      className="min-h-screen pt-14"
+      style={getEventThemeStyle(safeEventTicketTheme(event.ticketTheme))}
+    >
+      <div className="p-4 lg:w-[70%] w-full mx-auto">
+        <TrackView eventId={event.id} />
+      </div>
 
       <EventCard
         eventId={String(event.id)}
         createdById={event.createdById}
         image={event.image}
+        accentColor={event.accentColor}
+        pageLayout={event.pageLayout === "immersive" ? "immersive" : "classic"}
+        ticketStyle={event.ticketStyle === "minimal" ? "minimal" : "classic"}
+        listingCurrency={event.listingCurrency}
         title={event.title}
         date={formattedDate}
         time={event.time}
         location={event.location}
         tickets={event.tickets.map((t) => ({
-          id:       t.id,
-          type:     t.type,
-          price:    t.price,
-          link:     t.link,
+          id: t.id,
+          type: t.type,
+          price: t.price,
+          link: t.link,
           isActive: t.isActive,
           startsAt: t.startsAt ? t.startsAt.toISOString() : null,
-          endsAt:   t.endsAt   ? t.endsAt.toISOString()   : null,
+          endsAt: t.endsAt ? t.endsAt.toISOString() : null,
         }))}
         description={event.description}
         mapUrl={event.mapUrl ?? ""}
         host={event.host}
         attendees={event.showAttendees ? event.attendees : null}
         category={{
-          id:        primaryCategory.id,
-          name:      primaryCategory.name,
-          iconName:  primaryCategory.icon ?? "",
+          id: primaryCategory.id,
+          name: primaryCategory.name,
+          iconName: primaryCategory.icon ?? "",
           iconColor: primaryCategory.iconColor ?? "",
         }}
       />

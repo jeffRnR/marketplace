@@ -18,6 +18,12 @@ export default async function TicketPage({ params }: PageProps) {
           email: true,
           isRsvp: true,
           status: true,
+          event: {
+            select: {
+              id: true, title: true, date: true, time: true, location: true, host: true, image: true,
+              accentColor: true, ticketStyle: true, ticketTheme: true, listingCurrency: true,
+            },
+          },
         },
       },
     },
@@ -28,11 +34,7 @@ export default async function TicketPage({ params }: PageProps) {
   const ticket = await prisma.ticket.findUnique({ where: { id: item.ticketId } });
   if (!ticket) notFound();
 
-  const event = await prisma.event.findUnique({
-    where:  { id: ticket.eventId },
-    select: { id: true, title: true, date: true, time: true, location: true, host: true, image: true },
-  });
-  if (!event) notFound();
+  const event = item.order.event;
 
   const formattedDate = new Date(event.date).toLocaleDateString("en-US", {
     weekday: "long", month: "long", day: "numeric", year: "numeric",
@@ -57,6 +59,10 @@ export default async function TicketPage({ params }: PageProps) {
         location: event.location,
         host:     event.host,
         image:    event.image,
+        accentColor: event.accentColor,
+        ticketStyle: event.ticketStyle === "minimal" ? "minimal" : "classic",
+        ticketTheme: event.ticketTheme,
+        listingCurrency: event.listingCurrency === "USDC" ? "USDC" : "KES",
       }}
     />
   );

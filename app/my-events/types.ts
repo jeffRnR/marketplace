@@ -26,6 +26,9 @@ export interface ManagedEvent {
   id: string;
   title: string;
   image: string;
+  accentColor: string;
+  pageLayout: "classic" | "immersive";
+  ticketStyle: "classic" | "minimal";
   date: string;
   rawDate: string;
   time: string;

@@ -5,11 +5,19 @@ import React, { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
-  Ticket, Plus, Trash2, Upload, CheckCircle, Loader2, MapPin,
+  Ticket, Plus, Trash2, Upload, CheckCircle, Loader2, MapPin, Palette,
 } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import SignInModal from "@/components/SignInModal";
+import TicketAppearancePreview from "@/components/TicketAppearancePreview";
+import EventPagePreview from "@/components/EventPagePreview";
+import {
+  EVENT_TICKET_THEMES,
+  getEventThemeStyle,
+  getEventTicketThemeColors,
+  type EventTicketTheme,
+} from "@/lib/eventAppearance";
 
 interface Category {
   id: string;
@@ -31,9 +39,18 @@ interface VenueSuggestion {
 }
 
 type EventType = "rsvp" | "paid";
+type TicketCurrency = "KES" | "USDC";
 type SubmitStatus = "idle" | "loading" | "success" | "error";
 
-const COUNTRIES = ["Kenya", "Tanzania", "Uganda"];
+const COUNTRIES = ["Kenya"]; // add uganda and tanzania later
+const ACCENT_PRESETS = [
+  { name: "Violet", value: "#7c3aed" },
+  { name: "Blue", value: "#2563eb" },
+  { name: "Rose", value: "#e11d48" },
+  { name: "Amber", value: "#d97706" },
+  { name: "Emerald", value: "#059669" },
+  { name: "Cyan", value: "#0891b2" },
+];
 
 const INPUT =
   "w-full rounded-lg border border-gray-400/50 bg-white/5 px-4 py-3 text-[var(--foreground)] placeholder:text-[var(--muted)] outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-600/30 transition disabled:opacity-50 disabled:cursor-not-allowed";
@@ -53,6 +70,11 @@ export default function CreateEvent() {
     country: "",
     location: "",
     description: "",
+    accentColor: "#7c3aed",
+    pageLayout: "classic" as "classic" | "immersive",
+    ticketStyle: "classic" as "classic" | "minimal",
+    ticketTheme: "midnight" as EventTicketTheme,
+    listingCurrency: "KES" as TicketCurrency,
     requireApproval: false,
     eventType: "rsvp" as EventType,
     capacity: 100,
@@ -73,6 +95,21 @@ export default function CreateEvent() {
   const [imageUploading, setImageUploading] = useState(false);
   const blobUrlRef = useRef<string | null>(null);
   const [showSignInModal, setShowSignInModal] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("eventPreview") === "off") setShowPreview(false);
+    } catch { /* storage unavailable */ }
+  }, []);
+
+  const togglePreview = () => {
+    const next = !showPreview;
+    setShowPreview(next);
+    try {
+      localStorage.setItem("eventPreview", next ? "on" : "off");
+    } catch { /* storage unavailable */ }
+  };
 
   useEffect(() => {
     if (sessionStatus === "unauthenticated") {
@@ -226,6 +263,7 @@ export default function CreateEvent() {
         body: JSON.stringify({
           ...formData,
           isRsvp: formData.eventType === "rsvp",
+          listingCurrency: formData.eventType === "rsvp" ? "KES" : formData.listingCurrency,
           categoryIds: selectedCategoryIds,
         }),
       });
@@ -455,6 +493,8 @@ export default function CreateEvent() {
             />
           </div>
 
+
+
           {/* Event Type */}
           <div>
             <label className="block text-xs text-[var(--muted)] mb-2 font-medium">Event Type *</label>
@@ -488,6 +528,36 @@ export default function CreateEvent() {
                 />
                 <p className="text-xs text-[var(--muted)] mt-1">Attendees will RSVP for free. Set 0 for unlimited.</p>
               </div>
+            </div>
+          )}
+
+          {!isRsvp && (
+            <div>
+              <label className="block text-xs text-[var(--muted)] mb-2 font-medium">
+                Ticket Currency *
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  { value: "KES", label: "Fiat (KES)" },
+                  { value: "USDC", label: "USDC" },
+                ] as const).map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setFormData((p) => ({ ...p, listingCurrency: value }))}
+                    aria-pressed={formData.listingCurrency === value}
+                    className={`py-3 rounded-lg border text-sm font-semibold transition-all ${formData.listingCurrency === value
+                      ? "border-purple-600 bg-purple-600/20 text-purple-400"
+                      : "border-gray-400/50 bg-white/5 text-[var(--muted)] hover:border-purple-600 hover:text-[var(--foreground)]"
+                      }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-[var(--muted)] mt-2">
+                Ticket prices will be set in {formData.listingCurrency}.
+              </p>
             </div>
           )}
 
@@ -528,7 +598,7 @@ export default function CreateEvent() {
                       />
                     </div>
                     <div className="flex flex-col w-24">
-                      <label className="text-xs text-[var(--muted)] pb-1">Price (KES)</label>
+                      <label className="text-xs text-[var(--muted)] pb-1">Price ({formData.listingCurrency})</label>
                       <input
                         type="text"
                         placeholder="1500"
@@ -576,6 +646,145 @@ export default function CreateEvent() {
                 }`} />
             </div>
           </label>
+          <section className="space-y-4 rounded-xl border border-[var(--brand-purple)]/25 bg-white/2 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+                  <Palette className="h-4 w-4 text-purple-500" /> Customize Event Page and Tickets
+                </h3>
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  Pick a theme, accent and layouts. You can change these later.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={showPreview}
+                aria-label="Show preview"
+                onClick={togglePreview}
+                className={`flex h-6 w-12 shrink-0 items-center rounded-full px-0.5 transition-colors ${showPreview ? "bg-purple-600" : "bg-gray-700"}`}
+              >
+                <span className={`h-5 w-5 transform rounded-full bg-white shadow-md transition-transform ${showPreview ? "translate-x-6" : "translate-x-0"}`} />
+              </button>
+            </div>
+
+            <fieldset>
+              <legend className="mb-2 text-xs font-medium text-[var(--muted)]">Theme</legend>
+              <div className="grid grid-cols-3 gap-2">
+                {EVENT_TICKET_THEMES.map((value) => {
+                  const active = formData.ticketTheme === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setFormData((c) => ({ ...c, ticketTheme: value }))}
+                      className={`rounded-lg border p-2 text-left text-xs transition ${active
+                        ? "border-purple-500 ring-1 ring-purple-500"
+                        : "border-gray-400/30 hover:border-purple-500/60"}`}
+                    >
+                      <span className="mb-1 block h-10 rounded" style={getEventThemeStyle(value)} />
+                      <span className="text-[var(--foreground)]">{getEventTicketThemeColors(value).label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            <label className="flex items-center justify-between gap-4 text-sm text-[var(--muted)]">
+              <span>
+                Accent colour
+                <span className="block font-mono text-xs">{formData.accentColor.toUpperCase()}</span>
+              </span>
+              <input
+                type="color"
+                aria-label="Event accent colour"
+                value={formData.accentColor}
+                onChange={(e) => setFormData((c) => ({ ...c, accentColor: e.target.value }))}
+                className="h-10 w-14 cursor-pointer rounded border-0 bg-transparent"
+              />
+            </label>
+
+            <div className="flex flex-wrap gap-2">
+              {ACCENT_PRESETS.map(({ name, value }) => {
+                const active = formData.accentColor.toLowerCase() === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-label={`${name} accent colour`}
+                    aria-pressed={active}
+                    onClick={() => setFormData((c) => ({ ...c, accentColor: value }))}
+                    className="h-7 w-7 rounded-full border-2 transition hover:scale-110"
+                    style={{ backgroundColor: value, borderColor: active ? "white" : "transparent" }}
+                  />
+                );
+              })}
+            </div>
+
+            <label className="block text-xs font-medium text-[var(--muted)]">
+              Event page layout
+              <select
+                value={formData.pageLayout}
+                onChange={(e) => setFormData((c) => ({ ...c, pageLayout: e.target.value as typeof c.pageLayout }))}
+                className={`${INPUT} mt-1`}
+              >
+                <option value="classic">Classic: image beside event details</option>
+                <option value="immersive">Immersive: wide image banner</option>
+              </select>
+            </label>
+
+            <label className="block text-xs font-medium text-[var(--muted)]">
+              Ticket layout
+              <select
+                value={formData.ticketStyle}
+                onChange={(e) => setFormData((c) => ({ ...c, ticketStyle: e.target.value as typeof c.ticketStyle }))}
+                className={`${INPUT} mt-1`}
+              >
+                <option value="classic">Classic: framed event pass</option>
+                <option value="minimal">Minimal: clean, compact pass</option>
+              </select>
+            </label>
+
+            {showPreview && (
+              <div className="space-y-4">
+                <EventPagePreview
+                  accentColor={formData.accentColor}
+                  date={formData.startDate}
+                  description={formData.description}
+                  host={formData.host}
+                  image={imagePreview ?? (formData.image || null)}
+                  isRsvp={isRsvp}
+                  listingCurrency={formData.listingCurrency}
+                  location={formData.location
+                    ? `${formData.location}${formData.country ? `, ${formData.country}` : ""}`
+                    : ""}
+                  pageLayout={formData.pageLayout}
+                  price={formData.tickets[0]?.price ?? ""}
+                  theme={formData.ticketTheme}
+                  time={formData.startTime}
+                  title={formData.title}
+                />
+                <TicketAppearancePreview
+                  accentColor={formData.accentColor}
+                  date={formData.startDate}
+                  host={formData.host}
+                  image={imagePreview ?? (formData.image || null)}
+                  listingCurrency={formData.listingCurrency}
+                  location={formData.location
+                    ? `${formData.location}${formData.country ? `, ${formData.country}` : ""}`
+                    : ""}
+                  price={formData.tickets[0]?.price ?? ""}
+                  ticketName={formData.tickets[0]?.name ?? ""}
+                  ticketStyle={formData.ticketStyle}
+                  ticketTheme={formData.ticketTheme}
+                  time={formData.startTime}
+                  title={formData.title}
+                  isRsvp={isRsvp}
+                />
+              </div>
+            )}
+          </section>
 
           {/* Error */}
           {submitError && (

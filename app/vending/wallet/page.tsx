@@ -1,8 +1,8 @@
 "use client";
 // app/vending/wallet/page.tsx
-// Wallet dashboard — M-Pesa only withdrawals (Kenya focus via IntaSend B2C)
+// Wallet dashboard — M-Pesa withdrawals through Safaricom Daraja B2C
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
@@ -80,6 +80,7 @@ export default function WalletPage() {
   const [submitError,   setSubmitError]   = useState("");
   const [submitSuccess, setSubmitSuccess] = useState("");
   const [showHistory,   setShowHistory]   = useState(false);
+  const idempotencyRef = useRef<{ key: string; amount: number; phone: string } | null>(null);
 
   useEffect(() => {
     if (authStatus === "unauthenticated") router.push("/auth/signin");
@@ -101,7 +102,7 @@ export default function WalletPage() {
   async function handleWithdraw() {
     setSubmitError(""); setSubmitSuccess("");
     const num = Number(amount);
-    if (!num || num < 100) { setSubmitError("Minimum withdrawal is KES 100."); return; }
+    if (!Number.isSafeInteger(num) || num < 100) { setSubmitError("Enter a whole-KES amount of at least KES 100."); return; }
     if (!phone.trim())     { setSubmitError("M-Pesa phone number is required."); return; }
 
     // Normalize phone
@@ -111,18 +112,24 @@ export default function WalletPage() {
       return;
     }
     const finalPhone = normalized.startsWith("0") ? "254" + normalized.slice(1) : normalized;
+    const previous = idempotencyRef.current;
+    const key = previous?.amount === num && previous.phone === finalPhone
+      ? previous.key
+      : globalThis.crypto.randomUUID();
+    idempotencyRef.current = { key, amount: num, phone: finalPhone };
 
     setSubmitting(true);
     try {
       const res = await fetch("/api/vending/withdraw", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ amount: num, phone: finalPhone }),
+        body:    JSON.stringify({ amount: num, phone: finalPhone, idempotencyKey: key }),
       });
       const data = await res.json();
       if (!res.ok) { setSubmitError(data.error ?? "Withdrawal failed."); return; }
 
       setSubmitSuccess(`KES ${num.toLocaleString()} is being sent to your M-Pesa.`);
+      idempotencyRef.current = null;
       setAmount(""); setPhone(""); setShowForm(false);
 
       const wRes = await fetch("/api/vending/wallet");
@@ -210,7 +217,7 @@ export default function WalletPage() {
               <label className="text-xs text-gray-500">M-Pesa Phone Number *</label>
               <input type="tel" placeholder="0712 345 678 or 254712345678" value={phone}
                 onChange={(e) => setPhone(e.target.value)} className={INPUT} />
-              <p className="text-gray-700 text-xs">Kenyan number — funds sent via IntaSend B2C</p>
+              <p className="text-gray-700 text-xs">Kenyan number — funds sent via Safaricom Daraja B2C</p>
             </div>
 
             {submitError && (
@@ -268,7 +275,7 @@ export default function WalletPage() {
           {(wallet?.transactions.length ?? 0) === 0 ? (
             <div className="px-5 py-10 text-center">
               <p className="text-gray-600 text-sm">No transactions yet.</p>
-              <p className="text-gray-700 text-xs mt-1">Earnings appear here after payment is confirmed via IntaSend webhook.</p>
+              <p className="text-gray-700 text-xs mt-1">Earnings appear here after payment is confirmed by Safaricom.</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-800">

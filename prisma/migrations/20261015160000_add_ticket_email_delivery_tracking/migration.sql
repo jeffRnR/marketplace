@@ -1,0 +1,3 @@
+ALTER TABLE "PaymentRecord"
+  ADD COLUMN IF NOT EXISTS "ticketEmailSentAt" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "ticketEmailClaimedAt" TIMESTAMP(3);

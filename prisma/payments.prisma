@@ -1,0 +1,127 @@
+// Append these blocks to your existing schema.prisma.
+enum Currency {
+  KES
+  USDC
+}
+
+enum WalletOwnerType {
+  ORGANISER
+  VENDOR
+  PLATFORM
+  SYSTEM
+}
+
+enum BalanceBucket {
+  PENDING
+  AVAILABLE
+}
+
+enum PaymentRail {
+  DARAJA
+  USDC_ONCHAIN
+}
+
+enum PaymentStatus {
+  INITIATED
+  CONFIRMED
+  RELEASED
+  REFUNDED
+  FAILED
+}
+
+enum PayoutMethod {
+  MPESA
+}
+
+enum PayoutStatus {
+  REQUESTED
+  PROCESSING
+  PAID
+  FAILED
+}
+
+model Wallet {
+  id             String          @id @default(cuid())
+  ownerType      WalletOwnerType
+  ownerId        String
+  currency       Currency
+  pendingMinor   BigInt          @default(0)
+  availableMinor BigInt          @default(0)
+  createdAt      DateTime        @default(now())
+  entries        LedgerEntry[]
+  payouts        Payout[]
+
+  @@unique([ownerType, ownerId, currency])
+}
+
+model LedgerTransaction {
+  id        String        @id @default(cuid())
+  kind      String
+  reference String        @unique
+  createdAt DateTime      @default(now())
+  entries   LedgerEntry[]
+}
+
+model LedgerEntry {
+  id          String            @id @default(cuid())
+  txId        String
+  walletId    String
+  bucket      BalanceBucket
+  amountMinor BigInt
+  currency    Currency
+  createdAt   DateTime          @default(now())
+  tx          LedgerTransaction @relation(fields: [txId], references: [id])
+  wallet      Wallet            @relation(fields: [walletId], references: [id])
+
+  @@index([walletId, createdAt])
+  @@index([txId])
+}
+
+model Payment {
+  id                 String        @id @default(cuid())
+  orderId            String        @unique
+  rail               PaymentRail
+  currency           Currency
+  grossMinor         BigInt
+  organiserNetMinor  BigInt
+  platformFeeMinor   BigInt
+  processorFeeMinor  BigInt        @default(0)
+  platformNetMinor   BigInt        @default(0)
+  organiserOwnerId   String
+  recipientAddress   String?
+  chainOrderId       String?       @unique
+  providerRef        String?       @unique
+  status             PaymentStatus @default(INITIATED)
+  releaseAt          DateTime
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([status, releaseAt])
+}
+
+model Payout {
+  id             String       @id @default(cuid())
+  walletId       String
+  currency       Currency
+  amountMinor    BigInt
+  method         PayoutMethod
+  destination    String
+  status         PayoutStatus @default(REQUESTED)
+  providerRef    String?
+  failureReason  String?
+  idempotencyKey String       @unique
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  wallet         Wallet       @relation(fields: [walletId], references: [id])
+}
+
+model ChainCursor {
+  id        String   @id
+  lastBlock BigInt
+  updatedAt DateTime @updatedAt
+}
+
+// Add to Event:
+// listingCurrency  Currency @default(KES)
+// payoutCurrency   Currency @default(KES)
+// usdcPayoutAddress String?

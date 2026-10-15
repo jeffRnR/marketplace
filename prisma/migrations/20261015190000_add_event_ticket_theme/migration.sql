@@ -1,0 +1,2 @@
+ALTER TABLE "Event"
+  ADD COLUMN IF NOT EXISTS "ticketTheme" TEXT NOT NULL DEFAULT 'midnight';

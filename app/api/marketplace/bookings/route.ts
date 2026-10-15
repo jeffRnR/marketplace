@@ -9,7 +9,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
-import { initiateStkPush } from "@/lib/intasend";
+import { assertStkPushConfigured, initiateStkPush } from "@/lib/daraja";
 import { sendBookingEmail } from "@/lib/notifications";
 import {
   notifyBookingRequest,
@@ -223,10 +223,24 @@ export async function PATCH(req: Request) {
     if (booking.paymentMethod !== "mpesa") {
       return NextResponse.json({ error: "This booking uses offline payment" }, { status: 400 });
     }
+    if (booking.currency !== "KES" || !Number.isSafeInteger(booking.totalAmount)) {
+      return NextResponse.json({ error: "Daraja payments require a whole-KES booking amount" }, { status: 400 });
+    }
 
     const payPhone = phone?.trim() ?? "";
     if (!payPhone) return NextResponse.json({ error: "phone required for M-Pesa payment" }, { status: 400 });
 
+    assertStkPushConfigured();
+    const existingPayment = await prisma.paymentRecord.findUnique({
+      where: { serviceBookingId: bookingId },
+      select: { txRef: true, status: true },
+    });
+    if (existingPayment) {
+      if (existingPayment.status === "pending") {
+        return NextResponse.json({ txRef: existingPayment.txRef, status: "PROCESSING" });
+      }
+      return NextResponse.json({ error: "A payment attempt already exists for this booking." }, { status: 409 });
+    }
     const txRef = randomUUID();
 
     await prisma.paymentRecord.create({
@@ -254,15 +268,24 @@ export async function PATCH(req: Request) {
     });
 
     if (!stkResult.success) {
-      await prisma.paymentRecord.update({ where: { txRef }, data: { status: "failed" } });
-      return NextResponse.json({ error: `Payment failed: ${stkResult.message}` }, { status: 502 });
+      console.error("Daraja STK outcome is unknown; retaining the pending booking payment", {
+        paymentRef: txRef,
+        error: stkResult.message,
+      });
+      return NextResponse.json({
+        txRef,
+        status: "PROCESSING",
+        message: "Payment request is awaiting Daraja confirmation. Do not try again.",
+      }, { status: 202 });
     }
 
-    if (stkResult.invoiceId) {
-      await prisma.paymentRecord.update({ where: { txRef }, data: { flwRef: stkResult.invoiceId } });
-    }
-
-    await prisma.serviceBooking.update({ where: { id: bookingId }, data: { status: "paid" } });
+    await prisma.paymentRecord.update({
+      where: { txRef },
+      data: {
+        checkoutRequestId: stkResult.checkoutRequestId,
+        merchantRequestId: stkResult.merchantRequestId,
+      },
+    });
 
     return NextResponse.json({ success: true, txRef, amount: booking.totalAmount });
   }

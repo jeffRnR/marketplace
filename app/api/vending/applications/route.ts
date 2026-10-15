@@ -8,7 +8,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
-import { initiateStkPush } from "@/lib/intasend";
+import { assertStkPushConfigured, initiateStkPush } from "@/lib/daraja";
 import { notifyVendingApplication } from "@/lib/createNotification";
 import { sendSMS } from "@/lib/at-sms";
 
@@ -202,6 +202,20 @@ export async function PATCH(req: Request) {
       }
 
       const slot   = application.slot;
+      if (slot.currency !== "KES" || !Number.isSafeInteger(slot.price)) {
+        return NextResponse.json({ error: "Daraja payments require a whole-KES slot price" }, { status: 400 });
+      }
+      assertStkPushConfigured();
+      const existingPayment = await prisma.paymentRecord.findUnique({
+        where: { slotApplicationId: applicationId },
+        select: { txRef: true, status: true },
+      });
+      if (existingPayment) {
+        if (existingPayment.status === "pending") {
+          return NextResponse.json({ txRef: existingPayment.txRef, status: "PROCESSING" });
+        }
+        return NextResponse.json({ error: "A payment attempt already exists for this application." }, { status: 409 });
+      }
       const txRef  = randomUUID();
       const amount = slot.price;
 
@@ -233,26 +247,23 @@ export async function PATCH(req: Request) {
       });
 
       if (!stkResult.success) {
-        await prisma.paymentRecord.update({
-          where: { txRef },
-          data:  { status: "failed" },
+        console.error("Daraja STK outcome is unknown; retaining the pending vending payment", {
+          paymentRef: txRef,
+          error: stkResult.message,
         });
-        return NextResponse.json(
-          { error: `Could not initiate payment: ${stkResult.message}` },
-          { status: 502 }
-        );
+        return NextResponse.json({
+          txRef,
+          status: "PROCESSING",
+          message: "Payment request is awaiting Daraja confirmation. Do not try again.",
+        }, { status: 202 });
       }
 
-      if (stkResult.invoiceId) {
-        await prisma.paymentRecord.update({
-          where: { txRef },
-          data:  { flwRef: stkResult.invoiceId },
-        });
-      }
-
-      await prisma.slotApplication.update({
-        where: { id: applicationId },
-        data:  { status: "paid" },
+      await prisma.paymentRecord.update({
+        where: { txRef },
+        data: {
+          checkoutRequestId: stkResult.checkoutRequestId,
+          merchantRequestId: stkResult.merchantRequestId,
+        },
       });
 
       return NextResponse.json({

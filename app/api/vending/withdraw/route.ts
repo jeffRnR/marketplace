@@ -1,27 +1,10 @@
 // app/api/vending/withdraw/route.ts
-// POST — owner requests a withdrawal to their M-Pesa number.
-//
-// IntaSend B2C payout flow:
-//   1. Validate amount and balance
-//   2. Encrypt payout details at rest
-//   3. Debit wallet atomically
-//   4. Create WithdrawalRequest (status: "pending")
-//   5. Call IntaSend B2C initiate + approve (requires_approval: "NO")
-//   6. On success → status: "processing"
-//   7. On failure → refund wallet + status: "failed"
-//
-// NOTE: IntaSend settles M-Pesa B2C payouts typically within minutes.
-// Bank transfers are not supported in the current IntaSend B2C flow —
-// M-Pesa is the primary payout method for Kenya.
-
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
 import { encrypt } from "@/lib/encryption";
-import { debitWalletForWithdrawal } from "@/lib/wallet";
-import { initiateB2CPayout } from "@/lib/intasend";
+import { assertB2CConfigured, createTransfer } from "@/lib/daraja";
 
 const MIN_WITHDRAWAL = 100; // KES
 
@@ -37,18 +20,19 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const body = await req.json();
-    const { amount, phone } = body;
-    // Simplified to M-Pesa only for Kenya focus
-    // phone: "+254712345678" or "254712345678"
+    const { amount, phone, idempotencyKey } = body;
+    const requestKey = typeof idempotencyKey === "string"
+      ? idempotencyKey.trim()
+      : req.headers.get("idempotency-key")?.trim();
 
-    if (!amount || !phone?.trim()) {
-      return NextResponse.json({ error: "amount and phone are required" }, { status: 400 });
+    if (!amount || !phone?.trim() || !requestKey || requestKey.length > 128) {
+      return NextResponse.json({ error: "amount, phone, and idempotencyKey are required" }, { status: 400 });
     }
 
     const numAmount = Number(amount);
-    if (isNaN(numAmount) || numAmount < MIN_WITHDRAWAL) {
+    if (!Number.isSafeInteger(numAmount) || numAmount < MIN_WITHDRAWAL) {
       return NextResponse.json(
-        { error: `Minimum withdrawal is KES ${MIN_WITHDRAWAL.toLocaleString()}` },
+        { error: `Amount must be a whole-KES value of at least KES ${MIN_WITHDRAWAL.toLocaleString()}` },
         { status: 400 }
       );
     }
@@ -67,84 +51,105 @@ export async function POST(req: Request) {
       select: { id: true, balance: true },
     });
 
-    if (!wallet || wallet.balance < numAmount) {
+    if (!wallet) {
       return NextResponse.json(
-        { error: `Insufficient balance. Available: KES ${(wallet?.balance ?? 0).toLocaleString()}` },
+        { error: "Wallet not found" },
         { status: 400 }
       );
     }
 
-    // Encrypt payout details before storing
-    const encryptedPayoutDetails = encrypt({ phone: normalizedPhone, method: "mpesa" });
-
-    const withdrawal = await prisma.withdrawalRequest.create({
-      data: {
-        walletId:              wallet.id,
-        amount:                numAmount,
-        method:                "mpesa",
-        encryptedPayoutDetails,
-        status:                "pending",
-      },
-    });
-
-    // Debit wallet atomically
-    await debitWalletForWithdrawal({
-      walletId:    wallet.id,
-      amount:      numAmount,
-      description: `Withdrawal to M-Pesa ${normalizedPhone.slice(-4).padStart(normalizedPhone.length, "*")}`,
-    });
-
-    // Mark as processing
-    await prisma.withdrawalRequest.update({
-      where: { id: withdrawal.id },
-      data:  { status: "processing" },
-    });
-
-    // Initiate IntaSend B2C payout
-    const payoutResult = await initiateB2CPayout({
-      phone:     normalizedPhone,
-      amount:    numAmount,
-      name:      user.name ?? "Vendor",
-      narrative: "Platform earnings withdrawal",
-    });
-
-    if (!payoutResult.success) {
-      // Refund wallet and mark as failed
-      await prisma.$transaction([
-        prisma.vendorWallet.update({
-          where: { id: wallet.id },
-          data:  { balance: { increment: numAmount }, totalWithdrawn: { decrement: numAmount } },
-        }),
-        prisma.walletTransaction.create({
-          data: {
-            walletId:     wallet.id,
-            type:         "refund",
-            amount:       numAmount,
-            description:  "Withdrawal refund — payout failed",
-            balanceAfter: wallet.balance,
-          },
-        }),
-        prisma.withdrawalRequest.update({
-          where: { id: withdrawal.id },
-          data: {
-            status:      "failed",
-            failureNote: payoutResult.message,
-          },
-        }),
-      ]);
-
-      return NextResponse.json(
-        { error: `Payout failed: ${payoutResult.message}. Your balance has been restored.` },
-        { status: 502 }
-      );
+    const scopedIdempotencyKey = `${user.id}:${requestKey}`;
+    const previous = await prisma.withdrawalRequest.findUnique({ where: { idempotencyKey: scopedIdempotencyKey } });
+    if (previous) {
+      if (previous.walletId !== wallet.id || previous.amount !== numAmount) {
+        return NextResponse.json({ error: "Idempotency key was already used for a different payout" }, { status: 409 });
+      }
+      return NextResponse.json({
+        success: true,
+        withdrawalId: previous.id,
+        amount: previous.amount,
+        method: "mpesa",
+        status: previous.status,
+      });
     }
 
-    // Store tracking ID if returned
-    if (payoutResult.trackingId) {
+    assertB2CConfigured();
+    const encryptedPayoutDetails = encrypt({ phone: normalizedPhone, method: "mpesa" });
+    const reservation = await prisma.$transaction(async (tx) => {
+      const existing = await tx.withdrawalRequest.findUnique({ where: { idempotencyKey: scopedIdempotencyKey } });
+      if (existing) {
+        if (existing.walletId !== wallet.id || existing.amount !== numAmount) {
+          throw new Error("Idempotency key was already used for a different payout");
+        }
+        return { withdrawal: existing, created: false };
+      }
+
+      const currentWallet = await tx.vendorWallet.findUniqueOrThrow({ where: { id: wallet.id } });
+      if (currentWallet.balance < numAmount) throw new Error("Insufficient available balance");
+      const balanceAfter = Math.round((currentWallet.balance - numAmount) * 100) / 100;
+      const request = await tx.withdrawalRequest.create({
+        data: {
+          walletId: wallet.id,
+          amount: numAmount,
+          method: "mpesa",
+          encryptedPayoutDetails,
+          status: "processing",
+          idempotencyKey: scopedIdempotencyKey,
+          providerRef: "pending",
+        },
+      });
+      await tx.vendorWallet.update({
+        where: { id: wallet.id },
+        data: {
+          balance: balanceAfter,
+          totalWithdrawn: { increment: numAmount },
+        },
+      });
+      await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          type: "withdrawal",
+          amount: -numAmount,
+          description: `Withdrawal to M-Pesa ending ${normalizedPhone.slice(-4)}`,
+          balanceAfter,
+        },
+      });
+      return { withdrawal: request, created: true };
+    });
+
+    const { withdrawal } = reservation;
+    if (!reservation.created) {
+      return NextResponse.json({
+        success: true,
+        withdrawalId: withdrawal.id,
+        amount: withdrawal.amount,
+        method: "mpesa",
+        status: withdrawal.status,
+      });
+    }
+
+    try {
+      const transfer = await createTransfer({
+        reference: withdrawal.id,
+        amountMinor: BigInt(numAmount) * BigInt(100),
+        phone: normalizedPhone,
+        narration: "Vendor earnings withdrawal",
+      });
       await prisma.withdrawalRequest.update({
         where: { id: withdrawal.id },
-        data:  { flwTransferRef: String(payoutResult.trackingId) },
+        data: {
+          providerRef: transfer.providerRef,
+          originatorConversationId: transfer.originatorConversationId,
+          conversationId: transfer.conversationId,
+        },
       });
+    } catch (error) {
+      console.error("Daraja B2C outcome is unknown; withdrawal remains reserved for reconciliation", { withdrawalId: withdrawal.id, error });
+      return NextResponse.json({
+        withdrawalId: withdrawal.id,
+        status: "processing",
+        message: "Payout is awaiting Daraja reconciliation",
+      }, { status: 202 });
     }
 
     return NextResponse.json({
@@ -158,6 +163,7 @@ export async function POST(req: Request) {
 
   } catch (err: any) {
     console.error("POST /api/vending/withdraw:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    const status = err.message === "Insufficient available balance" ? 422 : err.message.startsWith("Idempotency key") ? 409 : 500;
+    return NextResponse.json({ error: err.message }, { status });
   }
 }

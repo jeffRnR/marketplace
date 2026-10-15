@@ -7,6 +7,7 @@
 //   ownerCredit = amount - platformFee         (95%)
 
 import prisma from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 export const PLATFORM_FEE_RATE = 0.05; // 5%
 
@@ -17,6 +18,71 @@ export interface CreditResult {
   credited:      number;
   platformFee:   number;
   balanceAfter:  number;
+}
+
+export async function creditWalletInTransaction(
+  tx: Prisma.TransactionClient,
+  {
+    ownerUserId,
+    grossAmount,
+    description,
+    paymentTxRef,
+  }: {
+    ownerUserId: string;
+    grossAmount: number;
+    description: string;
+    paymentTxRef: string;
+  },
+): Promise<CreditResult> {
+  const wallet = await tx.vendorWallet.upsert({
+    where: { userId: ownerUserId },
+    update: {},
+    create: { userId: ownerUserId },
+  });
+  const existingCredit = await tx.walletTransaction.findFirst({
+    where: { walletId: wallet.id, paymentTxRef, type: "credit" },
+    select: { balanceAfter: true, amount: true },
+  });
+  if (existingCredit) {
+    return {
+      walletId: wallet.id,
+      credited: existingCredit.amount,
+      platformFee: Math.round((grossAmount - existingCredit.amount) * 100) / 100,
+      balanceAfter: existingCredit.balanceAfter,
+    };
+  }
+
+  const platformFee = Math.round(grossAmount * PLATFORM_FEE_RATE * 100) / 100;
+  const ownerCredit = Math.round((grossAmount - platformFee) * 100) / 100;
+  const newBalance = Math.round((wallet.balance + ownerCredit) * 100) / 100;
+  const newEarned = Math.round((wallet.totalEarned + grossAmount) * 100) / 100;
+
+  await tx.vendorWallet.update({
+    where: { id: wallet.id },
+    data: { balance: newBalance, totalEarned: newEarned },
+  });
+  await tx.walletTransaction.createMany({
+    data: [
+      {
+        walletId: wallet.id,
+        type: "platform_fee",
+        amount: -platformFee,
+        description: `Platform fee (5%) — ${description}`,
+        balanceAfter: wallet.balance,
+        paymentTxRef,
+      },
+      {
+        walletId: wallet.id,
+        type: "credit",
+        amount: ownerCredit,
+        description,
+        balanceAfter: newBalance,
+        paymentTxRef,
+      },
+    ],
+  });
+
+  return { walletId: wallet.id, credited: ownerCredit, platformFee, balanceAfter: newBalance };
 }
 
 // ─── Ensure wallet exists ─────────────────────────────────────────────────────

@@ -66,6 +66,8 @@ function BookingCard({
   const [submitting, setSubmitting] = useState(false);
   const [phone,      setPhone]      = useState("");
   const [waitingPay, setWaitingPay] = useState(false);
+  const [paymentPending, setPaymentPending] = useState(false);
+  const [paymentTxRef, setPaymentTxRef] = useState("");
   const [pollSecs,   setPollSecs]   = useState(0);
   const [error,      setError]      = useState("");
 
@@ -79,22 +81,48 @@ function BookingCard({
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Action failed"); return; }
       if (action === "pay" && data.txRef) {
+        setPaymentTxRef(data.txRef);
+        setPaymentPending(false);
         setWaitingPay(true);
         let elapsed = 0;
+        let checking = false;
         const poll = setInterval(async () => {
-          elapsed += 3; setPollSecs(elapsed);
-          if (elapsed >= 180) { clearInterval(poll); setWaitingPay(false); setError("Payment timed out."); return; }
+          if (checking) return;
+          checking = true;
+          elapsed += 3; setPollSecs(Math.min(elapsed, 60));
           try {
             const r = await fetch(`/api/payment/status?txRef=${data.txRef}`);
             const d = await r.json();
             if (d.status === "successful") { clearInterval(poll); setWaitingPay(false); onAction(); }
-            else if (d.status === "failed") { clearInterval(poll); setWaitingPay(false); setError("Payment failed."); }
-          } catch { /* keep polling */ }
+            else if (d.status === "failed") { clearInterval(poll); setWaitingPay(false); setPaymentPending(false); setError("Payment failed."); }
+            else if (elapsed >= 60) { clearInterval(poll); setWaitingPay(false); setPaymentPending(true); }
+          } catch {
+            if (elapsed >= 60) { clearInterval(poll); setWaitingPay(false); setPaymentPending(true); }
+          } finally {
+            checking = false;
+          }
         }, 3000);
         return;
       }
       onAction();
     } finally { setSubmitting(false); }
+  }
+
+  async function refreshPaymentStatus() {
+    if (!paymentTxRef) return;
+    try {
+      const response = await fetch(`/api/payment/status?txRef=${encodeURIComponent(paymentTxRef)}`);
+      const result = await response.json();
+      if (result.status === "successful") {
+        setPaymentPending(false);
+        onAction();
+      } else if (result.status === "failed") {
+        setPaymentPending(false);
+        setError("Daraja confirmed that the payment failed or was cancelled.");
+      }
+    } catch {
+      setError("Could not check status. The payment remains pending; do not pay again.");
+    }
   }
 
   const other = isVendor
@@ -164,8 +192,16 @@ function BookingCard({
           <Smartphone className="w-6 h-6 text-purple-500 animate-pulse" />
           <p className="text-[var(--foreground)] text-sm font-semibold">Check your M-Pesa — enter your PIN</p>
           <div className="w-full bg-gray-800 rounded-full h-1">
-            <div className="bg-purple-600 h-1 rounded-full transition-all" style={{ width: `${Math.min((pollSecs / 180) * 100, 100)}%` }} />
+            <div className="bg-purple-600 h-1 rounded-full transition-all" style={{ width: `${Math.min((pollSecs / 60) * 100, 100)}%` }} />
           </div>
+        </div>
+      )}
+      {paymentPending && (
+        <div className="mx-4 mb-3 flex flex-col items-center gap-2 rounded-xl border border-amber-700/40 bg-amber-900/10 p-3 text-center">
+          <p className="text-sm text-amber-200">Payment remains pending with Daraja. Do not pay again.</p>
+          <button onClick={refreshPaymentStatus} className="text-xs font-semibold text-purple-300 hover:text-purple-200">
+            Check payment status
+          </button>
         </div>
       )}
 
@@ -205,7 +241,7 @@ function BookingCard({
       )}
 
       {/* Buyer: M-Pesa payment */}
-      {!isVendor && booking.status === "approved" && booking.paymentMethod === "mpesa" && !waitingPay && (
+      {!isVendor && booking.status === "approved" && booking.paymentMethod === "mpesa" && !waitingPay && !paymentPending && (
         <div className="px-4 pb-4 flex flex-col gap-2">
           <input
             type="tel"

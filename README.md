@@ -1,13 +1,13 @@
 # Noizy Hub Marketplace
 
-Noizy Hub is a Next.js event ticketing and vendor marketplace application. It supports event discovery, ticket checkout, M-Pesa payments through IntaSend, ticket scanning, vendor applications, marketplace profiles, messaging, notifications, and Africa's Talking SMS notifications.
+Noizy Hub is a Next.js event ticketing and vendor marketplace application. It supports event discovery, ticket checkout, M-Pesa payments through Safaricom Daraja, ticket scanning, vendor applications, marketplace profiles, messaging, notifications, and Africa's Talking SMS notifications.
 
 ## Requirements
 
 - Node.js 20 or newer
 - npm
 - PostgreSQL database
-- An IntaSend account for M-Pesa payments
+- Safaricom Daraja sandbox credentials for M-Pesa payments
 - An Africa's Talking account for SMS
 
 ## Install
@@ -48,7 +48,18 @@ GMAIL_USER=
 GMAIL_APP_PASSWORD=
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
+EMAIL_FROM_NAME=Noizy Hub
 ```
+
+Ticket confirmation emails include the scannable QR inline and a link to the
+online ticket. Configure Resend for production by verifying the sender domain
+and publishing the SPF and DKIM records Resend provides, plus a DMARC policy.
+Use a `RESEND_FROM_EMAIL` address on that verified domain; production refuses
+to send through the Resend test sender domain or fall back to Gmail. Gmail SMTP
+is available as a non-production fallback, but no sending method can guarantee inbox placement;
+domain authentication, accurate recipient addresses, and recipient mail
+provider filtering affect delivery. Failed Daraja ticket-email deliveries are
+retried by the authenticated reconciliation cron.
 
 Africa's Talking SMS:
 
@@ -61,17 +72,24 @@ AT_ENVIRONMENT=sandbox
 
 Use phone numbers in international format, for example `+2547XXXXXXXX`. The shared helper also normalizes common Kenyan formats. SMS failures are logged and do not block the main API response.
 
-IntaSend payments:
+Safaricom Daraja:
 
 ```env
-INTASEND_PUBLISHABLE_KEY=
-INTASEND_SECRET_KEY=
-INTASEND_TEST_MODE=true
-INTASEND_WEBHOOK_CHALLENGE=
-NEXT_PUBLIC_BASE_URL=http://localhost:4000
+DARAJA_ENVIRONMENT=sandbox
+DARAJA_CONSUMER_KEY=
+DARAJA_CONSUMER_SECRET=
+DARAJA_SHORTCODE=
+DARAJA_PASSKEY=
+DARAJA_CALLBACK_URL=https://YOUR_PUBLIC_DOMAIN/api/payment/webhook
+DARAJA_B2C_SHORTCODE=
+DARAJA_INITIATOR_NAME=
+DARAJA_INITIATOR_PASSWORD=
+DARAJA_CERTIFICATE=
+DARAJA_QUEUE_TIMEOUT_URL=https://YOUR_PUBLIC_DOMAIN/api/payouts/timeout
+DARAJA_B2C_RESULT_URL=https://YOUR_PUBLIC_DOMAIN/api/payouts/webhook
 ```
 
-Use sandbox IntaSend keys with `INTASEND_TEST_MODE=true`. For live payments, use live keys, set `INTASEND_TEST_MODE=false`, and set `NEXT_PUBLIC_BASE_URL` to a public HTTPS URL.
+Use Safaricom sandbox credentials and public HTTPS callback URLs for sandbox testing. Set `DARAJA_ENVIRONMENT=live` only after sandbox collection and B2C payout checks pass and Safaricom has approved the live shortcode, passkey, initiator, and certificate.
 
 Other security settings:
 
@@ -118,9 +136,9 @@ npx prisma migrate deploy
 
 The reminder/SMS migration adds promo expiry support and the `EventReminder` idempotency table. The database must be reachable before running migrations.
 
-## IntaSend Local Testing
+## Daraja Sandbox Testing
 
-IntaSend needs a public callback URL for payment status webhooks. Use ngrok while the local server is running.
+Daraja callbacks need a publicly reachable callback URL. Use a secure HTTPS tunnel while testing locally.
 
 1. Install ngrok if needed:
 
@@ -158,25 +176,25 @@ IntaSend needs a public callback URL for payment status webhooks. Use ngrok whil
 	NEXT_PUBLIC_BASE_URL=https://example.ngrok-free.app
 	```
 
-7. Configure the IntaSend webhook endpoint as:
+7. Set the collection callback URL:
 
 	```text
 	https://example.ngrok-free.app/api/payment/webhook
 	```
 
-Keep both the Next.js and ngrok terminals running. The free ngrok URL may change when the tunnel restarts, so update `.env` and the IntaSend webhook whenever it changes.
+8. Set the B2C result URL to:
 
-## IntaSend Activation Pending
+	```text
+	https://example.ngrok-free.app/api/payouts/webhook
+	```
 
-The IntaSend webhook URL has not yet been added because the IntaSend account activation is still pending.
+9. Set the B2C queue-timeout URL to:
 
-After activation:
+	```text
+	https://example.ngrok-free.app/api/payouts/timeout
+	```
 
-- Add the webhook URL in the correct IntaSend dashboard, sandbox or live:
-  `https://YOUR_PUBLIC_DOMAIN/api/payment/webhook`
-- Ensure the dashboard challenge matches `INTASEND_WEBHOOK_CHALLENGE`.
-- Set `NEXT_PUBLIC_BASE_URL` to the deployed public HTTPS domain.
-- Use live keys only after sandbox checkout and webhook delivery have been verified.
+Keep both terminals running. Update all three Daraja callback URLs whenever the tunnel address changes. Daraja live mode rejects non-HTTPS callback URLs.
 
 ## Payment Test Checklist
 
@@ -184,9 +202,12 @@ After activation:
 2. Select a paid event and enter a sandbox-supported M-Pesa number.
 3. Confirm the terminal logs the STK request.
 4. Complete or reject the payment prompt.
-5. Confirm the IntaSend webhook reaches `/api/payment/webhook`.
-6. Confirm `/api/payment/status` changes the order to `confirmed` or `failed`.
-7. Confirm the ticket code is available and the SMS/email confirmation is sent.
+5. Confirm the Daraja STK callback reaches `/api/payment/webhook` and is verified through the STK status query.
+6. The checkout waits actively for up to 60 seconds. Stale requests are reconciled by Daraja status query; only a verified terminal failure fails the order and releases its attendee reservation. If Daraja has no final result, the payment stays pending and the buyer must not submit it again.
+7. Confirm `/api/payment/status` changes the payment to `successful` or `failed` and the order state follows.
+8. Confirm the ticket code is available and the SMS/email confirmation is sent.
+9. Test an approved marketplace booking and vending slot payment.
+10. Test B2C payout success and failure callbacks using separately funded organiser and vendor wallets.
 
 For reminder endpoint testing, use:
 
@@ -203,11 +224,14 @@ The project is configured for Vercel. Add all production environment variables i
 ```env
 NEXTAUTH_URL=https://YOUR_DOMAIN
 NEXT_PUBLIC_BASE_URL=https://YOUR_DOMAIN
-INTASEND_TEST_MODE=false
+DARAJA_ENVIRONMENT=live
+DARAJA_CALLBACK_URL=https://YOUR_DOMAIN/api/payment/webhook
+DARAJA_QUEUE_TIMEOUT_URL=https://YOUR_DOMAIN/api/payouts/timeout
+DARAJA_B2C_RESULT_URL=https://YOUR_DOMAIN/api/payouts/webhook
 CRON_SECRET=YOUR_RANDOM_SECRET
 ```
 
-The daily reminder cron is configured in `vercel.json` for 05:00 UTC, which is 08:00 East Africa Time.
+Daraja pending-payment reconciliation runs every minute and requires `CRON_SECRET` to be configured in the deployment environment. The daily reminder cron is configured in `vercel.json` for 05:00 UTC, which is 08:00 East Africa Time.
 
 Before deploying:
 
@@ -220,5 +244,5 @@ npm run build
 
 - Never commit `.env` or paste credentials into source control.
 - Rotate credentials immediately if they are exposed.
-- Keep `INTASEND_SECRET_KEY`, `DATABASE_URL`, `AT_API_KEY`, `CRON_SECRET`, and signing/encryption secrets private.
+- Keep Daraja credentials, `DATABASE_URL`, `AT_API_KEY`, `CRON_SECRET`, and signing/encryption secrets private.
 - Use sandbox credentials for development and live credentials only in production.

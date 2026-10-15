@@ -228,9 +228,9 @@ export default function TermsPage() {
               <SubSection title="5.5 Vendor Wallet & Withdrawals">
                 <Ul items={[
                   "The minimum withdrawal amount is KES 100;",
-                  "Withdrawals are processed via M-Pesa (IntaSend B2C) directly to the Vendor's registered mobile number;",
+                  "Withdrawals are processed via M-Pesa (Safaricom Daraja B2C) directly to the Vendor's registered mobile number;",
                   "Withdrawal requests are typically processed within minutes, subject to M-Pesa network availability;",
-                  "Noizy Hub is not liable for delays caused by M-Pesa, Safaricom, or IntaSend network issues;",
+                  "Noizy Hub is not liable for delays caused by M-Pesa or Safaricom network issues;",
                   "Vendors are responsible for the accuracy of the phone number provided for withdrawal;",
                   "Noizy Hub encrypts withdrawal phone numbers and does not expose them in API responses.",
                 ]} />
@@ -270,13 +270,13 @@ export default function TermsPage() {
             </Section>
 
             <Section id="payments" number="07" title="Payments & Financial Terms">
-              <P>All payments on Noizy Hub are processed in Kenyan Shillings (KES) via M-Pesa, facilitated through our payment partner IntaSend. By making a payment on the Platform, you agree that:</P>
+              <P>All M-Pesa payments on Noizy Hub are processed in Kenyan Shillings (KES) through Safaricom Daraja. By making a payment on the Platform, you agree that:</P>
               <Ul items={[
                 "You are authorised to use the M-Pesa account or mobile number provided;",
                 "You will complete the STK Push payment authorisation on your mobile device promptly;",
                 "Payment confirmations are final and binding once processed;",
                 "Noizy Hub does not store full M-Pesa credentials — only partial reference details are retained;",
-                "Noizy Hub is not responsible for failed transactions caused by insufficient M-Pesa balance, network outages, or errors by Safaricom or IntaSend;",
+                "Noizy Hub is not responsible for failed transactions caused by insufficient M-Pesa balance, network outages, or errors by Safaricom;",
                 "In the event of an erroneous charge, you must contact us at noizyhub@gmail.com within 7 days.",
               ]} />
               <P>All prices displayed on the Platform are inclusive of applicable taxes unless stated otherwise.</P>
@@ -355,7 +355,7 @@ export default function TermsPage() {
                 "We collect only data necessary to operate the Platform and process transactions;",
                 "Your phone number used for M-Pesa withdrawals is encrypted before storage;",
                 "We do not sell your personal data to third parties;",
-                "We may share data with payment processors (IntaSend, Safaricom) solely for transaction processing;",
+                "We may share data with Safaricom solely for transaction processing;",
                 "You may request access to, correction of, or deletion of your personal data by contacting noizyhub@gmail.com;",
                 "We use cookies and analytics tools to improve Platform performance — by using the Platform, you consent to this use.",
               ]} />

@@ -7,7 +7,7 @@
     "dev": "next dev -p 4000",
     "build": "next build --turbopack --no-lint",
     "start": "next start",
-    "test": "tsx --test tests/ticket-ownership.test.ts tests/mpesa-phone.test.ts tests/auth-security.test.ts",
+    "test": "tsx --test tests/ticket-ownership.test.ts tests/mpesa-phone.test.ts tests/auth-security.test.ts tests/noizy-payments.test.ts",
     "lint": "eslint",
     "seed:categories": "node --loader ts-node/esm --loader ./node_modules/tsconfig-paths/register.js scripts/seedCategories.ts",
     "db:seed": "npx prisma db seed",
@@ -49,7 +49,8 @@
     "react-icons": "^5.5.0",
     "react-leaflet": "^5.0.0",
     "realm-web": "^2.0.1",
-    "resend": "^6.9.3"
+    "resend": "^6.9.3",
+    "viem": "^2.57.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
