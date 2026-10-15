@@ -59,7 +59,10 @@ to send through the Resend test sender domain or fall back to Gmail. Gmail SMTP
 is available as a non-production fallback, but no sending method can guarantee inbox placement;
 domain authentication, accurate recipient addresses, and recipient mail
 provider filtering affect delivery. Failed Daraja ticket-email deliveries are
-retried by the authenticated reconciliation cron.
+retried by the authenticated reconciliation cron, which runs once daily on
+Vercel Hobby. Payment callbacks and checkout status checks still reconcile
+payments as they happen; the daily cron handles older pending payments and
+failed email deliveries that have not otherwise been retried.
 
 Africa's Talking SMS:
 
@@ -231,7 +234,11 @@ DARAJA_B2C_RESULT_URL=https://YOUR_DOMAIN/api/payouts/webhook
 CRON_SECRET=YOUR_RANDOM_SECRET
 ```
 
-Daraja pending-payment reconciliation runs every minute and requires `CRON_SECRET` to be configured in the deployment environment. The daily reminder cron is configured in `vercel.json` for 05:00 UTC, which is 08:00 East Africa Time.
+Daraja pending-payment reconciliation runs daily at 06:00 UTC (09:00 East
+Africa Time) and requires `CRON_SECRET` to be configured in the deployment
+environment. The reminder cron runs at 05:00 UTC (08:00 East Africa Time).
+Both schedules are once daily, as required by Vercel Hobby. Checkout status
+checks and Daraja callbacks continue to handle payments outside the cron run.
 
 Before deploying:
 
